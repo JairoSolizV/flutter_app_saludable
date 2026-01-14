@@ -1,0 +1,142 @@
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
+
+class DatabaseHelper {
+  static final DatabaseHelper _instance = DatabaseHelper._internal();
+  static Database? _database;
+
+  factory DatabaseHelper() => _instance;
+
+  DatabaseHelper._internal();
+
+  Future<Database> get database async {
+    if (_database != null) return _database!;
+    _database = await _initDatabase();
+    return _database!;
+  }
+
+  Future<Database> _initDatabase() async {
+    String path = join(await getDatabasesPath(), 'nutrilife_club.db');
+    return await openDatabase(
+      path,
+      version: 1,
+      onCreate: _onCreate,
+    );
+  }
+
+  Future<void> _onCreate(Database db, int version) async {
+    // Tabla Users
+    await db.execute('''
+      CREATE TABLE users(
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        email TEXT,
+        role TEXT,
+        token TEXT,
+        phone TEXT,
+        photo_url TEXT,
+        is_synced INTEGER DEFAULT 1
+      )
+    ''');
+
+    // Tabla Products (Catálogo Offline)
+    await db.execute('''
+      CREATE TABLE products(
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        description TEXT,
+        price REAL,
+        category TEXT,
+        image_url TEXT,
+        is_available INTEGER DEFAULT 1
+      )
+    ''');
+
+    // Tabla Orders (Pedidos)
+    await db.execute('''
+      CREATE TABLE orders(
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        total REAL,
+        status TEXT, -- pending, preparing, ready, completed
+        created_at TEXT,
+        is_synced INTEGER DEFAULT 0, -- 0: No enviado al server, 1: Sincronizado
+        FOREIGN KEY(user_id) REFERENCES users(id)
+      )
+    ''');
+
+    // Tabla Order Items
+    await db.execute('''
+      CREATE TABLE order_items(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id TEXT,
+        product_id TEXT,
+        quantity INTEGER,
+        price REAL,
+        FOREIGN KEY(order_id) REFERENCES orders(id),
+        FOREIGN KEY(product_id) REFERENCES products(id)
+      )
+    ''');
+    
+    await _seedData(db);
+  }
+
+  Future<void> _seedData(Database db) async {
+    // Datos de ejemplo simulando la API
+    final products = [
+      {
+        'id': '1',
+        'name': 'Batido Fresa',
+        'description': 'Delicioso batido nutricional sabor fresa.',
+        'price': 25.0,
+        'category': 'Batidos',
+        'image_url': 'assets/images/shake_strawberry.png',
+        'is_available': 1
+      },
+      {
+        'id': '2',
+        'name': 'Té de Hierbas',
+        'description': 'Té energizante concentrado.',
+        'price': 15.0,
+        'category': 'Tés',
+        'image_url': 'assets/images/tea_herbal.png',
+        'is_available': 1
+      },
+      {
+        'id': '3',
+        'name': 'Aloe Vera',
+        'description': 'Bebida refrescante de sábila.',
+        'price': 12.0,
+        'category': 'Aloes',
+        'image_url': 'assets/images/aloe.png',
+        'is_available': 1
+      },
+    ];
+
+    for (var p in products) {
+      await db.insert('products', p);
+    }
+  }
+
+  // Métodos CRUD genéricos
+  Future<int> insert(String table, Map<String, dynamic> row) async {
+    Database db = await database;
+    return await db.insert(table, row, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> queryAllRows(String table) async {
+    Database db = await database;
+    return await db.query(table);
+  }
+
+  Future<int> update(String table, Map<String, dynamic> row, String columnId) async {
+    Database db = await database;
+    String id = row[columnId];
+    return await db.update(table, row, where: '$columnId = ?', whereArgs: [id]);
+  }
+
+  Future<int> delete(String table, String id) async {
+    Database db = await database;
+    return await db.delete(table, where: 'id = ?', whereArgs: [id]);
+  }
+}

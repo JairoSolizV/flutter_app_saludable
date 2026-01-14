@@ -1,122 +1,104 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'core/theme/app_theme.dart';
+import 'core/router/app_router.dart';
+import 'core/database/database_helper.dart';
+import 'data/repositories/local_product_repository.dart';
+import 'data/repositories/local_order_repository.dart';
+import 'presentation/providers/product_provider.dart';
+import 'presentation/providers/order_provider.dart';
+import 'presentation/providers/user_provider.dart'; // Added
+import 'core/services/connectivity_service.dart';
+import 'core/services/sync_service.dart';
+import 'core/api/api_client.dart';
+import 'data/datasources/remote/auth_remote_data_source.dart';
+import 'data/datasources/remote/club_remote_data_source.dart'; // Nuevo
+import 'data/datasources/remote/product_remote_data_source.dart';
+import 'data/datasources/remote/order_remote_data_source.dart';
+import 'presentation/providers/auth_provider.dart';
+import 'data/repositories/local_user_repository.dart';
+
+// Global instances for dependencies
+late final DatabaseHelper dbHelper;
+late final LocalUserRepository userRepository;
+late final ApiClient apiClient;
+late final AuthRemoteDataSource authRemoteDataSource;
+late final ProductRemoteDataSource productRemoteDataSource;
+late final ClubRemoteDataSource clubRemoteDataSource; // Nuevo
+late final OrderRemoteDataSource orderRemoteDataSource;
+late final LocalProductRepository productRepository;
+late final LocalOrderRepository orderRepository;
+late final ConnectivityService connectivityService;
+late final SyncService syncService;
 
 void main() {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+    // 1. Base de Datos
+    dbHelper = DatabaseHelper();
+    
+    // 2. Repositorios Locales (Base)
+    userRepository = LocalUserRepository(dbHelper);
+    
+    // 3. Red y Cliente API
+    apiClient = ApiClient(userRepository);
+    authRemoteDataSource = AuthRemoteDataSourceImpl(apiClient.client);
+    clubRemoteDataSource = ClubRemoteDataSource(apiClient.client); // Inicialización faltante
+    productRemoteDataSource = ProductRemoteDataSourceImpl(apiClient.client);
+    orderRemoteDataSource = OrderRemoteDataSourceImpl(apiClient.client);
+    
+    // 4. Repositorios Híbridos
+    productRepository = LocalProductRepository(dbHelper, remoteDataSource: productRemoteDataSource);
+    orderRepository = LocalOrderRepository(dbHelper);
+    
+    // 5. Servicios
+    connectivityService = ConnectivityService();
+    syncService = SyncService(orderRepository, connectivityService, orderRemoteDataSource);
+
+  runApp(const AppState());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class AppState extends StatelessWidget {
+  const AppState({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => ProductProvider(productRepository)..loadProducts(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => OrderProvider(orderRepository, connectivityService, syncService)..loadOrders('user_1'), // Mock user_1
+        ),
+        ChangeNotifierProvider(
+          create: (_) => UserProvider(userRepository),
+        ),
+        Provider<ConnectivityService>(
+            create: (_) => connectivityService,
+            dispose: (_, service) => service.dispose(),
+        ),
+        Provider<AuthRemoteDataSource>(
+            create: (_) => authRemoteDataSource,
+        ),
+         ChangeNotifierProvider(
+          create: (_) => AuthProvider(authRemoteDataSource, userRepository),
+        ),
+      ],
+      child: const MainApp(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+class MainApp extends StatelessWidget {
+  const MainApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
+    return MaterialApp.router(
+      title: 'Nutrilife Club',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      routerConfig: appRouter,
     );
   }
 }
