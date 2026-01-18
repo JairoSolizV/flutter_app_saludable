@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import '../../../domain/entities/product.dart';
 
 abstract class ProductRemoteDataSource {
-  Future<List<Product>> getProducts();
+  Future<List<Product>> getProducts({int? clubId});
 }
 
 class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
@@ -11,24 +11,26 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
   ProductRemoteDataSourceImpl(this._client);
 
   @override
-  Future<List<Product>> getProducts() async {
+  Future<List<Product>> getProducts({int? clubId}) async {
     try {
-      // Endpoint /api/productos (asumiendo que devuelve lista directa o paginada)
-      // Ajuste según doc: GET /api/productos
-      final response = await _client.get('/productos');
+      final queryParameters = <String, dynamic>{};
+      if (clubId != null) {
+        queryParameters['clubId'] = clubId;
+      }
+
+      final response = await _client.get('/productos', queryParameters: queryParameters);
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data is List ? response.data : response.data['content'] ?? []; // Handling posible paginación Spring Boot
+        final List<dynamic> data = response.data is List ? response.data : response.data['content'] ?? []; 
         
         return data.map<Product>((json) {
-           // Mapeo defensivo
            return Product(
              id: json['id'].toString(),
              name: json['nombre'] ?? 'Sin nombre',
              description: json['descripcion'] ?? '',
              price: (json['precio'] as num).toDouble(),
              category: json['categoria'] ?? 'General',
-             imageUrl: json['urlFoto'] ?? '', // Ajustar según DTO real
+             imageUrl: json['urlFoto'] ?? '',
            );
         }).toList();
       } else {
@@ -36,6 +38,26 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       }
     } on DioException catch (e) {
       throw Exception('Error de red al cargar productos: ${e.message}');
+    }
+  }
+
+  Future<void> createProduct(Product product, int clubId) async {
+    try {
+      final data = {
+        'nombre': product.name,
+        'descripcion': product.description,
+        'precio': product.price,
+        'categoria': product.category,
+        'urlFoto': product.imageUrl.isNotEmpty ? product.imageUrl : null,
+      };
+
+      await _client.post(
+        '/productos',
+        queryParameters: {'clubId': clubId}, // Backend requiere clubId como param
+        data: data,
+      );
+    } on DioException catch (e) {
+      throw Exception('Error al crear producto: ${e.response?.data['message'] ?? e.message}');
     }
   }
 }

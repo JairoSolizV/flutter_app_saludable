@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
+import '../../providers/auth_provider.dart';
 
 class MemberProfileScreen extends StatelessWidget {
   const MemberProfileScreen({super.key});
@@ -96,7 +97,18 @@ class MemberProfileScreen extends StatelessWidget {
                    SizedBox(
                        width: double.infinity,
                        child: ElevatedButton.icon(
-                           onPressed: () {},
+                           onPressed: () async {
+                              // Obtener Providers
+                              final auth = Provider.of<AuthProvider>(context, listen: false); // Asumiendo que AuthProvider está disponible en el árbol
+                              final userProv = Provider.of<UserProvider>(context, listen: false);
+                              
+                              await auth.logout();
+                              userProv.logout(); // Necesitamos asegurar que UserProvider tenga un método para limpiar
+                              
+                              if (context.mounted) {
+                                context.go('/guest-home');
+                              }
+                           },
                            icon: const Icon(LucideIcons.logOut),
                            label: const Text('Cerrar Sesión'),
                            style: ElevatedButton.styleFrom(

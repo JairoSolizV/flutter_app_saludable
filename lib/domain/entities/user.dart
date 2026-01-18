@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class User {
   final String id;
   final String name;
@@ -6,6 +8,8 @@ class User {
   final String? token;
   final String? phone;
   final String? photoUrl;
+  final String? birthDate;
+  final Map<String, dynamic>? socialMedia;
 
   User({
     required this.id,
@@ -15,6 +19,8 @@ class User {
     this.token,
     this.phone,
     this.photoUrl,
+    this.birthDate,
+    this.socialMedia,
   });
 
   factory User.fromMap(Map<String, dynamic> map) {
@@ -26,6 +32,10 @@ class User {
       token: map['token'],
       phone: map['phone'],
       photoUrl: map['photo_url'],
+      birthDate: map['birth_date'],
+      socialMedia: map['social_media'] != null 
+        ? (map['social_media'] is String ? jsonDecode(map['social_media']) : map['social_media']) 
+        : null,
     );
   }
 
@@ -38,6 +48,8 @@ class User {
       'token': token,
       'phone': phone,
       'photo_url': photoUrl,
+      'birth_date': birthDate,
+      'social_media': socialMedia != null ? jsonEncode(socialMedia) : null,
     };
   }
 
@@ -46,6 +58,8 @@ class User {
     String? email,
     String? phone,
     String? photoUrl,
+    String? birthDate,
+    Map<String, dynamic>? socialMedia,
   }) {
     return User(
       id: id,
@@ -55,6 +69,8 @@ class User {
       email: email ?? this.email,
       phone: phone ?? this.phone,
       photoUrl: photoUrl ?? this.photoUrl,
+      birthDate: birthDate ?? this.birthDate,
+      socialMedia: socialMedia ?? this.socialMedia,
     );
   }
 }

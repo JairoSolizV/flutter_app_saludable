@@ -19,15 +19,23 @@ class AuthProvider extends ChangeNotifier {
   User? get currentUser => _currentUser;
 
   Future<bool> login(String email, String password) async {
+    return _authenticate(() => _remoteDataSource.login(email, password));
+  }
+
+  Future<bool> register(String nombre, String apellido, String email, String password, String telefono, {int? rolId}) async {
+    return _authenticate(() => _remoteDataSource.register(nombre, apellido, email, password, telefono, rolId: rolId));
+  }
+
+  Future<bool> _authenticate(Future<User> Function() authMethod) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final user = await _remoteDataSource.login(email, password);
+      final user = await authMethod();
       // Guardar usuario y token localmente
       await _localRepository.saveUser(user);
-      _currentUser = user; // Set current user
+      _currentUser = user; 
       
       _isLoading = false;
       notifyListeners();

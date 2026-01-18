@@ -13,6 +13,7 @@ import 'core/services/sync_service.dart';
 import 'core/api/api_client.dart';
 import 'data/datasources/remote/auth_remote_data_source.dart';
 import 'data/datasources/remote/club_remote_data_source.dart'; // Nuevo
+import 'data/datasources/remote/membresia_remote_data_source.dart'; // Nuevo
 import 'data/datasources/remote/product_remote_data_source.dart';
 import 'data/datasources/remote/order_remote_data_source.dart';
 import 'presentation/providers/auth_provider.dart';
@@ -24,7 +25,8 @@ late final LocalUserRepository userRepository;
 late final ApiClient apiClient;
 late final AuthRemoteDataSource authRemoteDataSource;
 late final ProductRemoteDataSource productRemoteDataSource;
-late final ClubRemoteDataSource clubRemoteDataSource; // Nuevo
+late final ClubRemoteDataSource clubRemoteDataSource; 
+late final MembresiaRemoteDataSource membresiaRemoteDataSource; // Nuevo
 late final OrderRemoteDataSource orderRemoteDataSource;
 late final LocalProductRepository productRepository;
 late final LocalOrderRepository orderRepository;
@@ -42,7 +44,8 @@ void main() {
     // 3. Red y Cliente API
     apiClient = ApiClient(userRepository);
     authRemoteDataSource = AuthRemoteDataSourceImpl(apiClient.client);
-    clubRemoteDataSource = ClubRemoteDataSource(apiClient.client); // Inicialización faltante
+    clubRemoteDataSource = ClubRemoteDataSource(apiClient.client); 
+    membresiaRemoteDataSource = MembresiaRemoteDataSourceImpl(apiClient.client);
     productRemoteDataSource = ProductRemoteDataSourceImpl(apiClient.client);
     orderRemoteDataSource = OrderRemoteDataSourceImpl(apiClient.client);
     
@@ -79,6 +82,12 @@ class AppState extends StatelessWidget {
         ),
         Provider<AuthRemoteDataSource>(
             create: (_) => authRemoteDataSource,
+        ),
+        Provider<ClubRemoteDataSource>(
+            create: (_) => clubRemoteDataSource,
+        ),
+        Provider<MembresiaRemoteDataSource>(
+            create: (_) => membresiaRemoteDataSource,
         ),
          ChangeNotifierProvider(
           create: (_) => AuthProvider(authRemoteDataSource, userRepository),

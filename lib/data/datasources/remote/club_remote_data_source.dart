@@ -51,54 +51,87 @@ class ClubRemoteDataSource {
 
   Future<List<Club>> getClubes() async {
     try {
-      // Intentar llamada normal (usará token de user_1 si existe)
-      return await _fetchClubes();
-    } on DioException catch (e) {
-      // Si recibimos 403 (Forbidden) o 401, es probable que seamos invitados sin token
-      if (e.response?.statusCode == 403 || e.response?.statusCode == 401) {
-        print('Acceso denegado a clubes. Intentando autenticación silenciosa como Invitado...');
-        try {
-          // Autenticación silenciosa con credenciales de "Lectura Pública" (Socio Juan)
-          final token = await _getGuestToken();
-          // Reintentar llamada con el nuevo token explícito
-          return await _fetchClubes(token: token);
-        } catch (authError) {
-          throw Exception('Error al autenticar invitado: $authError');
-        }
+      // Uso del nuevo endpoint público
+      // Como la BaseUrl ya incluye /api (asumido por el uso de /clubes), usamos /public/clubes
+      // Si falla, verificar si la baseUrl del Dio incluye /api
+      final response = await _client.get('/public/clubes');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+        return data.map((json) => Club.fromJson(json)).toList();
+      } else {
+        throw Exception('Error al cargar clubes: ${response.statusCode}');
       }
-      rethrow;
     } catch (e) {
-      throw Exception('Error inesperado: $e');
+      throw Exception('Error obteniendo clubes públicos: $e');
     }
   }
 
-  Future<List<Club>> _fetchClubes({String? token}) async {
+  // _fetchClubes y _getGuestToken eliminados ya que no son necesarios para la carga de clubes públicos
+
+  Future<Club?> getClubByHostId(int hostId) async {
+    try {
+      // Como no hay endpoint específico, obtenemos todos y filtramos
+      // Esto es temporal hasta tener un endpoint optimizado
+      final clubes = await getClubes();
+      try {
+        return clubes.firstWhere((club) => club.anfitrionId == hostId);
+      } catch (e) {
+        return null; // No encontrado
+      }
+    } catch (e) {
+      print('Error buscando club del anfitrión: $e');
+      return null;
+    }
+  }
+
+  Future<Anfitrion> getAnfitrion(int id) async {
+    try {
+      return await _fetchAnfitrion(id);
+    } catch (e) {
+      print('Error fetching anfitrion: $e');
+      return Anfitrion(id: id, nombre: '', apellido: '', email: '', telefono: '', redesSociales: '');
+    }
+  }
+
+  Future<Anfitrion> _fetchAnfitrion(int id, {String? token}) async {
     final options = token != null 
-      ? Options(headers: {'Authorization': 'Bearer $token'}) 
-      : null;
-
-    final response = await _client.get('/clubes', options: options);
-    
+       ? Options(headers: {'Authorization': 'Bearer $token'}) 
+       : null;
+    final response = await _client.get('/usuarios/$id', options: options);
     if (response.statusCode == 200) {
-      final List<dynamic> data = response.data;
-      return data.map((json) => Club.fromJson(json)).toList();
+      return Anfitrion.fromJson(response.data);
     } else {
-      throw Exception('Error al cargar clubes: ${response.statusCode}');
+      throw Exception('Failed to load anfitrion');
     }
   }
+}
 
-  Future<String> _getGuestToken() async {
-    // Credenciales de respaldo para acceso público (Socio Juan)
-    // En producción esto debería ser un endpoint público o un API Key
-    final response = await _client.post('/auth/login', data: {
-      'email': 'juan.socio@email.com',
-      'password': 'Socio123!'
-    });
+class Anfitrion {
+  final int id;
+  final String nombre;
+  final String apellido;
+  final String email;
+  final String telefono;
+  final String redesSociales;
 
-    if (response.statusCode == 200) {
-       return response.data['token'];
-    } else {
-       throw Exception('No se pudo obtener token de invitado');
-    }
+  Anfitrion({
+    required this.id,
+    required this.nombre,
+    required this.apellido,
+    required this.email,
+    required this.telefono,
+    required this.redesSociales,
+  });
+
+  factory Anfitrion.fromJson(Map<String, dynamic> json) {
+    return Anfitrion(
+      id: json['id'] ?? json['userId'] ?? 0,
+      nombre: json['nombre'] ?? '',
+      apellido: json['apellido'] ?? '',
+      email: json['email'] ?? '',
+      telefono: json['telefono'] ?? '',
+      redesSociales: json['redesSociales'] ?? '',
+    );
   }
 }

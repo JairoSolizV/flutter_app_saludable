@@ -31,13 +31,21 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateUserProfile({String? name, String? email, String? phone}) async {
+  Future<void> updateUserProfile({
+    String? name, 
+    String? email, 
+    String? phone,
+    String? birthDate,
+    Map<String, dynamic>? socialMedia,
+  }) async {
     if (_currentUser == null) return;
 
     final updatedUser = _currentUser!.copyWith(
       name: name,
       email: email,
       phone: phone,
+      birthDate: birthDate,
+      socialMedia: socialMedia,
     );
 
     try {
@@ -48,5 +56,9 @@ class UserProvider extends ChangeNotifier {
       print('Error updating user: $e');
       rethrow;
     }
+  }
+  void logout() {
+    _currentUser = null;
+    notifyListeners();
   }
 }

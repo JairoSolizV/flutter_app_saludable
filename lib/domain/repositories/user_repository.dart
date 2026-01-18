@@ -5,4 +5,5 @@ abstract class UserRepository {
   Future<void> saveUser(User user);
   Future<void> updateUser(User user);
   Future<void> logout();
+  Future<User?> getCurrentUser();
 }

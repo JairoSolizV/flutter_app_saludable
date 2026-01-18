@@ -12,13 +12,16 @@ class LocalProductRepository implements ProductRepository {
       : _remoteDataSource = remoteDataSource;
 
   @override
-  Future<List<Product>> getProducts() async {
+  Future<List<Product>> getProducts({int? clubId}) async {
     // 1. Intentar obtener de API si hay remoteDataSource
     if (_remoteDataSource != null) {
       try {
-        final remoteProducts = await _remoteDataSource!.getProducts();
-        // 2. Guardar en BD Local (Cache)
+        final remoteProducts = await _remoteDataSource!.getProducts(clubId: clubId);
+        
+        // Solo guardamos en caché si es una carga general (sin filtro de club) o lógica futura
+        // Por simplicidad, guardamos todo lo que llega
         await _saveProductsToLocal(remoteProducts);
+        
         return remoteProducts;
       } catch (e) {
         print('Error fetching remote products: $e. Falling back to local DB.');
@@ -59,5 +62,34 @@ class LocalProductRepository implements ProductRepository {
       return Product.fromMap(result.first);
     }
     return null;
+  }
+
+  @override
+  @override
+  Future<void> createProduct(Product product, int clubId) async {
+    if (_remoteDataSource != null) {
+        // Asumimos que _remoteDataSource es ProductRemoteDataSourceImpl
+        await (_remoteDataSource as dynamic).createProduct(product, clubId); 
+    }
+  }
+
+  @override
+  Future<void> updateProduct(Product product) async {
+    if (_remoteDataSource != null) {
+      await (_remoteDataSource as dynamic).updateProduct(product);
+    }
+    // Update local cache
+    final db = await _dbHelper.database;
+    await db.update('products', product.toMap(), where: 'id = ?', whereArgs: [product.id]);
+  }
+
+  @override
+  Future<void> deleteProduct(String id) async {
+    if (_remoteDataSource != null) {
+      await (_remoteDataSource as dynamic).deleteProduct(id);
+    }
+    // Delete from local cache
+    final db = await _dbHelper.database;
+    await db.delete('products', where: 'id = ?', whereArgs: [id]);
   }
 }

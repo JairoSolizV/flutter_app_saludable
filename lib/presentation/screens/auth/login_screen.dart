@@ -19,6 +19,23 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+               // Si vinimos con context.go(), no hay historial para pop. 
+               // Volvemos al home de invitado.
+              context.go('/guest-home');
+            }
+          },
+        ),
+      ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -99,6 +116,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                       
                                       if (user.role == 'host') {
                                          context.go('/host-dashboard');
+                                      } else if (user.role == 'basic_user') {
+                                         context.go('/basic-home');
                                       } else {
                                          context.go('/member-home');
                                       }
@@ -117,6 +136,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           );
                         }
                       ),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: () => context.push('/register'),
+                        child: const Text('¿No tienes cuenta? Regístrate aquí', style: TextStyle(color: Color(0xFF7AC142))),
+                      )
                     ],
                   ),
                 ),

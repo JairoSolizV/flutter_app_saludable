@@ -46,7 +46,16 @@ class LocalUserRepository implements UserRepository {
 
   @override
   Future<void> logout() async {
-    // En una implementación real borraríamos el token o flags
-    // Por ahora no hacemos nada localmente más que limpiar estado en Provider
+    final db = await _dbHelper.database;
+    await db.delete('users'); // Borrar todo al cerrar sesión para mantener sesión única limpia
+  }
+
+  Future<User?> getCurrentUser() async {
+    final db = await _dbHelper.database;
+    final maps = await db.query('users', limit: 1);
+    if (maps.isNotEmpty) {
+      return User.fromMap(maps.first);
+    }
+    return null;
   }
 }

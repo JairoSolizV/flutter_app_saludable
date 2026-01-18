@@ -19,7 +19,9 @@ class ApiClient {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         // Ignorar token para endpoints públicos
-        if (options.path.contains('/auth/login') || options.path.contains('/auth/register')) {
+        if (options.path.contains('/auth/login') || 
+            options.path.contains('/auth/register') ||
+            options.path.contains('/public/')) {
            return handler.next(options);
         }
 
@@ -37,7 +39,8 @@ class ApiClient {
         // Ajuste: Vamos a requerir que el token se pase o se obtenga de una fuente síncrona/rápida.
         // Por ahora, consultamos el repo.
         
-        final user = await _userRepository.getUser('user_1'); // O ID dinámico si lo tuviéramos
+        // Ajuste: Usamos el método getCurrentUser que acabamos de implementar
+        final user = await _userRepository.getCurrentUser();
         if (user?.token != null) {
           options.headers['Authorization'] = 'Bearer ${user!.token}';
         }

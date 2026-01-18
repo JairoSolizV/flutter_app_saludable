@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart'; // Add go_router
 import 'package:flutter_map/flutter_map.dart'; 
 import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -17,6 +18,7 @@ class GuestMapScreen extends StatefulWidget {
 class _GuestMapScreenState extends State<GuestMapScreen> {
   // Centro inicial ajustado a uno de los clubes (Santa Cruz)
   final LatLng _initialCenter = const LatLng(-17.78122028, -63.17921747); 
+  final MapController _mapController = MapController();
   List<Club> _clubs = [];
   bool _isLoading = true;
 
@@ -58,8 +60,11 @@ class _GuestMapScreenState extends State<GuestMapScreen> {
         foregroundColor: Colors.white,
       ),
       body: FlutterMap(
+        mapController: _mapController,
         options: MapOptions(
-          initialCenter: _initialCenter,
+          initialCenter: _clubs.isNotEmpty 
+              ? LatLng(_clubs.first.lat, _clubs.first.lng) 
+              : _initialCenter,
           initialZoom: 13.0,
         ),
         children: [
@@ -97,10 +102,10 @@ class _GuestMapScreenState extends State<GuestMapScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) {
+      builder: (sheetContext) {
         return Container(
           padding: const EdgeInsets.all(24),
-          height: 250, // Un poco mas alto para la info extra
+          height: 250, 
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -135,8 +140,9 @@ class _GuestMapScreenState extends State<GuestMapScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context);
-                    // Futuro: Ir a detalle del club
+                    Navigator.pop(sheetContext); // Cerrar bottom sheet
+                    // Usar 'context' padre (de GuestMapScreen) que sigue vivo
+                    context.push('/club-detail', extra: club);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF7AC142),

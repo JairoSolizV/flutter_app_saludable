@@ -19,8 +19,9 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'nutrilife_club.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -35,6 +36,8 @@ class DatabaseHelper {
         token TEXT,
         phone TEXT,
         photo_url TEXT,
+        birth_date TEXT,
+        social_media TEXT,
         is_synced INTEGER DEFAULT 1
       )
     ''');
@@ -79,6 +82,21 @@ class DatabaseHelper {
     ''');
     
     await _seedData(db);
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Si la versión es vieja, agregamos las columnas nuevas
+      // Nota: SQLite no soporta IF NOT EXISTS en ADD COLUMN en versiones viejas, 
+      // pero aquí asumimos upgrade lineal v1 -> v2
+      try {
+        await db.execute('ALTER TABLE users ADD COLUMN birth_date TEXT');
+        await db.execute('ALTER TABLE users ADD COLUMN social_media TEXT');
+      } catch (e) {
+        // Ignorar si ya existen (por si acaso el usuario corrió una versión intermedia)
+        print("Error migrando columnas (pueden ya existir): $e");
+      }
+    }
   }
 
   Future<void> _seedData(Database db) async {
