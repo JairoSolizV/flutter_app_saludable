@@ -47,7 +47,9 @@ class HostMainScreen extends StatelessWidget {
     final String location = GoRouterState.of(context).uri.toString();
     if (location.startsWith('/host-dashboard')) return 0;
     if (location.startsWith('/host-orders')) return 1;
-    // ... otros índices
+    if (location.startsWith('/host-scan')) return 2;
+    if (location.startsWith('/host-members')) return 3;
+    if (location.startsWith('/host-profile')) return 4;
     return 0;
   }
 
@@ -59,7 +61,15 @@ class HostMainScreen extends StatelessWidget {
       case 1:
         context.go('/host-orders');
         break;
-      // ... otros casos
+      case 2:
+        context.go('/host-scan');
+        break;
+      case 3:
+        context.go('/host-members');
+        break;
+      case 4:
+        context.go('/host-profile');
+        break;
     }
   }
 }

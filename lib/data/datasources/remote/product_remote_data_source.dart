@@ -51,6 +51,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
         'nombre': product.name,
         'descripcion': product.description,
         'precio': product.price,
+        'precioReferencial': product.price, // Fallback for backend quirk
         'categoria': product.category,
         'urlFoto': product.imageUrl.isNotEmpty ? product.imageUrl : null,
       };
@@ -72,6 +73,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
         'nombre': product.name,
         'descripcion': product.description,
         'precio': product.price,
+        'precioReferencial': product.price, // Fallback for backend quirk
         'categoria': product.category,
         'urlFoto': product.imageUrl.isNotEmpty ? product.imageUrl : null,
       };

@@ -29,6 +29,8 @@ import '../../presentation/screens/host/host_orders_list_screen.dart';
 import '../../presentation/screens/host/host_scan_screen.dart';
 import '../../presentation/screens/host/products/host_product_list_screen.dart';
 import '../../presentation/screens/host/products/host_edit_product_screen.dart';
+import '../../presentation/screens/host/members/host_members_list_screen.dart';
+import '../../presentation/screens/host/host_profile_screen.dart';
 
 
 
@@ -140,6 +142,14 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/host-scan',
           builder: (context, state) => const HostScanScreen(),
+        ),
+        GoRoute(
+          path: '/host-members',
+          builder: (context, state) => const HostMembersListScreen(),
+        ),
+        GoRoute(
+          path: '/host-profile',
+          builder: (context, state) => const HostProfileScreen(),
         ),
         GoRoute(
           path: '/host/products',
