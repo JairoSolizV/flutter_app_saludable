@@ -5,7 +5,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
-import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 
 class HostScanScreen extends StatefulWidget {
   const HostScanScreen({super.key});
@@ -16,11 +15,18 @@ class HostScanScreen extends StatefulWidget {
 
 class _HostScanScreenState extends State<HostScanScreen> {
   bool _isScanning = true;
+  final MobileScannerController _cameraController = MobileScannerController();
 
   @override
   void initState() {
     super.initState();
     _requestCameraPermission();
+  }
+
+  @override
+  void dispose() {
+    _cameraController.dispose();
+    super.dispose();
   }
 
   Future<void> _requestCameraPermission() async {
@@ -46,76 +52,111 @@ class _HostScanScreenState extends State<HostScanScreen> {
   }
 
   Future<void> _handleScanResult(String code) async {
-    final scannedUserId = int.tryParse(code);
-    if (scannedUserId == null) {
-      _showError('Código QR no válido: $code');
-      return;
-    }
-
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final currentUser = userProvider.currentUser;
     if (currentUser == null) {
+      await _checkAndRestartCamera();
       _showError('No hay sesión de anfitrión activa');
       return;
     }
 
     final int hostId = int.tryParse(currentUser.id) ?? 0;
     
-    // Dialogo de confirmación inicial
+    // Detener cámara
+    await _cameraController.stop();
+
+    if (!mounted) return;
+
+    // 1. Diálogo de confirmación
     final shouldProcess = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text('Registrar Nuevo Socio'),
-        content: Text('ID detectado: $scannedUserId\n\n¿Deseas agregar este usuario a tu Club?'),
+        content: Text('Código: $code\n\n¿Activar usuario?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(context, false), 
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Registrar'),
+            onPressed: () => Navigator.pop(context, true), 
+            child: const Text('Continuar'),
           ),
         ],
       ),
     );
 
     if (shouldProcess != true) {
-      setState(() => _isScanning = true);
-      return;
+       await _restartCamera();
+       return;
     }
 
-    // Proceso de registro
-    _showLoading();
+    // 2. Mostrar Loading y ejecutar lógica
+    // Usamos un context seguro para cerrar el dialog después
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return const Center(child: CircularProgressIndicator());
+      },
+    );
 
     try {
       final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
-      final membresiaDataSource = Provider.of<MembresiaRemoteDataSource>(context, listen: false);
 
-      // 1. Obtener Club del Anfitrión
+      print('SCAN_DEBUG: Buscando club hostId: $hostId');
       final club = await clubDataSource.getClubByHostId(hostId);
+      
+      print('SCAN_DEBUG: Club encontrado: ${club?.nombreClub}');
+
       if (club == null) {
-        throw Exception('No se encontró un club asociado a este anfitrión.');
+        throw Exception('No se encontró club para este anfitrión.');
       }
 
-      // 2. Crear Membresía
-      await membresiaDataSource.crearMembresia(
-        usuarioId: scannedUserId,
-        clubId: club.id,
-      );
+      // Cerrar Loading
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop(); // Force close dialog
+      }
 
+      // 3. Navegar
       if (!mounted) return;
-      Navigator.pop(context); // Cerrar loading
+      print('SCAN_DEBUG: Navegando a registro...');
       
-      // 3. Éxito
-      _showSuccess('El usuario ha sido registrado como socio del Club "${club.nombreClub}"');
+      await context.push('/host-register-member', extra: {
+        'qrPayload': code, // Pass raw code
+        'clubId': club.id,
+      });
+
+      // Al volver
+      if (mounted) {
+         await _restartCamera();
+      }
 
     } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context); // Cerrar loading
-      _showError(e.toString().replaceAll('Exception: ', ''));
+      print('SCAN_DEBUG: Error: $e');
+      // Asegurar cierre de loading si falló
+      try {
+        if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      } catch (_) {}
+
+      if (mounted) {
+        _showError('Error: ${e.toString().replaceAll('Exception: ', '')}');
+        await _restartCamera();
+      }
     }
+  }
+
+  Future<void> _restartCamera() async {
+    if (mounted) {
+      setState(() => _isScanning = true);
+      await _cameraController.start();
+    }
+  }
+  
+  // Helper para asegurar que la cámara reinicie si falló algo antes de pararla
+  Future<void> _checkAndRestartCamera() async {
+     setState(() => _isScanning = true);
   }
 
   void _showLoading() {
@@ -134,37 +175,11 @@ class _HostScanScreenState extends State<HostScanScreen> {
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              setState(() => _isScanning = true);
+              // Cámara se reiniciará después de cerrar el diálogo en el flujo principal o aquí si es necesario
             },
             child: const Text('OK'),
-          )
-        ],
-      ),
-    );
-  }
-
-  void _showSuccess(String message) {
-     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('¡Registro Exitoso!'),
-        content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-                const Icon(Icons.check_circle, color: Colors.green, size: 64),
-                const SizedBox(height: 16),
-                Text(message, textAlign: TextAlign.center),
-            ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() => _isScanning = true);
-            },
-            child: const Text('Aceptar'),
           )
         ],
       ),
@@ -182,6 +197,7 @@ class _HostScanScreenState extends State<HostScanScreen> {
       body: Stack(
         children: [
           MobileScanner(
+            controller: _cameraController,
             onDetect: _onDetect,
           ),
           Center(
@@ -194,8 +210,6 @@ class _HostScanScreenState extends State<HostScanScreen> {
               ),
               child: Stack(
                  children: [
-                    // Esquinas decorativas podrían ir aquí para más estilo,
-                    // por ahora el borde es suficiente como guía.
                     Align(
                         alignment: Alignment.bottomCenter,
                         child: Padding(

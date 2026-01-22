@@ -21,6 +21,31 @@ class BasicUserHomeScreen extends StatelessWidget {
         elevation: 0,
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.green),
+            onPressed: () async {
+               final userProvider = Provider.of<UserProvider>(context, listen: false);
+               if (userProvider.currentUser == null) return;
+               
+               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Verificando membresía...')));
+               
+               await userProvider.loadUser(userProvider.currentUser!.id);
+               final updatedUser = userProvider.currentUser;
+
+               if (updatedUser != null && (updatedUser.role == 'SOCIOS' || updatedUser.role == 'member' || updatedUser.role == 'SOCIO')) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('¡Felicidades! Ya eres socio.'),
+                        backgroundColor: Color(0xFF7AC142)
+                      )
+                    );
+                    // Navegar al home de miembro
+                    context.go('/member-home');
+                  }
+               }
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.notifications_none, color: Colors.grey),
             onPressed: () {},
           ),

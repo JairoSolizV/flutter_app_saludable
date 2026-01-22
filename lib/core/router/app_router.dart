@@ -30,6 +30,7 @@ import '../../presentation/screens/host/host_scan_screen.dart';
 import '../../presentation/screens/host/products/host_product_list_screen.dart';
 import '../../presentation/screens/host/products/host_edit_product_screen.dart';
 import '../../presentation/screens/host/members/host_members_list_screen.dart';
+import '../../presentation/screens/host/members/host_member_registration_screen.dart';
 import '../../presentation/screens/host/host_profile_screen.dart';
 
 
@@ -146,6 +147,16 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/host-members',
           builder: (context, state) => const HostMembersListScreen(),
+        ),
+        GoRoute(
+          path: '/host-register-member',
+          builder: (context, state) {
+             final extras = state.extra as Map<String, dynamic>;
+             return HostMemberRegistrationScreen(
+               qrPayload: extras['qrPayload'] as String,
+               clubId: extras['clubId'] as int,
+             );
+          },
         ),
         GoRoute(
           path: '/host-profile',
