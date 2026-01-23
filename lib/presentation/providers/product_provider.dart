@@ -59,8 +59,11 @@ class ProductProvider extends ChangeNotifier {
       } catch (e) {
         // Revert on error
         _products[index] = original;
-        _error = "Error cambiando disponibilidad: $e";
+        // Limpiar el mensaje de error removiendo prefijos innecesarios
+        String errorMessage = e.toString().replaceAll('Exception: ', '').trim();
+        _error = errorMessage;
         notifyListeners();
+        // También mostrar un snackbar si hay contexto (opcional, se puede hacer en la UI)
       }
     }
   }

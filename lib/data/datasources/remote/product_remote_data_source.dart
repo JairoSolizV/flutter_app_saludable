@@ -50,10 +50,24 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
   @override
   Future<void> toggleProductAvailability(int clubId, String productId) async {
     try {
+      // Convertir productId de String a int para el backend
+      final int productIdInt = int.parse(productId);
       // Endpoint: PATCH /api/clubes/{clubId}/productos/{productoId}/toggle
-      await _client.patch('/clubes/$clubId/productos/$productId/toggle');
+      await _client.patch('/clubes/$clubId/productos/$productIdInt/toggle');
     } on DioException catch (e) {
-      throw Exception('Error al cambiar disponibilidad: ${e.message}');
+      // Mejorar mensaje de error con más detalles
+      final statusCode = e.response?.statusCode;
+      final errorMessage = e.response?.data?['message'] ?? e.message ?? 'Error desconocido';
+      
+      if (statusCode == 403) {
+        throw Exception('Error cambiando disponibilidad: No tienes permisos para modificar este producto. Verifica que seas el anfitrión del club.');
+      } else if (statusCode == 401) {
+        throw Exception('Error cambiando disponibilidad: Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
+      } else {
+        throw Exception('Error cambiando disponibilidad: $errorMessage');
+      }
+    } on FormatException catch (e) {
+      throw Exception('Error cambiando disponibilidad: ID de producto inválido: $productId');
     }
   }
 
