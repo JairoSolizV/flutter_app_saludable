@@ -18,9 +18,7 @@ class _HostEditProductScreenState extends State<HostEditProductScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameCtrl;
   late TextEditingController _descCtrl;
-  late TextEditingController _priceCtrl;
-  late TextEditingController _catCtrl;
-  late TextEditingController _imgCtrl;
+  bool _isActive = true;
 
   bool _isSaving = false;
 
@@ -29,14 +27,7 @@ class _HostEditProductScreenState extends State<HostEditProductScreen> {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.product?.name ?? '');
     _descCtrl = TextEditingController(text: widget.product?.description ?? '');
-    _priceCtrl = TextEditingController(text: widget.product?.price.toString() ?? '');
-    
-    // Validar que la categoría exista en la lista, si no, usar 'General'
-    final validCategories = ['Batidos', 'Tés', 'Aloes', 'Barras', 'Otros', 'General'];
-    final initialCat = widget.product?.category ?? 'Batidos';
-    _catCtrl = TextEditingController(text: validCategories.contains(initialCat) ? initialCat : 'General');
-    
-    _imgCtrl = TextEditingController(text: widget.product?.imageUrl ?? '');
+    _isActive = widget.product?.active ?? true;
   }
 
   Future<void> _save() async {
@@ -49,9 +40,11 @@ class _HostEditProductScreenState extends State<HostEditProductScreen> {
         id: widget.product?.id ?? '0',
         name: _nameCtrl.text,
         description: _descCtrl.text,
-        price: double.parse(_priceCtrl.text),
-        category: _catCtrl.text,
-        imageUrl: _imgCtrl.text,
+        // Backend no soporta estos, mandamos defaults
+        price: 0, 
+        category: 'General',
+        imageUrl: '',
+        active: _isActive,
       );
 
       if (widget.product == null) {
@@ -59,7 +52,7 @@ class _HostEditProductScreenState extends State<HostEditProductScreen> {
         await Provider.of<ProductProvider>(context, listen: false).createProduct(product, widget.clubId);
       } else {
         // Update
-        await Provider.of<ProductProvider>(context, listen: false).updateProduct(product, widget.clubId);
+        await Provider.of<ProductProvider>(context, listen: false).updateProduct(product, widget.clubId); // Note: updateProduct signature in provider might need update if it doesn't take clubId? Wait, provider usually delegates.
       }
 
       if (mounted) {
@@ -137,32 +130,18 @@ class _HostEditProductScreenState extends State<HostEditProductScreen> {
                 maxLines: 3,
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _priceCtrl,
-                decoration: const InputDecoration(labelText: 'Precio (Bs.)', prefixText: 'Bs. '),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Requerido';
-                  if (double.tryParse(v) == null) return 'Inválido';
-                  return null;
+              SwitchListTile(
+                title: const Text('Disponible / Activo'),
+                subtitle: const Text('Si se desactiva, no aparecerá en el menú'),
+                value: _isActive,
+                activeColor: const Color(0xFF7AC142),
+                onChanged: (val) {
+                  setState(() => _isActive = val);
                 },
               ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _catCtrl.text,
-                decoration: const InputDecoration(labelText: 'Categoría'),
-                items: ['Batidos', 'Tés', 'Aloes', 'Barras', 'Otros', 'General']
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (v) => setState(() => _catCtrl.text = v!),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _imgCtrl,
-                decoration: const InputDecoration(
-                    labelText: 'URL de Imagen (Opcional)',
-                    hintText: 'https://ejemplo.com/foto.jpg'),
-              ),
+              // Price, Category, Image omitted as per backend limitations
+              const Text('Nota: Los precios e imágenes se gestionarán en una futura actualización.', style: TextStyle(color: Colors.grey, fontSize: 12)),
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,

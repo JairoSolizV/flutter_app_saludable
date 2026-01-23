@@ -68,7 +68,7 @@ class AppState extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) => ProductProvider(productRepository)..loadProducts(),
+          create: (_) => ProductProvider(productRepository),
         ),
         ChangeNotifierProvider(
           create: (_) => OrderProvider(orderRepository, connectivityService, syncService)..loadOrders('user_1'), // Mock user_1

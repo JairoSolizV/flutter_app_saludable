@@ -12,11 +12,11 @@ class LocalProductRepository implements ProductRepository {
       : _remoteDataSource = remoteDataSource;
 
   @override
-  Future<List<Product>> getProducts({int? clubId}) async {
+  Future<List<Product>> getProducts({required int hubId, required int clubId}) async {
     // 1. Intentar obtener de API si hay remoteDataSource
     if (_remoteDataSource != null) {
       try {
-        final remoteProducts = await _remoteDataSource!.getProducts(clubId: clubId);
+        final remoteProducts = await _remoteDataSource!.getProducts(hubId: hubId, clubId: clubId);
         
         // Solo guardamos en caché si es una carga general (sin filtro de club) o lógica futura
         // Por simplicidad, guardamos todo lo que llega
@@ -91,5 +91,12 @@ class LocalProductRepository implements ProductRepository {
     // Delete from local cache
     final db = await _dbHelper.database;
     await db.delete('products', where: 'id = ?', whereArgs: [id]);
+  }
+
+  @override
+  Future<void> toggleProductAvailability(int clubId, String productId) async {
+    if (_remoteDataSource != null) {
+      await (_remoteDataSource as dynamic).toggleProductAvailability(clubId, productId);
+    }
   }
 }

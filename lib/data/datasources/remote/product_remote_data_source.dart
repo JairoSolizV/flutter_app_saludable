@@ -2,10 +2,11 @@ import 'package:dio/dio.dart';
 import '../../../domain/entities/product.dart';
 
 abstract class ProductRemoteDataSource {
-  Future<List<Product>> getProducts({int? clubId});
+  Future<List<Product>> getProducts({required int hubId, required int clubId});
   Future<void> createProduct(Product product, int clubId);
   Future<void> updateProduct(Product product);
   Future<void> deleteProduct(String id);
+  Future<void> toggleProductAvailability(int clubId, String productId);
 }
 
 class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
@@ -14,14 +15,13 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
   ProductRemoteDataSourceImpl(this._client);
 
   @override
-  Future<List<Product>> getProducts({int? clubId}) async {
+  Future<List<Product>> getProducts({required int hubId, required int clubId}) async {
     try {
-      final queryParameters = <String, dynamic>{};
-      if (clubId != null) {
-        queryParameters['clubId'] = clubId;
-      }
-
-      final response = await _client.get('/productos', queryParameters: queryParameters);
+      // Nuevo endpoint: GET /api/productos/hub/{hubId}?clubId={clubId}
+      final response = await _client.get(
+        '/productos/hub/$hubId', 
+        queryParameters: {'clubId': clubId}
+      );
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data is List ? response.data : response.data['content'] ?? []; 
@@ -31,9 +31,12 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
              id: json['id'].toString(),
              name: json['nombre'] ?? 'Sin nombre',
              description: json['descripcion'] ?? '',
-             price: (json['precio'] ?? json['precioReferencial'] ?? 0).toDouble(),
-             category: json['categoria'] ?? 'General',
-             imageUrl: json['urlFoto'] ?? '',
+             price: 0.0, // Backend no envía precio aún
+             category: 'General', 
+             imageUrl: '', 
+             hubId: json['hubId'],
+             active: json['activo'] ?? true,
+             available: json['disponible'] ?? false,
            );
         }).toList();
       } else {
@@ -45,20 +48,27 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
   }
 
   @override
+  Future<void> toggleProductAvailability(int clubId, String productId) async {
+    try {
+      // Endpoint: PATCH /api/clubes/{clubId}/productos/{productoId}/toggle
+      await _client.patch('/clubes/$clubId/productos/$productId/toggle');
+    } on DioException catch (e) {
+      throw Exception('Error al cambiar disponibilidad: ${e.message}');
+    }
+  }
+
+  @override
   Future<void> createProduct(Product product, int clubId) async {
     try {
       final data = {
         'nombre': product.name,
         'descripcion': product.description,
-        'precio': product.price,
-        'precioReferencial': product.price, // Fallback for backend quirk
-        'categoria': product.category,
-        'urlFoto': product.imageUrl.isNotEmpty ? product.imageUrl : null,
+        'activo': product.active,
       };
 
       await _client.post(
         '/productos',
-        queryParameters: {'clubId': clubId}, // Backend requiere clubId como param
+        queryParameters: {'clubId': clubId}, 
         data: data,
       );
     } on DioException catch (e) {
@@ -72,10 +82,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       final data = {
         'nombre': product.name,
         'descripcion': product.description,
-        'precio': product.price,
-        'precioReferencial': product.price, // Fallback for backend quirk
-        'categoria': product.category,
-        'urlFoto': product.imageUrl.isNotEmpty ? product.imageUrl : null,
+        'activo': product.active,
       };
       // Endpoint PUT /api/productos/{id}
       await _client.put('/productos/${product.id}', data: data);

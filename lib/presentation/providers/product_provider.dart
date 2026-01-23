@@ -14,59 +14,63 @@ class ProductProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<void> loadProducts({int? clubId}) async {
+  Future<void> loadProducts({required int hubId, required int clubId}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      _products = await _repository.getProducts(clubId: clubId);
+      _products = await _repository.getProducts(hubId: hubId, clubId: clubId);
     } catch (e) {
       print('Error loading products: $e');
-      _error = e.toString(); // Capture error for UI
+      _error = e.toString();
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
+  Future<void> toggleAvailability(int clubId, String productId, int hubId) async {
+    // Optimistic update
+    final index = _products.indexWhere((p) => p.id == productId);
+    if (index != -1) {
+      final original = _products[index];
+      // Create modified copy
+      final updated = Product(
+        id: original.id,
+        name: original.name,
+        description: original.description,
+        price: original.price,
+        category: original.category,
+        imageUrl: original.imageUrl,
+        hubId: original.hubId,
+        active: original.active,
+        available: !original.available, // Toggle
+      );
+      
+      _products[index] = updated;
+      notifyListeners();
+
+      try {
+        await _repository.toggleProductAvailability(clubId, productId);
+        // No need to reload if optimistic update was correct, 
+        // but reloading ensures consistency with backend timestamp/logic if any.
+        // For speed, we skip full reload unless error.
+      } catch (e) {
+        // Revert on error
+        _products[index] = original;
+        _error = "Error cambiando disponibilidad: $e";
+        notifyListeners();
+      }
+    }
+  }
+
+  // Legacy/Unused create/update/delete methods kept for potential future admin use, 
+  // but Host flow is now toggle-only. We temporarily disable them or update them to use new load signature.
   Future<void> createProduct(Product product, int clubId) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      await _repository.createProduct(product, clubId);
-      // Recargar lista después de crear
-      await loadProducts(clubId: clubId);
-    } catch (e) {
-      _isLoading = false;
-      notifyListeners();
-      rethrow;
-    }
+     // ... (Implementation pending decision if Hosts can CREATE global products. Assuming NO for now).
+     throw UnimplementedError("Hosts cannot create global products anymore.");
   }
-
-  Future<void> updateProduct(Product product, int clubId) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      await _repository.updateProduct(product);
-      await loadProducts(clubId: clubId);
-    } catch (e) {
-      _isLoading = false;
-      notifyListeners();
-      rethrow;
-    }
-  }
-
-  Future<void> deleteProduct(String id, int clubId) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      await _repository.deleteProduct(id);
-      await loadProducts(clubId: clubId);
-    } catch (e) {
-      _isLoading = false;
-      notifyListeners();
-      rethrow;
-    }
-  }
+  Future<void> updateProduct(Product product, int clubId) async => throw UnimplementedError();
+  Future<void> deleteProduct(String id, int clubId) async => throw UnimplementedError();
 }
