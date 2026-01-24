@@ -22,16 +22,24 @@ class Product {
   });
 
   factory Product.fromMap(Map<String, dynamic> map) {
+    // Manejar el id correctamente: puede venir como int o String
+    final dynamic idValue = map['id'];
+    final String productId = idValue is int ? idValue.toString() : (idValue?.toString() ?? '');
+    
+    // Manejar hubId correctamente: puede venir como int o null
+    final dynamic hubIdValue = map['hubId'];
+    final int? hubId = hubIdValue is int ? hubIdValue : (hubIdValue != null ? int.tryParse(hubIdValue.toString()) : null);
+    
     return Product(
-      id: map['id'].toString(),
-      name: map['name'] ?? '',
-      description: map['description'] ?? '',
+      id: productId,
+      name: map['name']?.toString() ?? '',
+      description: map['description']?.toString() ?? '',
       price: (map['price'] ?? 0).toDouble(),
-      category: map['category'] ?? 'General',
-      imageUrl: map['image_url'] ?? '',
-      hubId: map['hubId'],
-      active: map['active'] ?? true,
-      available: map['disponible'] ?? false,
+      category: map['category']?.toString() ?? 'General',
+      imageUrl: map['image_url']?.toString() ?? '',
+      hubId: hubId,
+      active: map['active'] == true || map['active'] == 1,
+      available: map['disponible'] == true || map['disponible'] == 1,
     );
   }
 

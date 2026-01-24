@@ -24,19 +24,38 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data is List ? response.data : response.data['content'] ?? []; 
+        // Manejar diferentes formatos de respuesta del backend
+        List<dynamic> data = [];
+        if (response.data is List) {
+          data = response.data as List<dynamic>;
+        } else if (response.data is Map) {
+          final Map<String, dynamic> responseMap = response.data as Map<String, dynamic>;
+          if (responseMap.containsKey('content') && responseMap['content'] is List) {
+            data = responseMap['content'] as List<dynamic>;
+          } else if (responseMap.containsKey('data') && responseMap['data'] is List) {
+            data = responseMap['data'] as List<dynamic>;
+          }
+        }
         
         return data.map<Product>((json) {
+           // Manejar el id correctamente: puede venir como int o String del backend
+           final dynamic idValue = json['id'];
+           final String productId = idValue is int ? idValue.toString() : (idValue?.toString() ?? '');
+           
+           // Manejar hubId correctamente: puede venir como int o null
+           final dynamic hubIdValue = json['hubId'];
+           final int? hubId = hubIdValue is int ? hubIdValue : (hubIdValue != null ? int.tryParse(hubIdValue.toString()) : null);
+           
            return Product(
-             id: json['id'].toString(),
-             name: json['nombre'] ?? 'Sin nombre',
-             description: json['descripcion'] ?? '',
+             id: productId,
+             name: json['nombre']?.toString() ?? 'Sin nombre',
+             description: json['descripcion']?.toString() ?? '',
              price: 0.0, // Backend no envía precio aún
              category: 'General', 
              imageUrl: '', 
-             hubId: json['hubId'],
-             active: json['activo'] ?? true,
-             available: json['disponible'] ?? false,
+             hubId: hubId,
+             active: json['activo'] == true || json['activo'] == 1,
+             available: json['disponible'] == true || json['disponible'] == 1,
            );
         }).toList();
       } else {
