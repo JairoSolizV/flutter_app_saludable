@@ -60,11 +60,12 @@ class User {
     String? photoUrl,
     String? birthDate,
     Map<String, dynamic>? socialMedia,
+    String? token, // Added token
   }) {
     return User(
       id: id,
       role: role,
-      token: token,
+      token: token ?? this.token, // Use new token if provided, else keep existing
       name: name ?? this.name,
       email: email ?? this.email,
       phone: phone ?? this.phone,

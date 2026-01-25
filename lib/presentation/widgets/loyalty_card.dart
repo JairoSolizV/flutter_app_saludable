@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class LoyaltyCard extends StatelessWidget {
-  final int stamps; // Total de sellos actuales (ej. 8)
-  final int maxStamps; // Total para recompensa (ej. 10)
+  final int stamps;
+  final int maxStamps;
+  final String clubName;
 
   const LoyaltyCard({
     super.key,
-    this.stamps = 8,
+    this.stamps = 0,
     this.maxStamps = 10,
+    this.clubName = 'Sin Club Asignado',
   });
 
   @override
@@ -35,7 +37,7 @@ class LoyaltyCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'Tarjeta de Fidelidad',
                     style: TextStyle(
                       fontSize: 18,
@@ -44,8 +46,8 @@ class LoyaltyCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Club Vida Activa',
-                    style: TextStyle(
+                    clubName,
+                    style: const TextStyle(
                       fontSize: 12,
                       color: Colors.grey,
                     ),

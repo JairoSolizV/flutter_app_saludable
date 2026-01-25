@@ -59,13 +59,13 @@ class MemberMainScreen extends StatelessWidget {
         context.go('/member-home');
         break;
       case 1:
-        // context.go('/member-attendance'); 
+        context.go('/member-attendance'); 
         break;
       case 2:
         context.go('/member-orders');
         break;
       case 3:
-        // context.go('/member-achievements');
+        context.go('/member-achievements');
         break;
       case 4:
          context.go('/member-profile');

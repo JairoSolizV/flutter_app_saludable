@@ -72,16 +72,6 @@ class GuestHomeScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _BigCard(
-                      title: 'Nutrición al Día',
-                      icon: LucideIcons.apple, // O similar de comida
-                      color: const Color(0xFFD4EED8), // Verde claro suave
-                      iconColor: const Color(0xFF7AC142),
-                      onTap: () => context.push('/guest-catalog'), // Ojo: A catalogo por ahora
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _BigCard(
                       title: 'Encuentra tu Club',
                       icon: LucideIcons.mapPin,
                       color: const Color(0xFFE0F2F1), // Cyan muy claro
@@ -95,33 +85,7 @@ class GuestHomeScreen extends StatelessWidget {
             
             const SizedBox(height: 16),
 
-            // Botón Largo Catálogo
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: InkWell(
-                onTap: () => context.push('/guest-catalog'),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF7AC142),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(LucideIcons.droplets, color: Colors.white, size: 32),
-                      SizedBox(width: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Catálogo de Sabores', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                          Text('Descubre nuestra variedad', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                        ],
-                      )
-                    ],
-                  ),
-                ),
-              ),
-            ),
+             const SizedBox(height: 24),
 
              const SizedBox(height: 24),
              

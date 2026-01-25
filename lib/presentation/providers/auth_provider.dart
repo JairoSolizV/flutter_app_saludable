@@ -47,6 +47,26 @@ class AuthProvider extends ChangeNotifier {
       return false;
     }
   }
+  Future<void> syncProfile() async {
+    try {
+      final fetchedUser = await _remoteDataSource.getMe();
+      
+      // Preservar el token actual si el endpoint no lo devuelve (caso getMe)
+      String? tokenToSave = fetchedUser.token;
+      if (tokenToSave == null && _currentUser != null) {
+        tokenToSave = _currentUser!.token;
+      }
+      
+      final userToSave = fetchedUser.copyWith(token: tokenToSave);
+
+      await _localRepository.saveUser(userToSave);
+      _currentUser = userToSave;
+      notifyListeners();
+    } catch (e) {
+      print('Error syncing profile: $e');
+      // No lanzamos error para no interrumpir UI, solo log
+    }
+  }
 
   Future<void> logout() async {
       await _localRepository.logout();

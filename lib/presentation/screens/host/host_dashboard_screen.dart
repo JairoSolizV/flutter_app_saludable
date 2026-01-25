@@ -82,7 +82,7 @@ class HostDashboardScreen extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                   // QR Section
+                   // QR Section (Scan)
                    InkWell(
                      onTap: () => context.push('/host-scan'),
                      child: Container(
@@ -99,16 +99,56 @@ class HostDashboardScreen extends StatelessWidget {
                                  const Text('ESCANEAR QR DE SOCIO', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF7AC142))),
                                  const SizedBox(height: 16),
                                  Container(
-                                     width: 180, height: 180,
+                                     width: 100, height: 100,
                                      decoration: BoxDecoration(
                                          border: Border.all(color: const Color(0xFF7AC142), width: 4),
                                          borderRadius: BorderRadius.circular(16)
                                      ),
-                                     child: const Center(child: Icon(LucideIcons.scanLine, size: 100, color: Color(0xFF333333))),
+                                     child: const Center(child: Icon(LucideIcons.scanLine, size: 50, color: Color(0xFF333333))),
                                  ),
                                  const SizedBox(height: 12),
-                                 const Text('Toca aquí para escanear y registrar asistencia', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                                 const Text('Registrar asistencia o pedido', style: TextStyle(color: Colors.grey, fontSize: 12)),
                              ],
+                         ),
+                     ),
+                   ),
+
+                   const SizedBox(height: 24),
+
+                   // Nueva Tarjeta: Mostrar QR del Club
+                   InkWell(
+                     onTap: () => context.push('/host-qr-display', extra: {
+                       'clubId': 2, // Hardcoded por ahora para demo
+                       'clubName': 'Club Vida Activa'
+                     }),
+                     child: Container(
+                         padding: const EdgeInsets.all(24),
+                         decoration: BoxDecoration(
+                             color: const Color(0xFF7AC142),
+                             borderRadius: BorderRadius.circular(24),
+                             boxShadow: [
+                                 BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 5))
+                             ]
+                         ),
+                         child: Row(
+                           children: [
+                             Container(
+                               padding: const EdgeInsets.all(12),
+                               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                               child: const Icon(LucideIcons.qrCode, color: Color(0xFF7AC142), size: 32),
+                             ),
+                             const SizedBox(width: 20),
+                             Expanded(
+                               child: Column(
+                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                 children: const [
+                                   Text('MOSTRAR QR', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                                   Text('Para que los socios escaneen', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                                 ],
+                               ),
+                             ),
+                             const Icon(LucideIcons.chevronRight, color: Colors.white),
+                           ],
                          ),
                      ),
                    ),
