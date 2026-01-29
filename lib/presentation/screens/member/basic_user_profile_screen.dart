@@ -156,10 +156,8 @@ class _BasicUserProfileScreenState extends State<BasicUserProfileScreen> {
                     height: 45,
                     child: ElevatedButton(
                       onPressed: () {
-                        // Navegar a solicitud de anfitrión (Future task)
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Funcionalidad 'Solicitar Registro' en desarrollo")),
-                        );
+                        // Navegar a solicitud de anfitrión
+                        context.push('/request-club');
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,

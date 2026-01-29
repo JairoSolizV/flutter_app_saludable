@@ -26,6 +26,7 @@ import '../../presentation/screens/member/member_profile_screen.dart';
 import '../../presentation/screens/member/achievements/member_achievements_screen.dart'; // Added
 import '../../presentation/screens/member/attendance/member_attendance_screen.dart';
 import '../../presentation/screens/member/qrcode/member_qr_scan_screen.dart'; // Added
+import '../../presentation/screens/member/request_club_screen.dart'; // Added
 import '../../presentation/screens/host/qrcode/host_qr_display_screen.dart'; // Added
 import '../../presentation/screens/host/host_main_screen.dart';
 import '../../presentation/screens/host/host_dashboard_screen.dart';
@@ -219,6 +220,10 @@ final appRouter = GoRouter(
         final club = state.extra as Club;
         return GuestClubDetailScreen(club: club);
       },
+    ),
+    GoRoute(
+      path: '/request-club',
+      builder: (context, state) => const RequestClubScreen(),
     ),
   ],
 );

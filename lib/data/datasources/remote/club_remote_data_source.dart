@@ -121,6 +121,42 @@ class ClubRemoteDataSource {
       throw Exception('Error detallado al obtener socios: $e');
     }
   }
+
+  Future<void> solicitarCreacionClub({
+    required int anfitrionId,
+    required String nombreClub,
+    required String direccion,
+    required String ciudad,
+    String? descripcion,
+    int hubId = 2,
+  }) async {
+    try {
+      final body = {
+        'anfitrionId': anfitrionId,
+        'nombreClub': nombreClub,
+        'direccion': direccion,
+        'ciudad': ciudad,
+        'descripcion': descripcion,
+        'hubId': hubId,
+        'estado': 'PENDIENTE', 
+      };
+
+      final response = await _client.post(
+        '/clubes', 
+        data: body,
+      );
+
+      if (response.statusCode != 201 && response.statusCode != 200) {
+        throw Exception('Error al solicitar club: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (e is DioException) {
+         final msg = e.response?.data?.toString() ?? e.message;
+         throw Exception('Error solicitud club: $msg');
+      }
+      throw Exception('Error al solicitar club: $e');
+    }
+  }
 }
 
 class Anfitrion {
