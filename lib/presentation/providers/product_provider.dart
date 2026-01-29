@@ -53,9 +53,9 @@ class ProductProvider extends ChangeNotifier {
 
       try {
         await _repository.toggleProductAvailability(clubId, productId);
-        // No need to reload if optimistic update was correct, 
-        // but reloading ensures consistency with backend timestamp/logic if any.
-        // For speed, we skip full reload unless error.
+        // Recargar productos para asegurar que el estado se sincronice correctamente con el backend
+        // Esto garantiza que el estado disponible se mantenga correctamente
+        await loadProducts(hubId: hubId, clubId: clubId);
       } catch (e) {
         // Revert on error
         _products[index] = original;
@@ -63,7 +63,8 @@ class ProductProvider extends ChangeNotifier {
         String errorMessage = e.toString().replaceAll('Exception: ', '').trim();
         _error = errorMessage;
         notifyListeners();
-        // También mostrar un snackbar si hay contexto (opcional, se puede hacer en la UI)
+        // Re-lanzar el error para que la UI pueda manejarlo si es necesario
+        rethrow;
       }
     }
   }

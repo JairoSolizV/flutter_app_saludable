@@ -18,11 +18,24 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
   int? _clubId;
   int? _hubId;
   bool _isLoadingClub = true;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _loadClubAndProducts();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadClubAndProducts() async {
@@ -90,11 +103,63 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                       return const Center(child: Text('El catálogo del Hub está vacío.'));
                     }
 
-                    return ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: provider.products.length,
-                      itemBuilder: (context, index) {
-                        final product = provider.products[index];
+                    // Filtrar productos según la búsqueda
+                    final filteredProducts = provider.products.where((product) {
+                      if (_searchQuery.isEmpty) return true;
+                      return product.name.toLowerCase().contains(_searchQuery) ||
+                             product.description.toLowerCase().contains(_searchQuery);
+                    }).toList();
+
+                    if (filteredProducts.isEmpty && _searchQuery.isNotEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.search_off, size: 64, color: Colors.grey),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No se encontraron productos\nque coincidan con "$_searchQuery"',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      children: [
+                        // Barra de búsqueda
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: TextField(
+                            controller: _searchController,
+                            decoration: InputDecoration(
+                              hintText: 'Buscar productos...',
+                              prefixIcon: const Icon(Icons.search),
+                              suffixIcon: _searchQuery.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                      },
+                                    )
+                                  : null,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey[100],
+                            ),
+                          ),
+                        ),
+                        // Lista de productos
+                        Expanded(
+                          child: ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: filteredProducts.length,
+                            itemBuilder: (context, index) {
+                              final product = filteredProducts[index];
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
                           elevation: 2,
@@ -120,7 +185,10 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                             secondary: _buildProductImage(product),
                           ),
                         );
-                      },
+                            },
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),

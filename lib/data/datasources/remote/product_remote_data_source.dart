@@ -46,6 +46,10 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
            final dynamic hubIdValue = json['hubId'];
            final int? hubId = hubIdValue is int ? hubIdValue : (hubIdValue != null ? int.tryParse(hubIdValue.toString()) : null);
            
+           // Manejar disponible: null significa que no hay relación, debe ser false por defecto
+           final dynamic disponibleValue = json['disponible'];
+           final bool available = disponibleValue == true || disponibleValue == 1;
+           
            return Product(
              id: productId,
              name: json['nombre']?.toString() ?? 'Sin nombre',
@@ -55,7 +59,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
              imageUrl: '', 
              hubId: hubId,
              active: json['activo'] == true || json['activo'] == 1,
-             available: json['disponible'] == true || json['disponible'] == 1,
+             available: available, // false si es null, true/false según el valor
            );
         }).toList();
       } else {
@@ -76,12 +80,28 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
     } on DioException catch (e) {
       // Mejorar mensaje de error con más detalles
       final statusCode = e.response?.statusCode;
-      final errorMessage = e.response?.data?['message'] ?? e.message ?? 'Error desconocido';
+      final responseData = e.response?.data;
+      
+      // Extraer mensaje de error del backend
+      String errorMessage = 'Error desconocido';
+      if (responseData is Map) {
+        errorMessage = responseData['message']?.toString() ?? 
+                      responseData['error']?.toString() ?? 
+                      e.message ?? 'Error desconocido';
+      } else if (responseData is String) {
+        errorMessage = responseData;
+      } else {
+        errorMessage = e.message ?? 'Error desconocido';
+      }
       
       if (statusCode == 403) {
         throw Exception('Error cambiando disponibilidad: No tienes permisos para modificar este producto. Verifica que seas el anfitrión del club.');
       } else if (statusCode == 401) {
         throw Exception('Error cambiando disponibilidad: Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
+      } else if (statusCode == 404) {
+        throw Exception('Error cambiando disponibilidad: El producto no fue encontrado. Por favor, recarga la lista de productos.');
+      } else if (statusCode == 400) {
+        throw Exception('Error cambiando disponibilidad: Solicitud inválida. $errorMessage');
       } else {
         throw Exception('Error cambiando disponibilidad: $errorMessage');
       }

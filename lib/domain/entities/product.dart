@@ -30,6 +30,10 @@ class Product {
     final dynamic hubIdValue = map['hubId'];
     final int? hubId = hubIdValue is int ? hubIdValue : (hubIdValue != null ? int.tryParse(hubIdValue.toString()) : null);
     
+    // Manejar disponible: null significa que no hay relación, debe ser false por defecto
+    final dynamic disponibleValue = map['disponible'];
+    final bool available = disponibleValue == true || disponibleValue == 1;
+    
     return Product(
       id: productId,
       name: map['name']?.toString() ?? '',
@@ -39,7 +43,7 @@ class Product {
       imageUrl: map['image_url']?.toString() ?? '',
       hubId: hubId,
       active: map['active'] == true || map['active'] == 1,
-      available: map['disponible'] == true || map['disponible'] == 1,
+      available: available, // false si es null, true/false según el valor
     );
   }
 
