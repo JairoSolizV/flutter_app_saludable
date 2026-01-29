@@ -56,8 +56,8 @@ class Product {
       'category': category,
       'image_url': imageUrl,
       'hubId': hubId,
-      'active': active,
-      'disponible': available,
+      'active': active ? 1 : 0,
+      'disponible': available ? 1 : 0,
     };
   }
 }

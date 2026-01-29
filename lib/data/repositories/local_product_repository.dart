@@ -13,29 +13,41 @@ class LocalProductRepository implements ProductRepository {
 
   @override
   Future<List<Product>> getProducts({required int hubId, required int clubId}) async {
-    // 1. Intentar obtener de API si hay remoteDataSource
+    // IMPORTANTE: Los productos del Hub DEBEN venir siempre del backend
+    // No usamos caché local para productos del hub porque pueden cambiar
+    // y el caché podría tener datos obsoletos o productos de seed que no existen
+    
     if (_remoteDataSource != null) {
       try {
         final remoteProducts = await _remoteDataSource!.getProducts(hubId: hubId, clubId: clubId);
         
-        // Solo guardamos en caché si es una carga general (sin filtro de club) o lógica futura
-        // Por simplicidad, guardamos todo lo que llega
+        // Limpiar productos antiguos del mismo hub antes de guardar los nuevos
+        // Esto asegura que no se muestren productos que ya no existen en el backend
+        await _clearProductsByHub(hubId);
+        
+        // Guardar los productos reales del backend (solo para referencia offline)
+        // Pero NO los usaremos como fallback principal
         await _saveProductsToLocal(remoteProducts);
         
         return remoteProducts;
       } catch (e) {
-        print('Error fetching remote products: $e. Falling back to local DB.');
-        // Fallback a local si falla red
+        print('Error fetching remote products: $e');
+        // NO hacer fallback a local - los productos deben venir del backend
+        // Si hay error, devolver lista vacía en lugar de productos obsoletos
+        rethrow;
       }
     }
     
-    // 3. Leer de BD Local
+    // Si no hay remoteDataSource, devolver lista vacía
+    // No devolver productos de seed que no existen en el backend
+    print('Warning: No remoteDataSource disponible. No se pueden obtener productos del hub.');
+    return [];
+  }
+  
+  Future<void> _clearProductsByHub(int hubId) async {
     final db = await _dbHelper.database;
-    final List<Map<String, dynamic>> maps = await db.query('products');
-
-    return List.generate(maps.length, (i) {
-      return Product.fromMap(maps[i]);
-    });
+    // Eliminar productos del mismo hub para evitar datos obsoletos
+    await db.delete('products', where: 'hubId = ?', whereArgs: [hubId]);
   }
 
   Future<void> _saveProductsToLocal(List<Product> products) async {
@@ -100,3 +112,4 @@ class LocalProductRepository implements ProductRepository {
     }
   }
 }
+

@@ -19,7 +19,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'nutrilife_club.db');
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -51,7 +51,9 @@ class DatabaseHelper {
         price REAL,
         category TEXT,
         image_url TEXT,
-        is_available INTEGER DEFAULT 1
+        hubId INTEGER,
+        active INTEGER DEFAULT 1,
+        disponible INTEGER DEFAULT 0
       )
     ''');
 
@@ -81,7 +83,8 @@ class DatabaseHelper {
       )
     ''');
     
-    await _seedData(db);
+    // NO insertar datos de seed - los productos deben venir del backend
+    // await _seedData(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -97,8 +100,23 @@ class DatabaseHelper {
         print("Error migrando columnas (pueden ya existir): $e");
       }
     }
+    if (oldVersion < 3) {
+      // Agregar columnas nuevas a products para soportar hubId y disponible
+      try {
+        await db.execute('ALTER TABLE products ADD COLUMN hubId INTEGER');
+        await db.execute('ALTER TABLE products ADD COLUMN active INTEGER DEFAULT 1');
+        await db.execute('ALTER TABLE products ADD COLUMN disponible INTEGER DEFAULT 0');
+        // Eliminar productos de seed que no tienen hubId (son datos de prueba)
+        await db.delete('products', where: 'hubId IS NULL');
+      } catch (e) {
+        print("Error migrando tabla products: $e");
+      }
+    }
   }
 
+  // Método deshabilitado - NO usar datos de seed
+  // Los productos deben venir siempre del backend para evitar mostrar productos que no existen
+  /*
   Future<void> _seedData(Database db) async {
     // Datos de ejemplo simulando la API
     final products = [
@@ -135,6 +153,7 @@ class DatabaseHelper {
       await db.insert('products', p);
     }
   }
+  */
 
   // Métodos CRUD genéricos
   Future<int> insert(String table, Map<String, dynamic> row) async {

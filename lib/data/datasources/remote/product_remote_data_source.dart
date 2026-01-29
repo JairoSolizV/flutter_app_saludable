@@ -18,11 +18,14 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
   Future<List<Product>> getProducts({required int hubId, required int clubId}) async {
     try {
       // Nuevo endpoint: GET /api/productos/hub/{hubId}?clubId={clubId}
+      print('[DEBUG] Obteniendo productos - hubId: $hubId, clubId: $clubId');
       final response = await _client.get(
         '/productos/hub/$hubId', 
         queryParameters: {'clubId': clubId}
       );
 
+      print('[DEBUG] Respuesta recibida - Status: ${response.statusCode}, Tipo de data: ${response.data.runtimeType}');
+      
       if (response.statusCode == 200) {
         // Manejar diferentes formatos de respuesta del backend
         List<dynamic> data = [];
@@ -37,10 +40,15 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
           }
         }
         
+        print('[DEBUG] Total de productos en respuesta: ${data.length}');
+        
         return data.map<Product>((json) {
            // Manejar el id correctamente: puede venir como int o String del backend
            final dynamic idValue = json['id'];
            final String productId = idValue is int ? idValue.toString() : (idValue?.toString() ?? '');
+           
+           // Debug: imprimir el ID del producto obtenido
+           print('[DEBUG] Producto obtenido - ID original: $idValue, ID convertido: $productId, Nombre: ${json['nombre']}');
            
            // Manejar hubId correctamente: puede venir como int o null
            final dynamic hubIdValue = json['hubId'];
@@ -75,18 +83,29 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
     try {
       // Convertir productId de String a int para el backend
       final int productIdInt = int.parse(productId);
+      
+      // Debug: imprimir los valores que se están enviando
+      print('[DEBUG] Toggle producto - clubId: $clubId, productId: $productId (int: $productIdInt)');
+      
       // Endpoint: PATCH /api/clubes/{clubId}/productos/{productoId}/toggle
-      await _client.patch('/clubes/$clubId/productos/$productIdInt/toggle');
+      final response = await _client.patch('/clubes/$clubId/productos/$productIdInt/toggle');
+      
+      // Debug: imprimir respuesta exitosa
+      print('[DEBUG] Toggle exitoso - Response: ${response.statusCode}');
     } on DioException catch (e) {
       // Mejorar mensaje de error con más detalles
       final statusCode = e.response?.statusCode;
       final responseData = e.response?.data;
       
-      // Extraer mensaje de error del backend
+      print('[DEBUG] Error en toggle - Status: $statusCode, Data: $responseData');
+      
+      // Extraer mensaje de error del backend (ApiResponse tiene message en la raíz)
       String errorMessage = 'Error desconocido';
       if (responseData is Map) {
+        // El backend devuelve ApiResponse con estructura: { success: false, message: "...", data: null }
         errorMessage = responseData['message']?.toString() ?? 
                       responseData['error']?.toString() ?? 
+                      responseData['data']?.toString() ??
                       e.message ?? 'Error desconocido';
       } else if (responseData is String) {
         errorMessage = responseData;
@@ -94,12 +113,15 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
         errorMessage = e.message ?? 'Error desconocido';
       }
       
+      print('[DEBUG] Mensaje de error extraído: $errorMessage');
+      
       if (statusCode == 403) {
         throw Exception('Error cambiando disponibilidad: No tienes permisos para modificar este producto. Verifica que seas el anfitrión del club.');
       } else if (statusCode == 401) {
         throw Exception('Error cambiando disponibilidad: Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
       } else if (statusCode == 404) {
-        throw Exception('Error cambiando disponibilidad: El producto no fue encontrado. Por favor, recarga la lista de productos.');
+        // El mensaje del backend ya dice "Producto no encontrado con id: X"
+        throw Exception('Error cambiando disponibilidad: $errorMessage');
       } else if (statusCode == 400) {
         throw Exception('Error cambiando disponibilidad: Solicitud inválida. $errorMessage');
       } else {
