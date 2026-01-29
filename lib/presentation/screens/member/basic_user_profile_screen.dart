@@ -5,12 +5,45 @@ import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 
-class BasicUserProfileScreen extends StatelessWidget {
+class BasicUserProfileScreen extends StatefulWidget {
   const BasicUserProfileScreen({super.key});
 
   @override
+  State<BasicUserProfileScreen> createState() => _BasicUserProfileScreenState();
+}
+
+class _BasicUserProfileScreenState extends State<BasicUserProfileScreen> {
+  
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Provider.of<AuthProvider>(context, listen: false).syncProfile();
+      if (mounted) {
+         final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
+         if (user != null) {
+            Provider.of<UserProvider>(context, listen: false).setUser(user);
+         }
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Escuchamos AuthProvider también por si actualiza el usuario globalmente, 
+    // pero UserProvider es quien suele dar el usuario.
+    // Ojo: UserProvider carga de local. AuthProvider guarda en local.
+    // Debemos asegurar que UserProvider se actualice.
+    // AuthProvider actualiza _currentUser, pero UserProvider tiene su propio _currentUser.
+    // Solución rápida: Usar AuthProvider.currentUser si está disponible, o recargar UserProvider.
+    
+    // Mejor flujo: AuthProvider update -> LocalDB. UserProvider load -> LocalDB.
+    // Trigger UserProvider reload after AuthProvider sync.
+    
     final userProvider = Provider.of<UserProvider>(context);
+    // Si AuthProvider actualizó, deberíamos pedirle a UserProvider que recargue
+    // Vamos a forzar la recarga en el callback de initState mejor.
+    
     final user = userProvider.currentUser;
 
     if (user == null) {
@@ -79,13 +112,7 @@ class BasicUserProfileScreen extends StatelessWidget {
                 context.go('/basic-profile/edit');
               },
             ),
-             _OptionTile(
-              icon: LucideIcons.shield,
-              title: "Seguridad",
-              onTap: () {
-                // TODO: Implementar seguridad
-              },
-            ),
+
 
             const SizedBox(height: 30),
 

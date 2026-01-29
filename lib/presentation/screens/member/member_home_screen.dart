@@ -4,9 +4,64 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
 import '../../widgets/loyalty_card.dart';
+import '../../../data/datasources/remote/membresia_remote_data_source.dart';
+import '../../../domain/entities/attendance.dart';
+import '../../../domain/entities/club_membership.dart';
 
-class MemberHomeScreen extends StatelessWidget {
+class MemberHomeScreen extends StatefulWidget {
   const MemberHomeScreen({super.key});
+
+  @override
+  State<MemberHomeScreen> createState() => _MemberHomeScreenState();
+}
+
+class _MemberHomeScreenState extends State<MemberHomeScreen> {
+  bool _isLoading = true;
+  ClubMembership? _activeMembership;
+  List<Attendance> _asistencias = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLoyaltyData();
+  }
+
+  Future<void> _loadLoyaltyData() async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final user = userProvider.currentUser;
+      
+      if (user == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final dataSource = Provider.of<MembresiaRemoteDataSource>(context, listen: false);
+      
+      // 1. Obtener Membresías
+      final membresias = await dataSource.getMembresiasPorUsuario(int.parse(user.id));
+      
+      if (membresias.isNotEmpty) {
+        final membership = membresias.first;
+        // 2. Asistencias para la membresía activa
+        final asistencias = await dataSource.getAsistencias(membership.id);
+        
+        if (mounted) {
+          setState(() {
+            _activeMembership = membership;
+            _asistencias = asistencias;
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      // Silently fail or minimal error state for Home
+      print("Error loading home data: $e");
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +103,10 @@ class MemberHomeScreen extends StatelessWidget {
                 ),
                 actions: [
                   IconButton(
+                    icon: const Icon(LucideIcons.qrCode, color: Colors.white),
+                    onPressed: () => context.push('/member-qr-scan'),
+                  ),
+                  IconButton(
                     icon: const Icon(LucideIcons.bell, color: Colors.white),
                     onPressed: () {},
                   ),
@@ -66,8 +125,28 @@ class MemberHomeScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
-                      // Tarjeta de Fidelidad
-                      const LoyaltyCard(stamps: 8, maxStamps: 10),
+                      // Tarjeta de Fidelidad Dinámica
+                      if (_isLoading)
+                         const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
+                      else if (_activeMembership != null)
+                        LoyaltyCard(
+                           stamps: _asistencias.length % 10,
+                           maxStamps: 10,
+                           clubName: _activeMembership!.clubNombre,
+                        )
+                      else
+                        // Estado vacío si no hay membresía
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                          child: Row(
+                            children: const [
+                               Icon(LucideIcons.info, color: Colors.grey),
+                               SizedBox(width: 10),
+                               Expanded(child: Text("Únete a un club para ver tu tarjeta de fidelidad.", style: TextStyle(color: Colors.grey))),
+                            ],
+                          ),
+                        ),
                       
                       const SizedBox(height: 24),
 

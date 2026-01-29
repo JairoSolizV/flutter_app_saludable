@@ -23,6 +23,10 @@ import '../../presentation/screens/member/member_main_screen.dart';
 import '../../presentation/screens/member/member_orders_list_screen.dart';
 import '../../presentation/screens/member/member_create_order_screen.dart';
 import '../../presentation/screens/member/member_profile_screen.dart';
+import '../../presentation/screens/member/achievements/member_achievements_screen.dart'; // Added
+import '../../presentation/screens/member/attendance/member_attendance_screen.dart';
+import '../../presentation/screens/member/qrcode/member_qr_scan_screen.dart'; // Added
+import '../../presentation/screens/host/qrcode/host_qr_display_screen.dart'; // Added
 import '../../presentation/screens/host/host_main_screen.dart';
 import '../../presentation/screens/host/host_dashboard_screen.dart';
 import '../../presentation/screens/host/host_orders_list_screen.dart';
@@ -124,6 +128,18 @@ final appRouter = GoRouter(
             path: '/member-profile',
             builder: (context, state) => const MemberProfileScreen(),
         ),
+        GoRoute(
+            path: '/member-achievements',
+            builder: (context, state) => const MemberAchievementsScreen(),
+        ),
+        GoRoute(
+            path: '/member-attendance',
+            builder: (context, state) => MemberAttendanceScreen(),
+        ),
+        GoRoute(
+          path: '/member-qr-scan',
+          builder: (context, state) => const MemberQrScanScreen(),
+        ),
       ],
     ),
     // Rutas de Anfitrión con Shell
@@ -135,6 +151,16 @@ final appRouter = GoRouter(
         GoRoute(
             path: '/host-dashboard',
             builder: (context, state) => const HostDashboardScreen(),
+        ),
+        GoRoute(
+             path: '/host-qr-display',
+             builder: (context, state) {
+               final extra = state.extra as Map<String, dynamic>;
+               return HostQrDisplayScreen(
+                 clubId: extra['clubId'], 
+                 clubName: extra['clubName']
+               );
+             },
         ),
         GoRoute(
             path: '/host-orders',

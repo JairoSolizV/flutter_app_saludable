@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import '../../../domain/entities/club_membership.dart';
+
 
 class Club {
   final int id;
@@ -103,6 +105,20 @@ class ClubRemoteDataSource {
       return Anfitrion.fromJson(response.data);
     } else {
       throw Exception('Failed to load anfitrion');
+    }
+  }
+  Future<List<ClubMembership>> getClubMembers(int clubId) async {
+    try {
+      final response = await _client.get('/membresias/club/$clubId');
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+        return data.map((json) => ClubMembership.fromJson(json)).toList();
+      } else {
+        throw Exception('Error al cargar socios: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error detallado al obtener socios: $e');
     }
   }
 }
