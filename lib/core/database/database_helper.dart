@@ -19,7 +19,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'nutrilife_club.db');
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -64,7 +64,8 @@ class DatabaseHelper {
         user_id TEXT,
         club_id INTEGER,
         membresia_id INTEGER,
-        total REAL,
+        tipo_consumo TEXT, -- 'EN_LUGAR' o 'PARA_LLEVAR'
+        observaciones TEXT, -- Nota general del pedido
         status TEXT, -- pending, preparing, ready, completed
         created_at TEXT,
         is_synced INTEGER DEFAULT 0, -- 0: No enviado al server, 1: Sincronizado
@@ -79,7 +80,7 @@ class DatabaseHelper {
         order_id TEXT,
         product_id TEXT,
         quantity INTEGER,
-        price REAL,
+        note TEXT, -- Nota específica del producto
         FOREIGN KEY(order_id) REFERENCES orders(id),
         FOREIGN KEY(product_id) REFERENCES products(id)
       )
@@ -121,6 +122,22 @@ class DatabaseHelper {
         await db.execute('ALTER TABLE orders ADD COLUMN membresia_id INTEGER');
       } catch (e) {
         print("Error migrando tabla orders: $e");
+      }
+    }
+    if (oldVersion < 5) {
+      // Actualizar estructura de orders y order_items para eliminar precio y agregar tipoConsumo/nota
+      try {
+        // Agregar nuevas columnas a orders
+        await db.execute('ALTER TABLE orders ADD COLUMN tipo_consumo TEXT');
+        await db.execute('ALTER TABLE orders ADD COLUMN observaciones TEXT');
+        // Eliminar columna total si existe (SQLite no soporta DROP COLUMN directamente)
+        // En su lugar, crearemos una nueva tabla y migraremos datos
+        
+        // Agregar nota a order_items y eliminar price
+        await db.execute('ALTER TABLE order_items ADD COLUMN note TEXT');
+        // Eliminar price: SQLite no soporta DROP COLUMN, pero podemos ignorarlo en el código
+      } catch (e) {
+        print("Error migrando tabla orders/order_items: $e");
       }
     }
   }

@@ -20,13 +20,23 @@ class MemberCreateOrderScreen extends StatefulWidget {
 class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
   // Mapa de ProductoID -> Cantidad
   final Map<String, int> _cart = {};
+  // Mapa de ProductoID -> Nota
+  final Map<String, String> _productNotes = {};
   ClubMembership? _membership;
   bool _isLoadingMembership = true;
+  String _tipoConsumo = 'EN_LUGAR'; // 'EN_LUGAR' o 'PARA_LLEVAR'
+  final TextEditingController _notaController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadMembershipAndProducts();
+  }
+
+  @override
+  void dispose() {
+    _notaController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadMembershipAndProducts() async {
@@ -71,10 +81,10 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
     final products = productProvider.products;
     final orderProvider = Provider.of<OrderProvider>(context, listen: false);
 
-    double total = 0;
+    // Calcular total de items (sin precio, solo cantidad)
+    int totalItems = 0;
     _cart.forEach((productId, qty) {
-      final product = products.firstWhere((p) => p.id == productId);
-      total += product.price * qty;
+      totalItems += qty;
     });
 
     if (_isLoadingMembership) {
@@ -141,7 +151,9 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                       child: const Icon(Icons.local_drink), 
                     ),
                     title: Text(product.name),
-                    subtitle: Text('Bs ${product.price.toStringAsFixed(2)}'),
+                    subtitle: product.description.isNotEmpty 
+                        ? Text(product.description, maxLines: 2, overflow: TextOverflow.ellipsis)
+                        : null,
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -187,11 +199,52 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Tipo de Consumo
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Tipo de consumo:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(
+                            value: 'EN_LUGAR',
+                            label: Text('Consumir aquí'),
+                            icon: Icon(Icons.restaurant),
+                          ),
+                          ButtonSegment(
+                            value: 'PARA_LLEVAR',
+                            label: Text('Para llevar'),
+                            icon: Icon(Icons.shopping_bag),
+                          ),
+                        ],
+                        selected: {_tipoConsumo},
+                        onSelectionChanged: (Set<String> newSelection) {
+                          setState(() {
+                            _tipoConsumo = newSelection.first;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Nota general del pedido
+                  TextField(
+                    controller: _notaController,
+                    decoration: const InputDecoration(
+                      labelText: 'Notas u observaciones (opcional)',
+                      hintText: 'Ej: Sin hielo, extra dulce...',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.note),
+                    ),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Total:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text('Bs ${total.toStringAsFixed(2)}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF7AC142))),
+                      const Text('Total de items:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text('$totalItems', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF7AC142))),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -199,7 +252,7 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: total > 0 ? () async {
+                      onPressed: totalItems > 0 ? () async {
                         // Crear Pedido Lógica
                         final orderId = const Uuid().v4();
                         
@@ -209,7 +262,7 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                              orderId: orderId,
                              productId: product.id,
                              quantity: entry.value,
-                             price: product.price,
+                             note: _productNotes[entry.key] ?? '', // Nota específica del producto
                              productName: product.name
                            );
                         }).toList();
@@ -229,7 +282,8 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                           userId: user.id,
                           clubId: _membership!.clubId,
                           membresiaId: _membership!.id,
-                          total: total,
+                          tipoConsumo: _tipoConsumo, // 'EN_LUGAR' o 'PARA_LLEVAR'
+                          observaciones: _notaController.text.trim(), // Nota general del pedido
                           status: 'pending',
                           createdAt: DateTime.now(),
                           items: items,

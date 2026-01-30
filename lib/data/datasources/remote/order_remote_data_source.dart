@@ -27,15 +27,30 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
 
     try {
       // La API actual: POST /api/pedidos?membresiaId={...}&clubId={...}&productoId={...}
-      // Requiere envío individual por producto con cantidad
+      // El backend espera: cantidad, tipoConsumo, observaciones en el body
       for (var item in items) {
         // Convertir productId de String a int para el backend
         final int productoId = int.parse(item.productId);
         
-        print('[DEBUG] Enviando item - productoId: $productoId, cantidad: ${item.quantity}');
+        // Combinar nota general del pedido con nota específica del item
+        String observacionesCompletas = '';
+        if (order.observaciones != null && order.observaciones!.isNotEmpty) {
+          observacionesCompletas = order.observaciones!;
+        }
+        if (item.note.isNotEmpty) {
+          if (observacionesCompletas.isNotEmpty) {
+            observacionesCompletas += ' | ';
+          }
+          observacionesCompletas += item.note;
+        }
+        if (observacionesCompletas.isEmpty) {
+          observacionesCompletas = 'Pedido desde App Móvil';
+        }
         
-        // Enviar una petición por cada unidad (o el backend puede manejar cantidad)
-        // Por ahora enviamos una petición por cada unidad según la API actual
+        print('[DEBUG] Enviando item - productoId: $productoId, cantidad: ${item.quantity}, tipoConsumo: ${order.tipoConsumo ?? "EN_LUGAR"}');
+        
+        // Enviar una petición por cada unidad (el backend maneja cantidad en el body)
+        // Pero según el código del backend, parece que se envía una petición por unidad
         for (int i = 0; i < item.quantity; i++) {
           await _client.post(
             '/pedidos',
@@ -45,9 +60,11 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
               'productoId': productoId,
             },
             data: {
-              'estado': 'PENDIENTE',
-              'fecha': DateTime.now().toIso8601String(),
-              'notas': 'Pedido desde App Móvil'
+              'cantidad': 1, // Cada petición es 1 unidad
+              'tipoConsumo': order.tipoConsumo ?? 'EN_LUGAR', // 'EN_LUGAR' o 'PARA_LLEVAR'
+              'observaciones': observacionesCompletas,
+              'estado': 'RECIBIDO', // Estado inicial según el backend
+              'fechaPedido': DateTime.now().toIso8601String(),
             }
           );
         }

@@ -3,7 +3,8 @@ class OrderEntity {
   final String userId;
   final int? clubId; // ID del club donde se hace el pedido
   final int? membresiaId; // ID de la membresía del socio
-  final double total;
+  final String? tipoConsumo; // 'EN_LUGAR' o 'PARA_LLEVAR'
+  final String? observaciones; // Nota general del pedido
   final String status; // 'pending', 'preparing', 'ready', 'completed'
   final DateTime createdAt;
   final bool isSynced;
@@ -14,7 +15,8 @@ class OrderEntity {
     required this.userId,
     this.clubId,
     this.membresiaId,
-    required this.total,
+    this.tipoConsumo,
+    this.observaciones,
     required this.status,
     required this.createdAt,
     this.isSynced = false,
@@ -27,7 +29,8 @@ class OrderEntity {
       'user_id': userId,
       'club_id': clubId,
       'membresia_id': membresiaId,
-      'total': total,
+      'tipo_consumo': tipoConsumo,
+      'observaciones': observaciones,
       'status': status,
       'created_at': createdAt.toIso8601String(),
       'is_synced': isSynced ? 1 : 0,
@@ -40,7 +43,8 @@ class OrderEntity {
       userId: map['user_id'],
       clubId: map['club_id'],
       membresiaId: map['membresia_id'],
-      total: map['total'],
+      tipoConsumo: map['tipo_consumo'],
+      observaciones: map['observaciones'],
       status: map['status'],
       createdAt: DateTime.parse(map['created_at']),
       isSynced: map['is_synced'] == 1,
@@ -54,7 +58,7 @@ class OrderItem {
   final String orderId;
   final String productId;
   final int quantity;
-  final double price;
+  final String note; // Nota específica del producto
   final String productName; // Desnormalizado para facil visualización offline
 
   OrderItem({
@@ -62,7 +66,7 @@ class OrderItem {
     required this.orderId,
     required this.productId,
     required this.quantity,
-    required this.price,
+    this.note = '',
     this.productName = '',
   });
 
@@ -71,7 +75,7 @@ class OrderItem {
       'order_id': orderId,
       'product_id': productId,
       'quantity': quantity,
-      'price': price,
+      'note': note,
       // 'product_name' no se guarda en tabla order_items normalizada, pero útil si se quiere desnormalizar. 
       // Por ahora mantenemos simple.
     };
@@ -79,11 +83,11 @@ class OrderItem {
   
   factory OrderItem.fromMap(Map<String, dynamic> map, {String productName = ''}) {
     return OrderItem(
-      id: map['id'].toString(),
+      id: map['id']?.toString(),
       orderId: map['order_id'],
       productId: map['product_id'],
       quantity: map['quantity'],
-      price: map['price'],
+      note: map['note'] ?? '',
       productName: productName,
     );
   }
