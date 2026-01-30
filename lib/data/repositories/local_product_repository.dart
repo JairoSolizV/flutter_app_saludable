@@ -106,6 +106,24 @@ class LocalProductRepository implements ProductRepository {
   }
 
   @override
+  Future<List<Product>> getAvailableProductsByClub(int clubId) async {
+    // IMPORTANTE: Los socios solo deben ver productos disponibles
+    // Este método NO usa caché local, siempre obtiene del backend
+    if (_remoteDataSource != null) {
+      try {
+        final remoteProducts = await _remoteDataSource!.getAvailableProductsByClub(clubId);
+        return remoteProducts;
+      } catch (e) {
+        print('Error fetching available products: $e');
+        rethrow;
+      }
+    }
+    
+    print('Warning: No remoteDataSource disponible. No se pueden obtener productos disponibles.');
+    return [];
+  }
+
+  @override
   Future<void> toggleProductAvailability(int clubId, String productId) async {
     if (_remoteDataSource != null) {
       await (_remoteDataSource as dynamic).toggleProductAvailability(clubId, productId);

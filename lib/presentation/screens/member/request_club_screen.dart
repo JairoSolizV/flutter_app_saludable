@@ -16,8 +16,6 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
-  final _cityController = TextEditingController();
-  final _descController = TextEditingController();
   
   bool _isLoading = false;
 
@@ -25,8 +23,6 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
   void dispose() {
     _nameController.dispose();
     _addressController.dispose();
-    _cityController.dispose();
-    _descController.dispose();
     super.dispose();
   }
 
@@ -49,8 +45,6 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
         anfitrionId: int.parse(user.id),
         nombreClub: _nameController.text.trim(),
         direccion: _addressController.text.trim(),
-        ciudad: _cityController.text.trim(),
-        descripcion: _descController.text.trim(),
         hubId: 2, // Default HUB Santa Cruz
       );
 
@@ -146,24 +140,6 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
                 hint: "Calle, número y barrio",
                 icon: LucideIcons.mapPin,
                 validator: (v) => v == null || v.isEmpty ? "Ingresa una dirección" : null,
-              ),
-              const SizedBox(height: 16),
-
-              _buildTextField(
-                controller: _cityController,
-                label: "Ciudad",
-                hint: "Ej. Santa Cruz de la Sierra",
-                icon: LucideIcons.building,
-                validator: (v) => v == null || v.isEmpty ? "Ingresa una ciudad" : null,
-              ),
-              const SizedBox(height: 16),
-
-              _buildTextField(
-                controller: _descController,
-                label: "Descripción (Opcional)",
-                hint: "Cuéntanos brevemente sobre tu proyecto...",
-                icon: LucideIcons.fileText,
-                maxLines: 3,
               ),
               
               const SizedBox(height: 32),

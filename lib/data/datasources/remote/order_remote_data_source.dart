@@ -12,43 +12,53 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
 
   @override
   Future<void> sendOrder(OrderEntity order, List<OrderItem> items) async {
-    // La API actual: POST /api/pedidos?membresiaId={...}&clubId={...}&productoId={...}
-    // Requiere envío individual por producto.
-    // Asumiremos que tenemos el ID de membresía del usuario (o usamos su ID de usuario si es lo mismo)
-    // y un clubId hardcodeado o seleccionado.
-    
-    // Obtener membresiaId. Por ahora usamos el userId del pedido.
-    final String membresiaId = "1"; // TODO: Obtener dinamico
-    final String clubId = "1"; // TODO: Obtener dinamico (club actual)
+    // Validar que tenemos los IDs necesarios
+    if (order.membresiaId == null) {
+      throw Exception('Error: El pedido debe incluir membresiaId');
+    }
+    if (order.clubId == null) {
+      throw Exception('Error: El pedido debe incluir clubId');
+    }
+
+    final int membresiaId = order.membresiaId!;
+    final int clubId = order.clubId!;
+
+    print('[DEBUG] Enviando pedido - membresiaId: $membresiaId, clubId: $clubId, items: ${items.length}');
 
     try {
+      // La API actual: POST /api/pedidos?membresiaId={...}&clubId={...}&productoId={...}
+      // Requiere envío individual por producto con cantidad
       for (var item in items) {
-          // Si la cantidad es > 1, ¿debemos enviar X peticiones?
-          // Asumiremos que PedidoDTO (body) puede llevar cantidad o notas.
-          // Si no, enviamos loop por cantidad.
-          // Dado que no tengo la definición de PedidoDTO, enviaré un Request por cada ITEM (producto diferente).
-          // Y repetiré la llamada por la cantidad vececes (peor caso) o asumiré que backend lo maneja.
-          // Estrategia segura: Enviar N veces si quantity=N.
-          
-          for (int i = 0; i < item.quantity; i++) {
-             await _client.post(
-                '/pedidos',
-                queryParameters: {
-                   'membresiaId': membresiaId,
-                   'clubId': clubId,
-                   'productoId': item.productId,
-                },
-                data: {
-                   // PedidoDTO body placeholder
-                   'estado': 'PENDIENTE',
-                   'fecha': DateTime.now().toIso8601String(),
-                   'notas': 'Pedido desde App Móvil'
-                }
-             );
-          }
+        // Convertir productId de String a int para el backend
+        final int productoId = int.parse(item.productId);
+        
+        print('[DEBUG] Enviando item - productoId: $productoId, cantidad: ${item.quantity}');
+        
+        // Enviar una petición por cada unidad (o el backend puede manejar cantidad)
+        // Por ahora enviamos una petición por cada unidad según la API actual
+        for (int i = 0; i < item.quantity; i++) {
+          await _client.post(
+            '/pedidos',
+            queryParameters: {
+              'membresiaId': membresiaId,
+              'clubId': clubId,
+              'productoId': productoId,
+            },
+            data: {
+              'estado': 'PENDIENTE',
+              'fecha': DateTime.now().toIso8601String(),
+              'notas': 'Pedido desde App Móvil'
+            }
+          );
+        }
       }
+      
+      print('[DEBUG] Pedido enviado exitosamente');
     } on DioException catch (e) {
-       throw Exception('Error enviando pedido: ${e.message}');
+      final statusCode = e.response?.statusCode;
+      final errorMessage = e.response?.data?['message'] ?? e.message ?? 'Error desconocido';
+      print('[DEBUG] Error enviando pedido - Status: $statusCode, Error: $errorMessage');
+      throw Exception('Error enviando pedido: $errorMessage');
     }
   }
 }

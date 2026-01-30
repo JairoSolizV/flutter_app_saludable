@@ -126,8 +126,6 @@ class ClubRemoteDataSource {
     required int anfitrionId,
     required String nombreClub,
     required String direccion,
-    required String ciudad,
-    String? descripcion,
     int hubId = 2,
   }) async {
     try {
@@ -135,8 +133,6 @@ class ClubRemoteDataSource {
         'anfitrionId': anfitrionId,
         'nombreClub': nombreClub,
         'direccion': direccion,
-        'ciudad': ciudad,
-        'descripcion': descripcion,
         'hubId': hubId,
         'estado': 'PENDIENTE', 
       };

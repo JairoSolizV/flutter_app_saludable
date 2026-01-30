@@ -30,6 +30,23 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
+  // Método para socios: cargar solo productos disponibles del club
+  Future<void> loadAvailableProducts(int clubId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      _products = await _repository.getAvailableProductsByClub(clubId);
+    } catch (e) {
+      print('Error loading available products: $e');
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> toggleAvailability(int clubId, String productId, int hubId) async {
     // Optimistic update
     final index = _products.indexWhere((p) => p.id == productId);

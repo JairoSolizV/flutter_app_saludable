@@ -19,7 +19,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'nutrilife_club.db');
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -62,6 +62,8 @@ class DatabaseHelper {
       CREATE TABLE orders(
         id TEXT PRIMARY KEY,
         user_id TEXT,
+        club_id INTEGER,
+        membresia_id INTEGER,
         total REAL,
         status TEXT, -- pending, preparing, ready, completed
         created_at TEXT,
@@ -110,6 +112,15 @@ class DatabaseHelper {
         await db.delete('products', where: 'hubId IS NULL');
       } catch (e) {
         print("Error migrando tabla products: $e");
+      }
+    }
+    if (oldVersion < 4) {
+      // Agregar columnas club_id y membresia_id a orders
+      try {
+        await db.execute('ALTER TABLE orders ADD COLUMN club_id INTEGER');
+        await db.execute('ALTER TABLE orders ADD COLUMN membresia_id INTEGER');
+      } catch (e) {
+        print("Error migrando tabla orders: $e");
       }
     }
   }

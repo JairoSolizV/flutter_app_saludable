@@ -2,6 +2,7 @@ import '../entities/product.dart';
 
 abstract class ProductRepository {
   Future<List<Product>> getProducts({required int hubId, required int clubId});
+  Future<List<Product>> getAvailableProductsByClub(int clubId); // Para socios: solo productos disponibles
   Future<Product?> getProductById(String id);
   Future<void> createProduct(Product product, int clubId);
   Future<void> updateProduct(Product product);

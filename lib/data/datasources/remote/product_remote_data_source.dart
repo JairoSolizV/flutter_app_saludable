@@ -3,6 +3,7 @@ import '../../../domain/entities/product.dart';
 
 abstract class ProductRemoteDataSource {
   Future<List<Product>> getProducts({required int hubId, required int clubId});
+  Future<List<Product>> getAvailableProductsByClub(int clubId); // Para socios: solo productos disponibles
   Future<void> createProduct(Product product, int clubId);
   Future<void> updateProduct(Product product);
   Future<void> deleteProduct(String id);
@@ -75,6 +76,67 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       }
     } on DioException catch (e) {
       throw Exception('Error de red al cargar productos: ${e.message}');
+    }
+  }
+
+  @override
+  Future<List<Product>> getAvailableProductsByClub(int clubId) async {
+    try {
+      // Endpoint: GET /api/productos?clubId={clubId}
+      // Este endpoint devuelve solo productos disponibles (disponible = true)
+      print('[DEBUG] Obteniendo productos disponibles del club - clubId: $clubId');
+      final response = await _client.get(
+        '/productos',
+        queryParameters: {'clubId': clubId}
+      );
+
+      print('[DEBUG] Respuesta recibida - Status: ${response.statusCode}, Tipo de data: ${response.data.runtimeType}');
+      
+      if (response.statusCode == 200) {
+        // Manejar diferentes formatos de respuesta del backend
+        List<dynamic> data = [];
+        if (response.data is List) {
+          data = response.data as List<dynamic>;
+        } else if (response.data is Map) {
+          final Map<String, dynamic> responseMap = response.data as Map<String, dynamic>;
+          if (responseMap.containsKey('content') && responseMap['content'] is List) {
+            data = responseMap['content'] as List<dynamic>;
+          } else if (responseMap.containsKey('data') && responseMap['data'] is List) {
+            data = responseMap['data'] as List<dynamic>;
+          }
+        }
+        
+        print('[DEBUG] Total de productos disponibles en respuesta: ${data.length}');
+        
+        return data.map<Product>((json) {
+           // Manejar el id correctamente: puede venir como int o String del backend
+           final dynamic idValue = json['id'];
+           final String productId = idValue is int ? idValue.toString() : (idValue?.toString() ?? '');
+           
+           // Debug: imprimir el ID del producto obtenido
+           print('[DEBUG] Producto disponible - ID: $productId, Nombre: ${json['nombre']}');
+           
+           // Manejar hubId correctamente: puede venir como int o null
+           final dynamic hubIdValue = json['hubId'];
+           final int? hubId = hubIdValue is int ? hubIdValue : (hubIdValue != null ? int.tryParse(hubIdValue.toString()) : null);
+           
+           return Product(
+             id: productId,
+             name: json['nombre']?.toString() ?? 'Sin nombre',
+             description: json['descripcion']?.toString() ?? '',
+             price: 0.0, // Backend no envía precio aún
+             category: 'General', 
+             imageUrl: '', 
+             hubId: hubId,
+             active: json['activo'] == true || json['activo'] == 1,
+             available: true, // Estos productos siempre están disponibles (ya filtrados por el backend)
+           );
+        }).toList();
+      } else {
+        throw Exception('Error al cargar productos: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de red al cargar productos disponibles: ${e.message}');
     }
   }
 

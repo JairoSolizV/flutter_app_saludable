@@ -5,7 +5,10 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:uuid/uuid.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/order_provider.dart';
+import '../../providers/user_provider.dart';
 import '../../../domain/entities/order_entity.dart';
+import '../../../domain/entities/club_membership.dart';
+import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 
 class MemberCreateOrderScreen extends StatefulWidget {
   const MemberCreateOrderScreen({super.key});
@@ -17,6 +20,49 @@ class MemberCreateOrderScreen extends StatefulWidget {
 class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
   // Mapa de ProductoID -> Cantidad
   final Map<String, int> _cart = {};
+  ClubMembership? _membership;
+  bool _isLoadingMembership = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMembershipAndProducts();
+  }
+
+  Future<void> _loadMembershipAndProducts() async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final user = userProvider.currentUser;
+      
+      if (user == null) {
+        setState(() => _isLoadingMembership = false);
+        return;
+      }
+
+      // Obtener membresía del socio
+      final membresiaDataSource = Provider.of<MembresiaRemoteDataSource>(context, listen: false);
+      final membresias = await membresiaDataSource.getMembresiasPorUsuario(int.parse(user.id));
+      
+      if (membresias.isNotEmpty) {
+        final membership = membresias.first;
+        setState(() {
+          _membership = membership;
+          _isLoadingMembership = false;
+        });
+        
+        // Cargar productos disponibles del club
+        if (mounted) {
+          await Provider.of<ProductProvider>(context, listen: false)
+              .loadAvailableProducts(membership.clubId);
+        }
+      } else {
+        setState(() => _isLoadingMembership = false);
+      }
+    } catch (e) {
+      print('Error loading membership: $e');
+      setState(() => _isLoadingMembership = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,16 +77,56 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
       total += product.price * qty;
     });
 
+    if (_isLoadingMembership) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Nuevo Pedido')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_membership == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Nuevo Pedido')),
+        body: const Center(
+          child: Text('No tienes una membresía activa. Debes ser socio de un club para hacer pedidos.'),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nuevo Pedido'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Nuevo Pedido'),
+            Text(
+              _membership!.clubNombre,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+            ),
+          ],
+        ),
       ),
       body: Column(
         children: [
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: products.length,
+          if (productProvider.isLoading)
+            const LinearProgressIndicator()
+          else if (productProvider.error != null)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text('Error: ${productProvider.error}', style: const TextStyle(color: Colors.red)),
+            )
+          else if (products.isEmpty)
+            const Expanded(
+              child: Center(
+                child: Text('No hay productos disponibles en este momento.'),
+              ),
+            )
+          else
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: products.length,
               itemBuilder: (context, index) {
                 final product = products[index];
                 final qty = _cart[product.id] ?? 0;
@@ -128,9 +214,21 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                            );
                         }).toList();
 
+                        final userProvider = Provider.of<UserProvider>(context, listen: false);
+                        final user = userProvider.currentUser;
+                        
+                        if (user == null || _membership == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Error: Usuario no autenticado o sin membresía'), backgroundColor: Colors.red),
+                          );
+                          return;
+                        }
+
                         final newOrder = OrderEntity(
                           id: orderId,
-                          userId: 'user_1', // Hardcoded por ahora
+                          userId: user.id,
+                          clubId: _membership!.clubId,
+                          membresiaId: _membership!.id,
                           total: total,
                           status: 'pending',
                           createdAt: DateTime.now(),

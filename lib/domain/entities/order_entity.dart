@@ -1,6 +1,8 @@
 class OrderEntity {
   final String id;
   final String userId;
+  final int? clubId; // ID del club donde se hace el pedido
+  final int? membresiaId; // ID de la membresía del socio
   final double total;
   final String status; // 'pending', 'preparing', 'ready', 'completed'
   final DateTime createdAt;
@@ -10,6 +12,8 @@ class OrderEntity {
   OrderEntity({
     required this.id,
     required this.userId,
+    this.clubId,
+    this.membresiaId,
     required this.total,
     required this.status,
     required this.createdAt,
@@ -21,6 +25,8 @@ class OrderEntity {
     return {
       'id': id,
       'user_id': userId,
+      'club_id': clubId,
+      'membresia_id': membresiaId,
       'total': total,
       'status': status,
       'created_at': createdAt.toIso8601String(),
@@ -32,6 +38,8 @@ class OrderEntity {
     return OrderEntity(
       id: map['id'],
       userId: map['user_id'],
+      clubId: map['club_id'],
+      membresiaId: map['membresia_id'],
       total: map['total'],
       status: map['status'],
       createdAt: DateTime.parse(map['created_at']),
