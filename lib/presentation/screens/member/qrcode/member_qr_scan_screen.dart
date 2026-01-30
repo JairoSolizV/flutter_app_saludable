@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../providers/user_provider.dart';
 
@@ -17,6 +18,19 @@ class MemberQrScanScreen extends StatefulWidget {
 class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
   bool _isProcessing = false;
   MobileScannerController cameraController = MobileScannerController();
+
+  @override
+  void initState() {
+    super.initState();
+    _requestCameraPermission();
+  }
+
+  Future<void> _requestCameraPermission() async {
+    var status = await Permission.camera.status;
+    if (!status.isGranted) {
+      await Permission.camera.request();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -134,9 +148,14 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
       );
 
       if (mounted) {
+         // Detener la cámara
+         await cameraController.stop();
+         setState(() => _isProcessing = false);
+         
          // Mostrar éxito
-         showDialog(
+         final shouldReload = await showDialog<bool>(
            context: context,
+           barrierDismissible: false,
            builder: (context) => AlertDialog(
              title: const Text("¡Asistencia Registrada!"),
              content: Column(
@@ -150,14 +169,18 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
              actions: [
                TextButton(
                  onPressed: () {
-                    context.pop(); // Close Dialog
-                    context.go('/member-home'); // Volver al home y recargar
+                    Navigator.of(context).pop(true); // Retornar true para indicar que se debe recargar
                  },
                  child: const Text("Aceptar"),
                )
              ],
            ),
          );
+         
+         // Volver al home y recargar datos
+         if (mounted) {
+           context.pop(shouldReload ?? true); // Retornar resultado para que el home sepa que debe recargar
+         }
       }
 
     } catch (e) {

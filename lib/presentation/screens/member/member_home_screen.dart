@@ -150,6 +150,71 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
                       
                       const SizedBox(height: 24),
 
+                      // Botón Registrar Asistencia
+                      if (_activeMembership != null)
+                        InkWell(
+                          onTap: () async {
+                            // Navegar a la pantalla de escaneo QR
+                            final result = await context.push('/member-qr-scan');
+                            // Recargar datos después de registrar asistencia
+                            if (result == true || mounted) {
+                              _loadLoyaltyData();
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF7AC142),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.3),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(LucideIcons.qrCode, color: Colors.white),
+                                ),
+                                const SizedBox(width: 16),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Registrar Asistencia',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Escanear QR del anfitrión',
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_forward, color: Colors.white),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      if (_activeMembership != null) const SizedBox(height: 16),
+
                       // Botón CTA (Hacer Pedido)
                       InkWell(
                         onTap: () => context.push('/member-orders/new'),
