@@ -277,6 +277,13 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                           return;
                         }
 
+                        print('[DEBUG CREATE] Creando pedido con:');
+                        print('[DEBUG CREATE]   clubId: ${_membership!.clubId}');
+                        print('[DEBUG CREATE]   membresiaId: ${_membership!.id}');
+                        print('[DEBUG CREATE]   userId: ${user.id}');
+                        print('[DEBUG CREATE]   items: ${items.length}');
+                        print('[DEBUG CREATE]   tipoConsumo: $_tipoConsumo');
+
                         final newOrder = OrderEntity(
                           id: orderId,
                           userId: user.id,
@@ -290,13 +297,33 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                           isSynced: false
                         );
 
-                        await orderProvider.createOrder(newOrder);
+                        print('[DEBUG CREATE] OrderEntity creado - clubId: ${newOrder.clubId}, membresiaId: ${newOrder.membresiaId}');
                         
-                        if (context.mounted) {
-                          context.pop(); // Volver a lista
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Pedido creado correctamente'), backgroundColor: Colors.green),
-                          );
+                        try {
+                          await orderProvider.createOrder(newOrder);
+                          print('[DEBUG CREATE] Pedido creado y procesado');
+                          
+                          if (context.mounted) {
+                            context.pop(); // Volver a lista
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Pedido creado correctamente. Verifica los logs para confirmar el envío al backend.'),
+                                backgroundColor: Colors.green,
+                                duration: Duration(seconds: 4),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          print('[DEBUG CREATE] ERROR al crear pedido: $e');
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error al crear pedido: $e'),
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 4),
+                              ),
+                            );
+                          }
                         }
                       } : null,
                       style: ElevatedButton.styleFrom(

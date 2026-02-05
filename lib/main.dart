@@ -89,6 +89,9 @@ class AppState extends StatelessWidget {
         Provider<MembresiaRemoteDataSource>(
             create: (_) => membresiaRemoteDataSource,
         ),
+        Provider<OrderRemoteDataSource>(
+            create: (_) => orderRemoteDataSource,
+        ),
          ChangeNotifierProvider(
           create: (_) => AuthProvider(authRemoteDataSource, userRepository),
         ),

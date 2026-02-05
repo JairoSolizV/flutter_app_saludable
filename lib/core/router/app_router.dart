@@ -1,5 +1,4 @@
 import 'package:go_router/go_router.dart';
-import 'package:flutter/material.dart';
 import '../../domain/entities/product.dart';
 
 // Pantallas placeholder para configurar navegación inicial

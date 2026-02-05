@@ -33,16 +33,32 @@ class OrderProvider extends ChangeNotifier {
 
   Future<void> createOrder(OrderEntity order) async {
     try {
+      print('[DEBUG ORDER] Creando pedido - ID: ${order.id}, clubId: ${order.clubId}, membresiaId: ${order.membresiaId}, items: ${order.items.length}');
+      
+      // Primero guardar localmente
       await _repository.createOrder(order);
+      print('[DEBUG ORDER] Pedido guardado localmente');
+      
+      // Intentar enviar al backend inmediatamente si hay red
+      if (await _connectivityService.checkConnection()) {
+        print('[DEBUG ORDER] Hay conexión, sincronizando pedido...');
+        try {
+          await _syncService.syncNow();
+          print('[DEBUG ORDER] Pedido sincronizado exitosamente');
+        } catch (syncError) {
+          print('[DEBUG ORDER] Error sincronizando pedido: $syncError');
+          if (kDebugMode) print('Error sincronizando pedido: $syncError');
+          // No rethrow aquí, el pedido ya está guardado localmente
+        }
+      } else {
+        print('[DEBUG ORDER] No hay conexión, el pedido se sincronizará cuando haya conexión');
+      }
+      
       // Recargar lista localmente
       await loadOrders(order.userId);
       
-      // Intentar sincronizar inmediatamente si hay red
-      if (await _connectivityService.checkConnection()) { 
-        _syncService.syncNow(); 
-      }
-      
     } catch (e) {
+      print('[DEBUG ORDER] Error creando pedido: $e');
       if (kDebugMode) print('Error creating order: $e');
       rethrow;
     }

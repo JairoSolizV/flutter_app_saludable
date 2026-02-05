@@ -45,5 +45,13 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Permisos de ubicación para registrar asistencia -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Necesitamos tu ubicación para verificar que estés cerca del club al registrar tu asistencia.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Necesitamos tu ubicación para verificar que estés cerca del club al registrar tu asistencia.</string>
+	<!-- Permiso de cámara para escanear QR -->
+	<key>NSCameraUsageDescription</key>
+	<string>Necesitamos acceso a la cámara para escanear el código QR de asistencia del anfitrión.</string>
 </dict>
 </plist>

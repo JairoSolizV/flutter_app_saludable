@@ -17,9 +17,10 @@ class LocalProductRepository implements ProductRepository {
     // No usamos caché local para productos del hub porque pueden cambiar
     // y el caché podría tener datos obsoletos o productos de seed que no existen
     
-    if (_remoteDataSource != null) {
+    final remote = _remoteDataSource;
+    if (remote != null) {
       try {
-        final remoteProducts = await _remoteDataSource!.getProducts(hubId: hubId, clubId: clubId);
+        final remoteProducts = await remote.getProducts(hubId: hubId, clubId: clubId);
         
         // Limpiar productos antiguos del mismo hub antes de guardar los nuevos
         // Esto asegura que no se muestren productos que ya no existen en el backend
@@ -109,9 +110,10 @@ class LocalProductRepository implements ProductRepository {
   Future<List<Product>> getAvailableProductsByClub(int clubId) async {
     // IMPORTANTE: Los socios solo deben ver productos disponibles
     // Este método NO usa caché local, siempre obtiene del backend
-    if (_remoteDataSource != null) {
+    final remote = _remoteDataSource;
+    if (remote != null) {
       try {
-        final remoteProducts = await _remoteDataSource!.getAvailableProductsByClub(clubId);
+        final remoteProducts = await remote.getAvailableProductsByClub(clubId);
         return remoteProducts;
       } catch (e) {
         print('Error fetching available products: $e');

@@ -132,16 +132,28 @@ class _OrdersList extends StatelessWidget {
                   itemsStr.isEmpty ? 'Sin detalle' : itemsStr,
                   style: const TextStyle(color: Color(0xFF333333)),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      'Total: Bs ${order.total.toStringAsFixed(2)}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                if (order.observaciones != null && order.observaciones!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Nota: ${order.observaciones}',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic),
                     ),
-                  ],
-                )
+                  ),
+                if (order.tipoConsumo != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      children: [
+                        Icon(LucideIcons.mapPin, size: 12, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          order.tipoConsumo == 'PARA_LLEVAR' ? 'Para llevar' : 'Consumir aquí',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),

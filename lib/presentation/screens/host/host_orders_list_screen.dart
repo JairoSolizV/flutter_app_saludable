@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import '../../../data/datasources/remote/order_remote_data_source.dart';
+import '../../../data/datasources/remote/club_remote_data_source.dart';
+import '../../providers/user_provider.dart';
 
 class HostOrdersListScreen extends StatefulWidget {
   const HostOrdersListScreen({super.key});
@@ -9,48 +14,307 @@ class HostOrdersListScreen extends StatefulWidget {
 }
 
 class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
-  // Mock Data inicial
-  List<Map<String, dynamic>> orders = [
-    {
-      'id': 'ORD-001',
-      'customer': 'María González',
-      'items': ['1x Batido Fresa', '1x Té Limón'],
-      'total': 40.0,
-      'status': 'preparing',
-      'time': '09:30',
-      'isVip': true
-    },
-    {
-      'id': 'ORD-004',
-      'customer': 'Carlos Méndez',
-      'items': ['2x Barra Proteína'],
-      'total': 24.0,
-      'status': 'pending',
-      'time': '09:45',
-      'isVip': false
-    },
-     {
-      'id': 'ORD-005',
-      'customer': 'Ana Martinez',
-      'items': ['1x Aloe Vera'],
-      'total': 10.0,
-      'status': 'ready',
-      'time': '09:15',
-      'isVip': false
-    },
-  ];
-
+  List<Map<String, dynamic>> orders = [];
   String filterStatus = 'all';
+  bool _isLoading = true;
+  String? _error;
 
-  void updateStatus(String id, String newStatus) {
+  @override
+  void initState() {
+    super.initState();
+    _loadOrders();
+  }
+
+  Future<void> _loadOrders() async {
+    if (!mounted) return;
+    
     setState(() {
-      orders = orders.map((o) {
-        if (o['id'] == id) {
-          return {...o, 'status': newStatus};
-        }
-        return o;
-      }).toList();
+      _isLoading = true;
+      _error = null;
     });
+
+    try {
+      if (!mounted) return;
+      
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final user = userProvider.currentUser;
+      
+      if (user == null) {
+        throw Exception('Usuario no autenticado');
+      }
+
+      final int hostId = int.parse(user.id);
+      
+      // Obtener el club del anfitrión
+      final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
+      final club = await clubDataSource.getClubByHostId(hostId);
+      
+      if (club == null) {
+        print('[DEBUG HOST] ERROR: No se encontró el club del anfitrión con hostId: $hostId');
+        throw Exception('No se encontró el club del anfitrión');
+      }
+
+      print('[DEBUG HOST] Club encontrado - ID: ${club.id}, Nombre: ${club.nombreClub}, Anfitrión ID: ${club.anfitrionId}');
+      print('[DEBUG HOST] Buscando pedidos para clubId: ${club.id}');
+      print('[DEBUG HOST] Verificando que el clubId del anfitrión ($hostId) corresponda al club (${club.anfitrionId})');
+
+      // Obtener pedidos del club
+      final orderDataSource = Provider.of<OrderRemoteDataSource>(context, listen: false);
+      
+      // DEBUG: Obtener todos los pedidos para verificar si hay pedidos en la BD
+      try {
+        final allOrders = await orderDataSource.getAllOrders();
+        print('[DEBUG HOST] Total de pedidos en la BD (todos los clubes): ${allOrders.length}');
+        if (allOrders.isNotEmpty) {
+          print('[DEBUG HOST] Verificando clubId de los pedidos existentes...');
+          for (var order in allOrders) {
+            int? orderClubId;
+            if (order.containsKey('clubId')) {
+              orderClubId = order['clubId'] as int?;
+            } else if (order.containsKey('membresia')) {
+              final membresia = order['membresia'];
+              if (membresia is Map) {
+                orderClubId = membresia['clubId'] as int?;
+              }
+            }
+            print('[DEBUG HOST]   Pedido ID: ${order['id']}, clubId: $orderClubId (buscamos: ${club.id})');
+          }
+        }
+      } catch (e) {
+        print('[DEBUG HOST] No se pudo obtener todos los pedidos (puede que el endpoint no exista): $e');
+      }
+      
+      final ordersData = await orderDataSource.getOrdersByClub(club.id);
+      
+      print('[DEBUG HOST] Después de getOrdersByClub - Pedidos recibidos: ${ordersData.length}');
+      
+      print('[DEBUG HOST] Datos recibidos del backend: ${ordersData.length} pedidos');
+      if (ordersData.isEmpty) {
+        print('[DEBUG HOST] No hay pedidos en la respuesta del backend');
+        if (mounted) {
+          setState(() {
+            orders = [];
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+      
+      print('[DEBUG HOST] Ejemplo de estructura del primer pedido:');
+      print('[DEBUG HOST] Keys: ${ordersData.first.keys.toList()}');
+      print('[DEBUG HOST] Primer pedido: ${ordersData.first}');
+      
+      // El backend devuelve pedidos individuales (uno por producto)
+      // Agrupar por membresiaId y fechaPedido para mostrar pedidos completos
+      final Map<String, List<Map<String, dynamic>>> groupedOrders = {};
+      
+      for (var order in ordersData) {
+        try {
+          // Extraer información del pedido según estructura real del backend
+          final dynamic idValue = order['id'];
+          final int pedidoId = idValue is int ? idValue : (idValue != null ? int.tryParse(idValue.toString()) ?? 0 : 0);
+          
+          if (pedidoId == 0) {
+            print('[DEBUG HOST] WARNING: Pedido sin ID válido, saltando: $order');
+            continue;
+          }
+          
+          final String estado = _mapBackendStatusToUI(order['estado'] ?? order['status'] ?? 'RECIBIDO');
+          final dynamic fechaValue = order['fechaPedido'] ?? order['fechaPedido'] ?? order['createdAt'] ?? DateTime.now().toIso8601String();
+          final String fechaPedido = fechaValue.toString();
+          final DateTime fecha = DateTime.tryParse(fechaPedido) ?? DateTime.now();
+          final String time = DateFormat('HH:mm').format(fecha);
+          
+          // Información del socio/cliente - el backend puede devolver esto de diferentes formas
+          final dynamic membresiaData = order['membresia'] ?? order['membresiaId'];
+          final Map<String, dynamic> membresia = membresiaData is Map ? membresiaData as Map<String, dynamic> : {};
+          final dynamic membresiaIdValue = membresia['id'] ?? order['membresiaId'];
+          final int membresiaId = membresiaIdValue is int ? membresiaIdValue : (membresiaIdValue != null ? int.tryParse(membresiaIdValue.toString()) ?? pedidoId : pedidoId);
+          
+          final dynamic usuarioData = membresia['usuario'] ?? order['socio'] ?? order['usuario'];
+          final Map<String, dynamic> socio = usuarioData is Map ? usuarioData as Map<String, dynamic> : {};
+          
+          String customerName = 'Cliente $pedidoId';
+          if (socio.isNotEmpty) {
+            final String? nombre = socio['nombre']?.toString();
+            final String? apellido = socio['apellido']?.toString();
+            final String? usuarioNombre = socio['usuarioNombre']?.toString();
+            
+            if (nombre != null && apellido != null) {
+              customerName = '$nombre $apellido';
+            } else if (nombre != null) {
+              customerName = nombre;
+            } else if (usuarioNombre != null) {
+              customerName = usuarioNombre;
+            }
+          }
+          
+          // Información del producto
+          final dynamic productoData = order['producto'];
+          final Map<String, dynamic> producto = productoData is Map ? productoData as Map<String, dynamic> : {};
+          final String productoNombre = producto['nombre']?.toString() ?? 'Producto';
+          final dynamic cantidadValue = order['cantidad'];
+          final int cantidad = cantidadValue is int ? cantidadValue : (cantidadValue != null ? int.tryParse(cantidadValue.toString()) ?? 1 : 1);
+          
+          // Verificar si es VIP (puede venir del nivel de la membresía)
+          final dynamic nivelData = membresia['nivel'];
+          final Map<String, dynamic> nivel = nivelData is Map ? nivelData as Map<String, dynamic> : {};
+          final String nivelNombre = nivel['nombre']?.toString() ?? nivel['nivelNombre']?.toString() ?? '';
+          final bool isVip = nivelNombre.toUpperCase().contains('VIP') || nivelNombre.toUpperCase().contains('PREMIUM');
+          
+          // Crear clave única para agrupar pedidos del mismo socio en la misma fecha
+          final String fechaKey = DateFormat('yyyy-MM-dd HH:mm').format(fecha);
+          final String groupKey = '${membresiaId}_$fechaKey';
+          
+          if (!groupedOrders.containsKey(groupKey)) {
+            groupedOrders[groupKey] = [];
+          }
+          
+          groupedOrders[groupKey]!.add({
+            'pedidoId': pedidoId,
+            'productoNombre': productoNombre,
+            'cantidad': cantidad,
+            'estado': estado,
+            'tipoConsumo': order['tipoConsumo']?.toString() ?? 'EN_LUGAR',
+            'observaciones': order['observaciones']?.toString() ?? '',
+            'customerName': customerName,
+            'isVip': isVip,
+            'time': time,
+          });
+        } catch (e, stackTrace) {
+          print('[DEBUG HOST] Error procesando pedido: $e');
+          print('[DEBUG HOST] Stack trace: $stackTrace');
+          print('[DEBUG HOST] Pedido que causó error: $order');
+          continue; // Continuar con el siguiente pedido
+        }
+      }
+      
+      print('[DEBUG HOST] Pedidos agrupados: ${groupedOrders.length} grupos');
+      
+      // Convertir grupos a formato de UI
+      final mappedOrders = groupedOrders.entries.map((entry) {
+        final items = entry.value;
+        final firstItem = items.first;
+        final int pedidoId = firstItem['pedidoId'] as int;
+        final String estado = firstItem['estado'] as String;
+        final String time = firstItem['time'] as String;
+        final String customerName = firstItem['customerName'] as String;
+        final bool isVip = firstItem['isVip'] as bool;
+        
+        // Construir lista de items
+        final List<String> itemsList = items.map<String>((item) {
+          final int cantidad = item['cantidad'] as int;
+          final String productoNombre = item['productoNombre'] as String;
+          return '$cantidad x $productoNombre';
+        }).toList();
+        
+        return {
+          'id': pedidoId.toString(),
+          'pedidoId': pedidoId,
+          'customer': customerName,
+          'items': itemsList,
+          'status': estado,
+          'time': time,
+          'isVip': isVip,
+          'tipoConsumo': firstItem['tipoConsumo'] ?? 'EN_LUGAR',
+          'observaciones': firstItem['observaciones'] ?? '',
+        };
+      }).toList();
+      
+      print('[DEBUG HOST] Pedidos mapeados para UI: ${mappedOrders.length}');
+
+      if (mounted) {
+        setState(() {
+          orders = mappedOrders;
+          _isLoading = false;
+        });
+      }
+    } catch (e, stackTrace) {
+      print('[DEBUG HOST] Error completo en _loadOrders: $e');
+      print('[DEBUG HOST] Stack trace: $stackTrace');
+      
+      if (mounted) {
+        String errorMessage = e.toString().replaceAll('Exception: ', '');
+        if (errorMessage.contains('Error obteniendo pedidos')) {
+          errorMessage = 'No se pudieron cargar los pedidos. Verifica tu conexión y que el club tenga pedidos.';
+        }
+        
+        setState(() {
+          _error = errorMessage;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _mapBackendStatusToUI(String backendStatus) {
+    // Mapear estados del backend a estados de la UI
+    switch (backendStatus.toUpperCase()) {
+      case 'RECIBIDO':
+      case 'PENDING':
+        return 'pending';
+      case 'PREPARANDO':
+      case 'PREPARING':
+        return 'preparing';
+      case 'LISTO':
+      case 'READY':
+        return 'ready';
+      case 'ENTREGADO':
+      case 'COMPLETED':
+        return 'completed';
+      default:
+        return 'pending';
+    }
+  }
+
+  String _mapUIToBackendStatus(String uiStatus) {
+    // Mapear estados de la UI a estados del backend
+    switch (uiStatus) {
+      case 'pending':
+        return 'RECIBIDO';
+      case 'preparing':
+        return 'PREPARANDO';
+      case 'ready':
+        return 'LISTO';
+      case 'completed':
+        return 'ENTREGADO';
+      default:
+        return 'RECIBIDO';
+    }
+  }
+
+  Future<void> updateStatus(String id, String newStatus) async {
+    try {
+      // Encontrar el pedido para obtener el pedidoId numérico
+      final order = orders.firstWhere((o) => o['id'] == id);
+      final int pedidoId = order['pedidoId'] ?? int.parse(id);
+      
+      // Actualizar en el backend
+      final orderDataSource = Provider.of<OrderRemoteDataSource>(context, listen: false);
+      final backendStatus = _mapUIToBackendStatus(newStatus);
+      await orderDataSource.updateOrderStatus(pedidoId, backendStatus);
+      
+      // Actualizar localmente
+      if (mounted) {
+        setState(() {
+          orders = orders.map((o) {
+            if (o['id'] == id) {
+              return {...o, 'status': newStatus};
+            }
+            return o;
+          }).toList();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al actualizar estado: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -64,9 +328,10 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
         title: const Text('Pedidos Recibidos'),
         actions: [
           IconButton(
-            icon: const Icon(LucideIcons.bell),
-            onPressed: () {},
-          )
+            icon: const Icon(LucideIcons.refreshCw),
+            onPressed: _loadOrders,
+            tooltip: 'Actualizar',
+          ),
         ],
       ),
       body: Column(
@@ -106,10 +371,54 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
 
           // Lista de Pedidos
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: filteredOrders.length,
-              itemBuilder: (context, index) {
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(LucideIcons.alertCircle, size: 48, color: Colors.red),
+                            const SizedBox(height: 16),
+                            Text(
+                              _error!,
+                              style: const TextStyle(color: Colors.red),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _loadOrders,
+                              child: const Text('Reintentar'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : filteredOrders.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(LucideIcons.package, size: 64, color: Colors.grey),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'No hay pedidos',
+                                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Los pedidos aparecerán aquí cuando los socios realicen pedidos',
+                                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          )
+                        : RefreshIndicator(
+                            onRefresh: _loadOrders,
+                            child: ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: filteredOrders.length,
+                              itemBuilder: (context, index) {
                 final order = filteredOrders[index];
                 return Card(
                   margin: const EdgeInsets.only(bottom: 16),
@@ -154,11 +463,33 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                             ),
                         ),
 
+                        if (order['observaciones'] != null && order['observaciones'].toString().isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              'Nota: ${order['observaciones']}',
+                              style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic),
+                            ),
+                          ),
+                        if (order['tipoConsumo'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Row(
+                              children: [
+                                Icon(LucideIcons.mapPin, size: 12, color: Colors.grey[600]),
+                                const SizedBox(width: 4),
+                                Text(
+                                  order['tipoConsumo'] == 'PARA_LLEVAR' ? 'Para llevar' : 'Consumir aquí',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                ),
+                              ],
+                            ),
+                          ),
                         const SizedBox(height: 12),
                         Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                                Text('Total: Bs ${order['total']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                const SizedBox(), // Ya no mostramos total porque no viene del backend
                                 Row(
                                     children: [
                                         if (order['status'] == 'pending')
@@ -188,7 +519,8 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                   ),
                 );
               },
-            ),
+                            ),
+                          ),
           )
         ],
       ),

@@ -18,16 +18,19 @@ class SyncService {
   }
 
   Future<void> _syncPendingOrders() async {
-    if (kDebugMode) print('SyncService: Connection restored. Checking for pending orders...');
+    print('[DEBUG SYNC] Connection restored. Checking for pending orders...');
     
     final pendingOrders = await _orderRepository.getUnsyncedOrders();
     
     if (pendingOrders.isEmpty) {
-      if (kDebugMode) print('SyncService: No pending orders to sync.');
+      print('[DEBUG SYNC] No pending orders to sync.');
       return;
     }
 
-    if (kDebugMode) print('SyncService: Found ${pendingOrders.length} pending orders.');
+    print('[DEBUG SYNC] Found ${pendingOrders.length} pending orders.');
+    for (var order in pendingOrders) {
+      print('[DEBUG SYNC] Pedido pendiente - ID: ${order.id}, clubId: ${order.clubId}, membresiaId: ${order.membresiaId}, items: ${order.items.length}');
+    }
 
     for (var order in pendingOrders) {
       await _syncOrder(order);
@@ -36,14 +39,17 @@ class SyncService {
 
   Future<void> _syncOrder(OrderEntity order) async {
     try {
-      if (kDebugMode) print('SyncService: Syncing order ${order.id}...');
+      print('[DEBUG SYNC] Syncing order ${order.id}...');
+      print('[DEBUG SYNC] Order details - clubId: ${order.clubId}, membresiaId: ${order.membresiaId}, items: ${order.items.length}');
       
       await _orderRemoteDataSource.sendOrder(order, order.items);
 
       await _orderRepository.markAsSynced(order.id);
-      if (kDebugMode) print('SyncService: Order ${order.id} synced successfully.');
+      print('[DEBUG SYNC] Order ${order.id} synced successfully.');
       
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('[DEBUG SYNC] Failed to sync order ${order.id}: $e');
+      print('[DEBUG SYNC] Stack trace: $stackTrace');
       if (kDebugMode) print('SyncService: Failed to sync order ${order.id}: $e');
     }
   }

@@ -189,7 +189,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       } else {
         throw Exception('Error cambiando disponibilidad: $errorMessage');
       }
-    } on FormatException catch (e) {
+    } on FormatException {
       throw Exception('Error cambiando disponibilidad: ID de producto inválido: $productId');
     }
   }

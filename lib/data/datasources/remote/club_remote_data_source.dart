@@ -87,6 +87,20 @@ class ClubRemoteDataSource {
     }
   }
 
+  Future<Club?> getClubById(int clubId) async {
+    try {
+      final clubes = await getClubes();
+      try {
+        return clubes.firstWhere((club) => club.id == clubId);
+      } catch (e) {
+        return null; // No encontrado
+      }
+    } catch (e) {
+      print('Error buscando club por ID: $e');
+      return null;
+    }
+  }
+
   Future<Anfitrion> getAnfitrion(int id) async {
     try {
       return await _fetchAnfitrion(id);

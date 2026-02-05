@@ -7,7 +7,12 @@ abstract class MembresiaRemoteDataSource {
   Future<void> activarSocio({required int clubId, required String activationPayload, String? referidoPor, String? comoConocio});
   Future<List<ClubMembership>> getMembresiasPorUsuario(int usuarioId);
   Future<List<Attendance>> getAsistencias(int membresiaId);
-  Future<void> registrarAsistencia({required int membresiaId, required int clubId});
+  Future<void> registrarAsistencia({
+    required int membresiaId, 
+    required int clubId,
+    required double latitud,
+    required double longitud,
+  });
 }
 
 class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
@@ -45,10 +50,8 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
       
       String msg = e.message ?? 'Error desconocido';
       final statusCode = e.response?.statusCode ?? 'N/A';
-      String rawData = '';
 
       if (e.response?.data != null) {
-        rawData = e.response!.data.toString();
         if (e.response!.data is Map && e.response!.data['message'] != null) {
           msg = e.response!.data['message'];
         } else if (e.response!.data is String) {
@@ -145,18 +148,41 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
     }
   }
   @override
-  Future<void> registrarAsistencia({required int membresiaId, required int clubId}) async {
+  Future<void> registrarAsistencia({
+    required int membresiaId, 
+    required int clubId,
+    required double latitud,
+    required double longitud,
+  }) async {
     try {
-      // Endpoint tentativo basado en convención. Ajustar si el backend es diferente.
-      // Payload típicamente es { "membresiaId": x, "clubId": y }
+      // Endpoint: POST /membresias/{membresiaId}/asistencias
+      // O alternativamente: POST /clubes/{clubId}/asistencias
       final body = {
         'membresiaId': membresiaId,
         'clubId': clubId,
-        'fechaHora': DateTime.now().toIso8601String(), // Opcional, el backend suele poner el timestamp
+        'latitud': latitud,
+        'longitud': longitud,
+        'fechaHora': DateTime.now().toIso8601String(),
       };
 
+      // Intentar primero con el endpoint de membresía
+      try {
+        final response = await _client.post(
+          '/membresias/$membresiaId/asistencias',
+          data: body,
+        );
+
+        if (response.statusCode == 201 || response.statusCode == 200) {
+          return; // Éxito
+        }
+      } catch (e) {
+        // Si falla, intentar con el endpoint alternativo
+        print('[DEBUG] Primer endpoint falló, intentando alternativo: $e');
+      }
+
+      // Endpoint alternativo: POST /clubes/{clubId}/asistencias
       final response = await _client.post(
-        '/asistencias', // Asumiendo POST /api/asistencias base
+        '/clubes/$clubId/asistencias',
         data: body,
       );
 
@@ -165,7 +191,19 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
       }
     } catch (e) {
       if (e is DioException) {
-         final msg = e.response?.data?.toString() ?? e.message;
+         final responseData = e.response?.data;
+         String msg = 'Error desconocido';
+         
+         if (responseData is Map) {
+           msg = responseData['message']?.toString() ?? 
+                 responseData['error']?.toString() ?? 
+                 e.message ?? 'Error desconocido';
+         } else if (responseData is String) {
+           msg = responseData;
+         } else {
+           msg = e.message ?? 'Error desconocido';
+         }
+         
          throw Exception('Error registro asistencia: $msg');
       }
       throw Exception('Error al registrar asistencia: $e');
