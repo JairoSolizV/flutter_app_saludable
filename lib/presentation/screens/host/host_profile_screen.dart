@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../../data/datasources/remote/club_remote_data_source.dart';
+import 'club/host_club_edit_screen.dart';
 
 class HostProfileScreen extends StatelessWidget {
   const HostProfileScreen({super.key});
@@ -90,7 +92,17 @@ class HostProfileScreen extends StatelessWidget {
              _OptionTile(
                icon: LucideIcons.store,
                title: 'Datos del Club',
-               onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Próximamente'))),
+               onTap: () async {
+                 // Fetch current club (assumes host has one club active or linked)
+                 final club = await Provider.of<ClubRemoteDataSource>(context, listen: false).getClubByHostId(int.parse(user.id));
+                 if (context.mounted) {
+                   if (club != null) {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => HostClubEditScreen(club: club)));
+                   } else {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se encontró información de tu club')));
+                   }
+                 }
+               },
              ),
              
              const SizedBox(height: 40),

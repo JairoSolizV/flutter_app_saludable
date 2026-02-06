@@ -19,6 +19,7 @@ class GuestClubDetailScreen extends StatefulWidget {
 
 class _GuestClubDetailScreenState extends State<GuestClubDetailScreen> {
   Anfitrion? _anfitrion;
+  String? _clubPhotoUrl;
   bool _loading = true;
 
   @override
@@ -29,8 +30,30 @@ class _GuestClubDetailScreenState extends State<GuestClubDetailScreen> {
 
   Future<void> _loadDetails() async {
     try {
-      final anfitrion = await clubRemoteDataSource.getAnfitrion(widget.club.anfitrionId);
-      if (mounted) setState(() { _anfitrion = anfitrion; _loading = false; });
+      // Async requests in parallel
+      final results = await Future.wait([
+        clubRemoteDataSource.getAnfitrion(widget.club.anfitrionId),
+        clubRemoteDataSource.getFotosClub(widget.club.id),
+      ]);
+
+      final anfitrion = results[0] as Anfitrion;
+      final photos = results[1] as List<FotoClub>;
+      
+      String? photoUrl;
+      if (photos.isNotEmpty) {
+        // Prefer 'PORTADA' and take the LAST one (newest), as backend appends
+        final cover = photos.lastWhere(
+          (p) => p.tipo == 'PORTADA', 
+          orElse: () => photos.last
+        );
+        photoUrl = cover.urlFoto;
+      }
+
+      if (mounted) setState(() { 
+        _anfitrion = anfitrion; 
+        _clubPhotoUrl = photoUrl;
+        _loading = false; 
+      });
     } catch (e) {
       if (mounted) setState(() => _loading = false);
     }
@@ -59,11 +82,19 @@ class _GuestClubDetailScreenState extends State<GuestClubDetailScreen> {
         child: Column(
           children: [
             // Banner del Club (Placeholder o imagen del club si tuvieras)
+            // Banner del Club
             Container(
               height: 200,
               width: double.infinity,
               color: Colors.grey[200],
-              child: const Icon(Icons.storefront, size: 80, color: Colors.grey),
+              child: _clubPhotoUrl != null
+                  ? Image.network(
+                      _clubPhotoUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.storefront, size: 80, color: Colors.grey),
+                    )
+                  : const Icon(Icons.storefront, size: 80, color: Colors.grey),
             ),
             
             // Info Principal

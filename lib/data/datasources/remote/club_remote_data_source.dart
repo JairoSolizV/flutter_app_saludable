@@ -1,6 +1,24 @@
 import 'package:dio/dio.dart';
 import '../../../domain/entities/club_membership.dart';
 
+class FotoClub {
+  final int id;
+  final int clubId;
+  final String urlFoto;
+  final String tipo;
+
+  FotoClub({required this.id, required this.clubId, required this.urlFoto, required this.tipo});
+
+  factory FotoClub.fromJson(Map<String, dynamic> json) {
+    return FotoClub(
+      id: json['id'],
+      clubId: json['clubId'],
+      urlFoto: json['urlFoto'],
+      tipo: json['tipo'] ?? '',
+    );
+  }
+}
+
 
 class Club {
   final int id;
@@ -14,6 +32,7 @@ class Club {
   final double lat;
   final double lng;
   final String estado;
+  final String? fotoUrl;
 
   Club({
     required this.id,
@@ -27,6 +46,7 @@ class Club {
     required this.lat,
     required this.lng,
     required this.estado,
+    this.fotoUrl,
   });
 
   factory Club.fromJson(Map<String, dynamic> json) {
@@ -39,8 +59,8 @@ class Club {
       nombreClub: json['nombreClub'],
       direccion: json['direccion'],
       horario: json['horario'] ?? '',
-      lat: (json['lat'] as num).toDouble(),
-      lng: (json['lng'] as num).toDouble(),
+      lat: (json['lat'] as num?)?.toDouble() ?? 0.0,
+      lng: (json['lng'] as num?)?.toDouble() ?? 0.0,
       estado: json['estado'],
     );
   }
@@ -140,6 +160,8 @@ class ClubRemoteDataSource {
     required int anfitrionId,
     required String nombreClub,
     required String direccion,
+    String? ciudad,
+    String? descripcion,
     int hubId = 2,
   }) async {
     try {
@@ -147,6 +169,8 @@ class ClubRemoteDataSource {
         'anfitrionId': anfitrionId,
         'nombreClub': nombreClub,
         'direccion': direccion,
+        'ciudad': ciudad ?? '',
+        'descripcion': descripcion ?? '',
         'hubId': hubId,
         'estado': 'PENDIENTE', 
       };
@@ -166,6 +190,72 @@ class ClubRemoteDataSource {
       }
       throw Exception('Error al solicitar club: $e');
     }
+  }
+
+  Future<void> updateClub(int id, Map<String, dynamic> data) async {
+    try {
+      // Remove fotoUrl from data if present to avoid 500 error
+      final cleanData = Map<String, dynamic>.from(data);
+      cleanData.remove('fotoUrl');
+
+      final response = await _client.put( // Changed to PUT based on standard, or verify if backend uses PUT/PATCH. Controller says @PutMapping("{id}")
+        '/clubes/$id',
+        data: cleanData,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Error al actualizar club: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (e is DioException) {
+         throw Exception('Error actualizando club: ${e.message}');
+      }
+      throw Exception('Error al actualizar club: $e');
+    }
+  }
+
+  Future<List<FotoClub>> getFotosClub(int clubId) async {
+    try {
+      final response = await _client.get('/fotos-club/club/$clubId');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+        return data.map((e) => FotoClub.fromJson(e)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching fotos: $e');
+      return [];
+    }
+  }
+
+  Future<void> subirFotoClub(int clubId, String urlFoto) async {
+    try {
+      // Endpoint: @PostMapping("/subir") params: clubId, urlFoto, tipo
+      // It uses @RequestParam, so we pass query params or FormData? 
+      // Controller: @PostMapping("/subir") @RequestParam ...
+      // In Dio, for @RequestParam mixed with Post, we usually use queryParameters or FormData depending on Spring config. 
+      // Safe bet for Spring @RequestParam in POST is usually query params OR x-www-form-urlencoded body.
+      // Let's try queryParameters first as it's explicit for @RequestParam.
+      
+      final response = await _client.post(
+        '/fotos-club/subir',
+        queryParameters: {
+          'clubId': clubId,
+          'urlFoto': urlFoto,
+          'tipo': 'PORTADA'
+        }
+      );
+
+      if (response.statusCode != 201 && response.statusCode != 200) {
+        throw Exception('Error subiendo foto: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error al subir foto: $e');
+    }
+  }
+
+  Future<void> eliminarFoto(int id) async {
+    await _client.delete('/fotos-club/$id');
   }
 }
 

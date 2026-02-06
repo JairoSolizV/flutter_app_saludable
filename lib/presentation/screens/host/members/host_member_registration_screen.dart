@@ -3,7 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
+import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../providers/user_provider.dart';
+import '../../../../core/utils/validators.dart';
 
 class HostMemberRegistrationScreen extends StatefulWidget {
   final String qrPayload; // Changed from int userId
@@ -80,6 +82,10 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.people_outline),
                 ),
+                validator: (value) {
+                   if (value == null || value.isEmpty) return null;
+                   return Validators.validateName(value);
+                },
               ),
               const SizedBox(height: 16),
 

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
+import 'package:flutter_app_saludable/core/utils/validators.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -73,28 +74,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       TextFormField(
                         controller: _firstNameCtrl,
                         decoration: const InputDecoration(labelText: 'Nombre', prefixIcon: Icon(Icons.person), border: OutlineInputBorder()),
-                        validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                        validator: Validators.validateName,
                       ),
                       const SizedBox(height: 16),
                       
                       TextFormField(
                         controller: _lastNameCtrl,
                         decoration: const InputDecoration(labelText: 'Apellido', prefixIcon: Icon(Icons.person_outline), border: OutlineInputBorder()),
-                        validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                        validator: Validators.validateName,
                       ),
                       const SizedBox(height: 16),
 
                       TextFormField(
                         controller: _emailCtrl,
                         decoration: const InputDecoration(labelText: 'Correo Electrónico', prefixIcon: Icon(Icons.email), border: OutlineInputBorder()),
-                        validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                        validator: Validators.validateEmail,
                       ),
                       const SizedBox(height: 16),
 
                       TextFormField(
                         controller: _phoneCtrl,
                         decoration: const InputDecoration(labelText: 'Teléfono', prefixIcon: Icon(Icons.phone), border: OutlineInputBorder()),
-                        validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                        validator: Validators.validateBolivianPhone,
+                        keyboardType: TextInputType.phone,
                       ),
                       const SizedBox(height: 16),
 
@@ -102,7 +104,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         controller: _passCtrl,
                         obscureText: true,
                         decoration: const InputDecoration(labelText: 'Contraseña', prefixIcon: Icon(Icons.lock), border: OutlineInputBorder()),
-                        validator: (v) => v!.length < 6 ? 'Mínimo 6 caracteres' : null,
+                        validator: Validators.validatePassword,
                       ),
                       
                       const SizedBox(height: 24),

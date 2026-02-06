@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../../providers/user_provider.dart';
+import 'package:flutter_app_saludable/core/utils/validators.dart';
 
 class BasicUserEditProfileScreen extends StatefulWidget {
   const BasicUserEditProfileScreen({super.key});
@@ -171,11 +172,11 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
 
               // Campos Generales
               _buildSectionTitle("Información Personal"),
-              _buildTextField(label: "Nombre Completo", controller: _nameController, icon: Icons.person_outline),
+              _buildTextField(label: "Nombre Completo", controller: _nameController, icon: Icons.person_outline, validator: Validators.validateName),
               const SizedBox(height: 16),
               _buildTextField(label: "Correo Electrónico", controller: _emailController, icon: Icons.email_outlined, readOnly: true), // Email read-only usually
               const SizedBox(height: 16),
-              _buildTextField(label: "Número de Celular", controller: _phoneController, icon: Icons.phone_android),
+              _buildTextField(label: "Número de Celular", controller: _phoneController, icon: Icons.phone_android, validator: Validators.validateBolivianPhone, keyboardType: TextInputType.phone),
               const SizedBox(height: 16),
               
               // Fecha Nacimiento
@@ -244,6 +245,8 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
     required TextEditingController controller, 
     required IconData icon,
     bool readOnly = false,
+    String? Function(String?)? validator,
+    TextInputType? keyboardType,
   }) {
     return Container(
        decoration: BoxDecoration(
@@ -251,17 +254,20 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
          borderRadius: BorderRadius.circular(12),
          border: Border.all(color: Colors.grey[200]!),
        ),
-       child: TextFormField(
-         controller: controller,
-         readOnly: readOnly,
-         decoration: InputDecoration(
-           labelText: label,
-           prefixIcon: Icon(icon, color: Colors.grey[400]),
-           border: InputBorder.none,
-           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-           floatingLabelBehavior: FloatingLabelBehavior.auto,
-         ),
-       ),
+          child: TextFormField(
+            controller: controller,
+            readOnly: readOnly,
+            keyboardType: keyboardType,
+            validator: validator,
+            decoration: InputDecoration(
+              labelText: label,
+              prefixIcon: Icon(icon, color: Colors.grey[400]),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              floatingLabelBehavior: FloatingLabelBehavior.auto,
+              errorStyle: const TextStyle(height: 0.5), // Reduce space if needed
+            ),
+          ),
     );
   }
 }
