@@ -32,7 +32,7 @@ class _HostMembersListScreenState extends State<HostMembersListScreen> {
 
       // 1. Obtener el Club del Anfitrión
       final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
-      final club = await clubDataSource.getClubByHostId(int.parse(user.id));
+      final club = await clubDataSource.getMyClub();
 
       if (club == null) {
         throw Exception("No se encontró un club asociado a este anfitrión.");

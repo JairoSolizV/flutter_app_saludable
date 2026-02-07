@@ -16,6 +16,7 @@ import 'data/datasources/remote/club_remote_data_source.dart'; // Nuevo
 import 'data/datasources/remote/membresia_remote_data_source.dart'; // Nuevo
 import 'data/datasources/remote/product_remote_data_source.dart';
 import 'data/datasources/remote/order_remote_data_source.dart';
+import 'data/datasources/remote/qr_remote_data_source.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'data/repositories/local_user_repository.dart';
 
@@ -28,6 +29,7 @@ late final ProductRemoteDataSource productRemoteDataSource;
 late final ClubRemoteDataSource clubRemoteDataSource; 
 late final MembresiaRemoteDataSource membresiaRemoteDataSource; // Nuevo
 late final OrderRemoteDataSource orderRemoteDataSource;
+late final QRRemoteDataSource qrRemoteDataSource;
 late final LocalProductRepository productRepository;
 late final LocalOrderRepository orderRepository;
 late final ConnectivityService connectivityService;
@@ -48,6 +50,7 @@ void main() {
     membresiaRemoteDataSource = MembresiaRemoteDataSourceImpl(apiClient.client);
     productRemoteDataSource = ProductRemoteDataSourceImpl(apiClient.client);
     orderRemoteDataSource = OrderRemoteDataSourceImpl(apiClient.client);
+    qrRemoteDataSource = QRRemoteDataSourceImpl(apiClient.client);
     
     // 4. Repositorios Híbridos
     productRepository = LocalProductRepository(dbHelper, remoteDataSource: productRemoteDataSource);
@@ -91,6 +94,9 @@ class AppState extends StatelessWidget {
         ),
         Provider<OrderRemoteDataSource>(
             create: (_) => orderRemoteDataSource,
+        ),
+        Provider<QRRemoteDataSource>(
+            create: (_) => qrRemoteDataSource,
         ),
          ChangeNotifierProvider(
           create: (_) => AuthProvider(authRemoteDataSource, userRepository),

@@ -98,4 +98,36 @@ class LocalOrderRepository implements OrderRepository {
       whereArgs: [orderId],
     );
   }
+
+  @override
+  Future<void> deleteOrder(String orderId) async {
+    final db = await _dbHelper.database;
+    await db.transaction((txn) async {
+      // Eliminar items primero (foreign key)
+      await txn.delete('order_items', where: 'order_id = ?', whereArgs: [orderId]);
+      // Eliminar pedido
+      await txn.delete('orders', where: 'id = ?', whereArgs: [orderId]);
+    });
+  }
+
+  @override
+  Future<void> deleteUnsyncedOrders() async {
+    final db = await _dbHelper.database;
+    await db.transaction((txn) async {
+      // Obtener IDs de pedidos no sincronizados
+      final unsyncedOrders = await txn.query(
+        'orders',
+        columns: ['id'],
+        where: 'is_synced = ?',
+        whereArgs: [0],
+      );
+      
+      // Eliminar items y pedidos
+      for (var order in unsyncedOrders) {
+        final orderId = order['id'] as String;
+        await txn.delete('order_items', where: 'order_id = ?', whereArgs: [orderId]);
+        await txn.delete('orders', where: 'id = ?', whereArgs: [orderId]);
+      }
+    });
+  }
 }

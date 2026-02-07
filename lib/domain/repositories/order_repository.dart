@@ -6,4 +6,6 @@ abstract class OrderRepository {
   Future<void> updateOrderStatus(String orderId, String status);
   Future<List<OrderEntity>> getUnsyncedOrders();
   Future<void> markAsSynced(String orderId);
+  Future<void> deleteOrder(String orderId);
+  Future<void> deleteUnsyncedOrders(); // Limpiar todos los pedidos no sincronizados
 }

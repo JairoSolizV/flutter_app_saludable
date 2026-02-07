@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../../../domain/entities/club_membership.dart';
 import '../../../domain/entities/attendance.dart';
 
@@ -7,12 +8,39 @@ abstract class MembresiaRemoteDataSource {
   Future<void> activarSocio({required int clubId, required String activationPayload, String? referidoPor, String? comoConocio});
   Future<List<ClubMembership>> getMembresiasPorUsuario(int usuarioId);
   Future<List<Attendance>> getAsistencias(int membresiaId);
-  Future<void> registrarAsistencia({
+  Future<AsistenciaResponse> registrarAsistencia({
     required int membresiaId, 
     required int clubId,
     required double latitud,
     required double longitud,
   });
+}
+
+/// Modelo para la respuesta de registro de asistencia
+class AsistenciaResponse {
+  final int? rachaActual;
+  final int? rachaMaxima;
+  final String? mensaje;
+  final String? clubNombre;
+  final String? fechaHora;
+
+  AsistenciaResponse({
+    this.rachaActual,
+    this.rachaMaxima,
+    this.mensaje,
+    this.clubNombre,
+    this.fechaHora,
+  });
+
+  factory AsistenciaResponse.fromJson(Map<String, dynamic> json) {
+    return AsistenciaResponse(
+      rachaActual: json['rachaActual'] as int?,
+      rachaMaxima: json['rachaMaxima'] as int?,
+      mensaje: json['mensaje']?.toString(),
+      clubNombre: json['clubNombre']?.toString(),
+      fechaHora: json['fechaHora']?.toString(),
+    );
+  }
 }
 
 class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
@@ -148,64 +176,83 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
     }
   }
   @override
-  Future<void> registrarAsistencia({
+  Future<AsistenciaResponse> registrarAsistencia({
     required int membresiaId, 
     required int clubId,
     required double latitud,
     required double longitud,
   }) async {
     try {
-      // Endpoint: POST /membresias/{membresiaId}/asistencias
-      // O alternativamente: POST /clubes/{clubId}/asistencias
-      final body = {
-        'membresiaId': membresiaId,
-        'clubId': clubId,
-        'latitud': latitud,
-        'longitud': longitud,
-        'fechaHora': DateTime.now().toIso8601String(),
-      };
-
-      // Intentar primero con el endpoint de membresía
-      try {
-        final response = await _client.post(
-          '/membresias/$membresiaId/asistencias',
-          data: body,
-        );
-
-        if (response.statusCode == 201 || response.statusCode == 200) {
-          return; // Éxito
-        }
-      } catch (e) {
-        // Si falla, intentar con el endpoint alternativo
-        print('[DEBUG] Primer endpoint falló, intentando alternativo: $e');
-      }
-
-      // Endpoint alternativo: POST /clubes/{clubId}/asistencias
+      // Endpoint correcto según el backend: POST /api/asistencias/registrar
+      // Con query params: membresiaId, clubId, qrClub (opcional)
+      debugPrint('[DEBUG MEMBRESIA] Registrando asistencia - membresiaId: $membresiaId, clubId: $clubId');
+      debugPrint('[DEBUG MEMBRESIA] Endpoint: POST /api/asistencias/registrar?membresiaId=$membresiaId&clubId=$clubId');
+      
       final response = await _client.post(
-        '/clubes/$clubId/asistencias',
-        data: body,
+        '/asistencias/registrar',
+        queryParameters: {
+          'membresiaId': membresiaId,
+          'clubId': clubId,
+          // qrClub es opcional, no lo enviamos si no es necesario
+        },
       );
+
+      debugPrint('[DEBUG MEMBRESIA] Respuesta recibida - Status: ${response.statusCode}');
+      debugPrint('[DEBUG MEMBRESIA] Response body: ${response.data}');
 
       if (response.statusCode != 201 && response.statusCode != 200) {
         throw Exception('Error al registrar asistencia: ${response.statusCode}');
       }
-    } catch (e) {
-      if (e is DioException) {
-         final responseData = e.response?.data;
-         String msg = 'Error desconocido';
-         
-         if (responseData is Map) {
-           msg = responseData['message']?.toString() ?? 
-                 responseData['error']?.toString() ?? 
-                 e.message ?? 'Error desconocido';
-         } else if (responseData is String) {
-           msg = responseData;
-         } else {
-           msg = e.message ?? 'Error desconocido';
-         }
-         
-         throw Exception('Error registro asistencia: $msg');
+
+      // Parsear respuesta para obtener racha actual y máxima
+      final responseData = response.data;
+      if (responseData is Map) {
+        return AsistenciaResponse.fromJson(Map<String, dynamic>.from(responseData));
       }
+      
+      // Si no hay datos, retornar respuesta vacía
+      return AsistenciaResponse(
+        rachaActual: null,
+        rachaMaxima: null,
+        mensaje: 'Asistencia registrada correctamente',
+      );
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+      debugPrint('[DEBUG MEMBRESIA] DioException - Status: $statusCode');
+      debugPrint('[DEBUG MEMBRESIA] Error: ${e.message}');
+      debugPrint('[DEBUG MEMBRESIA] Response data: ${e.response?.data}');
+      
+      if (statusCode == 401) {
+        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
+      } else if (statusCode == 403) {
+        throw Exception('No tienes permisos para registrar asistencia.');
+      } else if (statusCode == 500) {
+        throw Exception('Error del servidor. Por favor intenta más tarde.');
+      }
+      
+      final responseData = e.response?.data;
+      String msg = 'Error desconocido';
+      
+      if (responseData is Map) {
+        msg = responseData['message']?.toString() ?? 
+              responseData['error']?.toString() ?? 
+              e.message ?? 'Error desconocido';
+        
+        // Si el backend responde que ya se registró hoy, devolver respuesta con mensaje
+        if (msg.toLowerCase().contains('ya registraste') || 
+            msg.toLowerCase().contains('ya existe') ||
+            msg.toLowerCase().contains('duplicado')) {
+          return AsistenciaResponse.fromJson(Map<String, dynamic>.from(responseData));
+        }
+      } else if (responseData is String) {
+        msg = responseData;
+      } else {
+        msg = e.message ?? 'Error desconocido';
+      }
+      
+      throw Exception('Error registro asistencia: $msg');
+    } catch (e) {
+      debugPrint('[DEBUG MEMBRESIA] Error general registrando asistencia: $e');
       throw Exception('Error al registrar asistencia: $e');
     }
   }

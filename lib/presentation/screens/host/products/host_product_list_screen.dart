@@ -45,7 +45,7 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
 
     if (currentUser != null && int.tryParse(currentUser.id) != null) {
       try {
-        final club = await clubDataSource.getClubByHostId(int.parse(currentUser.id));
+        final club = await clubDataSource.getMyClub();
         if (club != null) {
           _clubId = club.id;
           _hubId = club.hubId;

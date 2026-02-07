@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../../../domain/entities/product.dart';
 
 abstract class ProductRemoteDataSource {
@@ -19,13 +20,18 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
   Future<List<Product>> getProducts({required int hubId, required int clubId}) async {
     try {
       // Nuevo endpoint: GET /api/productos/hub/{hubId}?clubId={clubId}
-      print('[DEBUG] Obteniendo productos - hubId: $hubId, clubId: $clubId');
+      debugPrint('[DEBUG PRODUCTOS] Obteniendo productos - hubId: $hubId, clubId: $clubId');
+      debugPrint('[DEBUG PRODUCTOS] Endpoint: GET /api/productos/hub/$hubId?clubId=$clubId');
+      debugPrint('[DEBUG PRODUCTOS] URL completa: ${_client.options.baseUrl}/productos/hub/$hubId?clubId=$clubId');
+      
       final response = await _client.get(
         '/productos/hub/$hubId', 
         queryParameters: {'clubId': clubId}
       );
 
-      print('[DEBUG] Respuesta recibida - Status: ${response.statusCode}, Tipo de data: ${response.data.runtimeType}');
+      debugPrint('[DEBUG PRODUCTOS] Respuesta recibida - Status: ${response.statusCode}');
+      debugPrint('[DEBUG PRODUCTOS] Response body: ${response.data}');
+      debugPrint('[DEBUG PRODUCTOS] Tipo de data: ${response.data.runtimeType}');
       
       if (response.statusCode == 200) {
         // Manejar diferentes formatos de respuesta del backend
@@ -41,7 +47,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
           }
         }
         
-        print('[DEBUG] Total de productos en respuesta: ${data.length}');
+        debugPrint('[DEBUG PRODUCTOS] Total de productos en respuesta: ${data.length}');
         
         return data.map<Product>((json) {
            // Manejar el id correctamente: puede venir como int o String del backend
@@ -49,7 +55,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
            final String productId = idValue is int ? idValue.toString() : (idValue?.toString() ?? '');
            
            // Debug: imprimir el ID del producto obtenido
-           print('[DEBUG] Producto obtenido - ID original: $idValue, ID convertido: $productId, Nombre: ${json['nombre']}');
+           debugPrint('[DEBUG PRODUCTOS] Producto obtenido - ID original: $idValue, ID convertido: $productId, Nombre: ${json['nombre']}');
            
            // Manejar hubId correctamente: puede venir como int o null
            final dynamic hubIdValue = json['hubId'];
@@ -84,13 +90,18 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
     try {
       // Endpoint: GET /api/productos?clubId={clubId}
       // Este endpoint devuelve solo productos disponibles (disponible = true)
-      print('[DEBUG] Obteniendo productos disponibles del club - clubId: $clubId');
+      debugPrint('[DEBUG PRODUCTOS] Obteniendo productos disponibles del club - clubId: $clubId');
+      debugPrint('[DEBUG PRODUCTOS] Endpoint: GET /api/productos?clubId=$clubId');
+      debugPrint('[DEBUG PRODUCTOS] URL completa: ${_client.options.baseUrl}/productos?clubId=$clubId');
+      
       final response = await _client.get(
         '/productos',
         queryParameters: {'clubId': clubId}
       );
 
-      print('[DEBUG] Respuesta recibida - Status: ${response.statusCode}, Tipo de data: ${response.data.runtimeType}');
+      debugPrint('[DEBUG PRODUCTOS] Respuesta recibida - Status: ${response.statusCode}');
+      debugPrint('[DEBUG PRODUCTOS] Response body: ${response.data}');
+      debugPrint('[DEBUG PRODUCTOS] Tipo de data: ${response.data.runtimeType}');
       
       if (response.statusCode == 200) {
         // Manejar diferentes formatos de respuesta del backend
@@ -106,7 +117,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
           }
         }
         
-        print('[DEBUG] Total de productos disponibles en respuesta: ${data.length}');
+        debugPrint('[DEBUG PRODUCTOS] Total de productos disponibles en respuesta: ${data.length}');
         
         return data.map<Product>((json) {
            // Manejar el id correctamente: puede venir como int o String del backend
@@ -114,7 +125,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
            final String productId = idValue is int ? idValue.toString() : (idValue?.toString() ?? '');
            
            // Debug: imprimir el ID del producto obtenido
-           print('[DEBUG] Producto disponible - ID: $productId, Nombre: ${json['nombre']}');
+           debugPrint('[DEBUG PRODUCTOS] Producto disponible - ID: $productId, Nombre: ${json['nombre']}');
            
            // Manejar hubId correctamente: puede venir como int o null
            final dynamic hubIdValue = json['hubId'];
@@ -132,11 +143,35 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
              available: true, // Estos productos siempre están disponibles (ya filtrados por el backend)
            );
         }).toList();
+      } else if (response.statusCode == 401) {
+        debugPrint('[DEBUG PRODUCTOS] ERROR 401: No autenticado');
+        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
+      } else if (response.statusCode == 403) {
+        debugPrint('[DEBUG PRODUCTOS] ERROR 403: Sin permisos');
+        throw Exception('No tienes permisos para ver los productos.');
+      } else if (response.statusCode == 500) {
+        debugPrint('[DEBUG PRODUCTOS] ERROR 500: Error del servidor');
+        throw Exception('Error del servidor. Por favor intenta más tarde.');
       } else {
+        debugPrint('[DEBUG PRODUCTOS] ERROR: Status code ${response.statusCode}');
         throw Exception('Error al cargar productos: ${response.statusCode}');
       }
     } on DioException catch (e) {
-      throw Exception('Error de red al cargar productos disponibles: ${e.message}');
+      final statusCode = e.response?.statusCode;
+      debugPrint('[DEBUG PRODUCTOS] DioException - Status: $statusCode');
+      debugPrint('[DEBUG PRODUCTOS] Response data: ${e.response?.data}');
+      
+      if (statusCode == 401) {
+        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
+      } else if (statusCode == 403) {
+        throw Exception('No tienes permisos para ver los productos.');
+      } else if (statusCode == 500) {
+        throw Exception('Error del servidor. Por favor intenta más tarde.');
+      }
+      
+      final errorMessage = e.response?.data?['message'] ?? e.message ?? 'Error desconocido';
+      debugPrint('[DEBUG PRODUCTOS] Error obteniendo productos - Status: $statusCode, Error: $errorMessage');
+      throw Exception('Error de red al cargar productos disponibles: $errorMessage');
     }
   }
 
@@ -147,19 +182,19 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       final int productIdInt = int.parse(productId);
       
       // Debug: imprimir los valores que se están enviando
-      print('[DEBUG] Toggle producto - clubId: $clubId, productId: $productId (int: $productIdInt)');
+      debugPrint('[DEBUG PRODUCTOS] Toggle producto - clubId: $clubId, productId: $productId (int: $productIdInt)');
       
       // Endpoint: PATCH /api/clubes/{clubId}/productos/{productoId}/toggle
       final response = await _client.patch('/clubes/$clubId/productos/$productIdInt/toggle');
       
       // Debug: imprimir respuesta exitosa
-      print('[DEBUG] Toggle exitoso - Response: ${response.statusCode}');
+      debugPrint('[DEBUG PRODUCTOS] Toggle exitoso - Response: ${response.statusCode}');
     } on DioException catch (e) {
       // Mejorar mensaje de error con más detalles
       final statusCode = e.response?.statusCode;
       final responseData = e.response?.data;
       
-      print('[DEBUG] Error en toggle - Status: $statusCode, Data: $responseData');
+      debugPrint('[DEBUG PRODUCTOS] Error en toggle - Status: $statusCode, Data: $responseData');
       
       // Extraer mensaje de error del backend (ApiResponse tiene message en la raíz)
       String errorMessage = 'Error desconocido';
@@ -175,7 +210,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
         errorMessage = e.message ?? 'Error desconocido';
       }
       
-      print('[DEBUG] Mensaje de error extraído: $errorMessage');
+      debugPrint('[DEBUG PRODUCTOS] Mensaje de error extraído: $errorMessage');
       
       if (statusCode == 403) {
         throw Exception('Error cambiando disponibilidad: No tienes permisos para modificar este producto. Verifica que seas el anfitrión del club.');

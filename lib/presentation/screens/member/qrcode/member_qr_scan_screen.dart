@@ -349,31 +349,60 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
         club.lng
       );
 
-      // 5. Validar que esté dentro de 40 metros
+      // 5. Validar que esté dentro de 40 metros (opcional - comentado para asistencias globales)
+      // Las asistencias globales permiten registrar en cualquier club activo
+      // La validación de distancia es opcional y puede ser removida si se desea
       const double maxDistanceMeters = 40.0;
       if (distance > maxDistanceMeters) {
-        throw Exception(
-          "Debes estar cerca del club para registrar asistencia. "
-          "Distancia actual: ${distance.toStringAsFixed(1)}m. "
-          "Distancia máxima permitida: ${maxDistanceMeters}m"
+        // Mostrar advertencia pero permitir continuar (asistencias globales)
+        final shouldContinue = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Advertencia de Distancia'),
+            content: Text(
+              "Estás a ${distance.toStringAsFixed(1)}m del club. "
+              "¿Deseas registrar la asistencia de todas formas?",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7AC142),
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Continuar'),
+              ),
+            ],
+          ),
         );
+        if (shouldContinue != true) {
+          if (mounted) {
+            setState(() => _isProcessing = false);
+          }
+          return;
+        }
       }
 
-      // 6. Obtener membresía del usuario para este club
+      // 6. Obtener membresía del usuario (asistencias globales - cualquier club activo)
       if (!mounted) return;
       final List<ClubMembership> membresias =
           await membresiaDataSource.getMembresiasPorUsuario(int.parse(user.id));
       
-      // Buscar si tiene membresía en ese club
-      final membership = membresias.firstWhere(
-        (m) => m.clubId == clubId, 
-        orElse: () => throw Exception("No tienes una membresía activa en este club.")
-      );
+      if (membresias.isEmpty) {
+        throw Exception("No tienes una membresía activa. Debes ser socio de un club para registrar asistencia.");
+      }
 
-      // 7. Registrar Asistencia con geolocalización
-      await membresiaDataSource.registrarAsistencia(
+      // Usar la primera membresía activa (asistencias globales - sin restricción de HUB/club)
+      final membership = membresias.first;
+
+      // 7. Registrar Asistencia (asistencias globales - el backend valida que el club esté activo)
+      final asistenciaResponse = await membresiaDataSource.registrarAsistencia(
         membresiaId: membership.id,
-        clubId: clubId,
+        clubId: clubId, // Club del QR escaneado (cualquier club activo)
         latitud: userLat,
         longitud: userLng,
       );
@@ -385,18 +414,61 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
       if (!mounted) return;
       setState(() => _isProcessing = false);
 
-      // Mostrar éxito
+      // Mostrar éxito con información de racha
       final shouldReload = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
-          title: const Text("¡Asistencia Registrada!"),
+          title: Row(
+            children: [
+              const Icon(LucideIcons.checkCircle, color: Colors.green, size: 28),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  "¡Asistencia Registrada!",
+                  style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(LucideIcons.checkCircle, color: Colors.green, size: 50),
-              SizedBox(height: 10),
-              Text("Tu visita ha sido registrada correctamente. ¡Disfruta tu consumo!"),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(asistenciaResponse.mensaje ?? "Tu visita ha sido registrada correctamente. ¡Disfruta tu consumo!"),
+              if (asistenciaResponse.rachaActual != null || asistenciaResponse.rachaMaxima != null) ...[
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+                if (asistenciaResponse.rachaActual != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        const Icon(LucideIcons.flame, color: Colors.orange, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Racha Actual: ${asistenciaResponse.rachaActual} días',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (asistenciaResponse.rachaMaxima != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        const Icon(LucideIcons.trophy, color: Colors.amber, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Racha Máxima: ${asistenciaResponse.rachaMaxima} días',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ],
           ),
           actions: [

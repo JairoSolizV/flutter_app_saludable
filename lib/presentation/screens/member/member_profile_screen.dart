@@ -2,11 +2,48 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../../data/datasources/remote/qr_remote_data_source.dart';
 
-class MemberProfileScreen extends StatelessWidget {
+class MemberProfileScreen extends StatefulWidget {
   const MemberProfileScreen({super.key});
+
+  @override
+  State<MemberProfileScreen> createState() => _MemberProfileScreenState();
+}
+
+class _MemberProfileScreenState extends State<MemberProfileScreen> {
+  String? _qrData;
+  bool _isLoadingQR = true;
+  String? _qrError;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadQR();
+  }
+
+  Future<void> _loadQR() async {
+    try {
+      final qrDataSource = Provider.of<QRRemoteDataSource>(context, listen: false);
+      final qrResponse = await qrDataSource.getSocioQR();
+      if (mounted) {
+        setState(() {
+          _qrData = qrResponse.qrPayload;
+          _isLoadingQR = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _qrError = e.toString().replaceAll('Exception: ', '');
+          _isLoadingQR = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +112,87 @@ class MemberProfileScreen extends StatelessWidget {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
+                   // QR del Socio (encima del teléfono)
+                   if (_isLoadingQR)
+                     Container(
+                       padding: const EdgeInsets.all(20),
+                       decoration: BoxDecoration(
+                         color: Colors.white,
+                         borderRadius: BorderRadius.circular(16),
+                         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))]
+                       ),
+                       child: const Center(
+                         child: CircularProgressIndicator(),
+                       ),
+                     )
+                   else if (_qrError != null)
+                     Container(
+                       padding: const EdgeInsets.all(20),
+                       decoration: BoxDecoration(
+                         color: Colors.white,
+                         borderRadius: BorderRadius.circular(16),
+                         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))]
+                       ),
+                       child: Column(
+                         children: [
+                           const Icon(LucideIcons.qrCode, size: 48, color: Colors.grey),
+                           const SizedBox(height: 8),
+                           Text(
+                             'Error al cargar QR',
+                             style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                           ),
+                           TextButton(
+                             onPressed: _loadQR,
+                             child: const Text('Reintentar'),
+                           ),
+                         ],
+                       ),
+                     )
+                   else if (_qrData != null)
+                     Container(
+                       padding: const EdgeInsets.all(20),
+                       decoration: BoxDecoration(
+                         color: Colors.white,
+                         borderRadius: BorderRadius.circular(16),
+                         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))]
+                       ),
+                       child: Column(
+                         children: [
+                           const Row(
+                             children: [
+                               Icon(LucideIcons.qrCode, color: Color(0xFF7AC142)),
+                               SizedBox(width: 8),
+                               Text(
+                                 'Código QR de Identificación',
+                                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF7AC142)),
+                               ),
+                             ],
+                           ),
+                           const SizedBox(height: 16),
+                           const Text(
+                             'Muestra este QR al anfitrión para identificarte',
+                             style: TextStyle(fontSize: 12, color: Colors.grey),
+                             textAlign: TextAlign.center,
+                           ),
+                           const SizedBox(height: 16),
+                           Container(
+                             padding: const EdgeInsets.all(16),
+                             decoration: BoxDecoration(
+                               color: Colors.white,
+                               borderRadius: BorderRadius.circular(12),
+                               border: Border.all(color: const Color(0xFF7AC142), width: 2),
+                             ),
+                             child: QrImageView(
+                               data: _qrData!,
+                               version: QrVersions.auto,
+                               size: 200.0,
+                               foregroundColor: const Color(0xFF333333),
+                             ),
+                           ),
+                         ],
+                       ),
+                     ),
+                   const SizedBox(height: 16),
                    _ProfileCard(
                        icon: LucideIcons.phone,
                        title: 'Teléfono',

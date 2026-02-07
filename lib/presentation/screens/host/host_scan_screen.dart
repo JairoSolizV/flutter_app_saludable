@@ -3,8 +3,10 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../providers/user_provider.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
+import '../../../data/datasources/remote/qr_remote_data_source.dart';
 
 class HostScanScreen extends StatefulWidget {
   const HostScanScreen({super.key});
@@ -67,6 +69,152 @@ class _HostScanScreenState extends State<HostScanScreen> {
 
     if (!mounted) return;
 
+    // Determinar tipo de QR
+    if (code.startsWith('SOCIO:')) {
+      // QR de socio - validar con backend
+      await _validateSocioQR(code);
+    } else if (code.startsWith('ACTIVATE:')) {
+      // QR de activación - flujo original
+      await _handleActivationQR(code);
+    } else {
+      // QR desconocido
+      if (mounted) {
+        _showError('Código QR no reconocido. Debe ser un QR de socio o de activación.');
+        await _restartCamera();
+      }
+    }
+  }
+
+  Future<void> _validateSocioQR(String qrCode) async {
+    // Mostrar loading
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return const Center(child: CircularProgressIndicator());
+      },
+    );
+
+    try {
+      final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
+      final qrDataSource = Provider.of<QRRemoteDataSource>(context, listen: false);
+
+      // Obtener club del anfitrión
+      final club = await clubDataSource.getMyClub();
+      if (club == null) {
+        throw Exception('No se encontró club para este anfitrión.');
+      }
+
+      // Validar QR del socio
+      final validationResponse = await qrDataSource.validarSocioQR(qrCode, club.id);
+
+      // Cerrar loading
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      // Mostrar resultado
+      if (!mounted) return;
+      await _showSocioValidationResult(validationResponse);
+
+      // Reiniciar cámara
+      if (mounted) {
+        await _restartCamera();
+      }
+    } catch (e) {
+      // Cerrar loading
+      try {
+        if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      } catch (_) {}
+
+      if (mounted) {
+        _showError('Error al validar QR: ${e.toString().replaceAll('Exception: ', '')}');
+        await _restartCamera();
+      }
+    }
+  }
+
+  Future<void> _showSocioValidationResult(QRValidacionResponse response) async {
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              response.valido ? LucideIcons.checkCircle : LucideIcons.xCircle,
+              color: response.valido ? Colors.green : Colors.red,
+              size: 28,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                response.valido ? 'Socio Válido' : 'Socio Inválido',
+                style: TextStyle(
+                  color: response.valido ? Colors.green : Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (response.nombreCompleto != null) ...[
+                _InfoRow('Nombre', response.nombreCompleto!),
+                const SizedBox(height: 8),
+              ],
+              if (response.numeroSocio != null) ...[
+                _InfoRow('Número de Socio', response.numeroSocio!),
+                const SizedBox(height: 8),
+              ],
+              if (response.estado != null) ...[
+                _InfoRow('Estado', response.estado!),
+                const SizedBox(height: 8),
+              ],
+              if (response.nivelNombre != null) ...[
+                _InfoRow('Nivel', response.nivelNombre!),
+                const SizedBox(height: 8),
+              ],
+              if (response.rachaActual != null) ...[
+                _InfoRow('Racha Actual', '${response.rachaActual} días'),
+                const SizedBox(height: 8),
+              ],
+              if (response.rachaMaxima != null) ...[
+                _InfoRow('Racha Máxima', '${response.rachaMaxima} días'),
+                const SizedBox(height: 8),
+              ],
+              if (response.mensaje != null) ...[
+                const Divider(),
+                const SizedBox(height: 8),
+                Text(
+                  response.mensaje!,
+                  style: TextStyle(
+                    color: response.valido ? Colors.green[700] : Colors.red[700],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleActivationQR(String code) async {
     // 1. Diálogo de confirmación
     final shouldProcess = await showDialog<bool>(
       context: context,
@@ -93,7 +241,6 @@ class _HostScanScreenState extends State<HostScanScreen> {
     }
 
     // 2. Mostrar Loading y ejecutar lógica
-    // Usamos un context seguro para cerrar el dialog después
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -104,9 +251,11 @@ class _HostScanScreenState extends State<HostScanScreen> {
 
     try {
       final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
+      final currentUser = Provider.of<UserProvider>(context, listen: false).currentUser;
+      final int hostId = int.tryParse(currentUser?.id ?? '0') ?? 0;
 
       print('SCAN_DEBUG: Buscando club hostId: $hostId');
-      final club = await clubDataSource.getClubByHostId(hostId);
+      final club = await clubDataSource.getMyClub();
       
       print('SCAN_DEBUG: Club encontrado: ${club?.nombreClub}');
 
@@ -190,7 +339,7 @@ class _HostScanScreenState extends State<HostScanScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Escanear QR de Usuario'),
+        title: const Text('Escanear QR de Socio'),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
       ),
@@ -215,7 +364,7 @@ class _HostScanScreenState extends State<HostScanScreen> {
                         child: Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Text(
-                                "Encuadra el QR aquí",
+                                "Encuadra el QR del socio aquí",
                                 style: TextStyle(
                                     color: Colors.white.withOpacity(0.8),
                                     fontWeight: FontWeight.bold,
@@ -230,6 +379,40 @@ class _HostScanScreenState extends State<HostScanScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 100,
+          child: Text(
+            '$label:',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

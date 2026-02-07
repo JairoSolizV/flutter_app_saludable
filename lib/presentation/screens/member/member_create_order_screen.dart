@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -9,6 +10,7 @@ import '../../providers/user_provider.dart';
 import '../../../domain/entities/order_entity.dart';
 import '../../../domain/entities/club_membership.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
+import '../../../data/datasources/remote/club_remote_data_source.dart';
 
 class MemberCreateOrderScreen extends StatefulWidget {
   const MemberCreateOrderScreen({super.key});
@@ -26,6 +28,11 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
   bool _isLoadingMembership = true;
   String _tipoConsumo = 'EN_LUGAR'; // 'EN_LUGAR' o 'PARA_LLEVAR'
   final TextEditingController _notaController = TextEditingController();
+  
+  // Nuevos campos para selector de club
+  List<Club> _availableClubes = []; // Lista de clubes del HUB
+  int? _selectedClubId; // Club seleccionado para el pedido
+  bool _isLoadingClubes = false;
 
   @override
   void initState() {
@@ -60,17 +67,67 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
           _isLoadingMembership = false;
         });
         
-        // Cargar productos disponibles del club
-        if (mounted) {
-          await Provider.of<ProductProvider>(context, listen: false)
-              .loadAvailableProducts(membership.clubId);
+        // Obtener el club de la membresía para obtener el hubId
+        final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
+        final club = await clubDataSource.getClubById(membership.clubId);
+        
+        if (club != null) {
+          // Cargar todos los clubes del mismo HUB
+          await _loadClubesByHub(club.hubId);
+          
+          // Establecer el club seleccionado por defecto como el club de la membresía
+          setState(() {
+            _selectedClubId = membership.clubId;
+          });
+          
+          // Cargar productos disponibles del club seleccionado
+          if (mounted && _selectedClubId != null) {
+            await Provider.of<ProductProvider>(context, listen: false)
+                .loadAvailableProducts(_selectedClubId!);
+          }
         }
       } else {
         setState(() => _isLoadingMembership = false);
       }
     } catch (e) {
-      print('Error loading membership: $e');
+      debugPrint('Error loading membership: $e');
       setState(() => _isLoadingMembership = false);
+    }
+  }
+
+  Future<void> _loadClubesByHub(int hubId) async {
+    try {
+      setState(() => _isLoadingClubes = true);
+      final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
+      final clubes = await clubDataSource.getClubesByHub(hubId);
+      
+      if (mounted) {
+        setState(() {
+          _availableClubes = clubes;
+          _isLoadingClubes = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading clubes: $e');
+      if (mounted) {
+        setState(() => _isLoadingClubes = false);
+      }
+    }
+  }
+
+  Future<void> _onClubChanged(int? newClubId) async {
+    if (newClubId == null || newClubId == _selectedClubId) return;
+    
+    setState(() {
+      _selectedClubId = newClubId;
+      _cart.clear(); // Limpiar carrito al cambiar de club
+      _productNotes.clear();
+    });
+    
+    // Cargar productos del nuevo club seleccionado
+    if (mounted) {
+      await Provider.of<ProductProvider>(context, listen: false)
+          .loadAvailableProducts(newClubId);
     }
   }
 
@@ -103,6 +160,30 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
       );
     }
 
+    // Obtener nombre del club seleccionado
+    String selectedClubName = _membership!.clubNombre;
+    if (_selectedClubId != null && _availableClubes.isNotEmpty) {
+      final selectedClub = _availableClubes.firstWhere(
+        (club) => club.id == _selectedClubId,
+        orElse: () => Club(
+          id: 0,
+          hubId: 0,
+          hubNombre: '',
+          anfitrionId: 0,
+          anfitrionNombre: '',
+          nombreClub: '',
+          direccion: '',
+          horario: '',
+          lat: 0.0,
+          lng: 0.0,
+          estado: '',
+        ),
+      );
+      if (selectedClub.id != 0) {
+        selectedClubName = selectedClub.nombreClub;
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -111,7 +192,7 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
           children: [
             const Text('Nuevo Pedido'),
             Text(
-              _membership!.clubNombre,
+              selectedClubName,
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
             ),
           ],
@@ -119,6 +200,56 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
       ),
       body: Column(
         children: [
+          // Selector de Club
+          if (_availableClubes.length > 1)
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.grey[100],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Selecciona el club para tu pedido:',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<int>(
+                    value: _selectedClubId,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.store),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                    items: _availableClubes.map<DropdownMenuItem<int>>((club) {
+                      return DropdownMenuItem<int>(
+                        value: club.id,
+                        child: Text(club.nombreClub),
+                      );
+                    }).toList(),
+                    onChanged: _isLoadingClubes ? null : (int? newClubId) {
+                      _onClubChanged(newClubId);
+                    },
+                  ),
+                ],
+              ),
+            )
+          else if (_availableClubes.length == 1)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.grey[100],
+              child: Row(
+                children: [
+                  const Icon(Icons.store, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Club: ${_availableClubes.first.nombreClub}',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          
           if (productProvider.isLoading)
             const LinearProgressIndicator()
           else if (productProvider.error != null)
@@ -127,9 +258,22 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
               child: Text('Error: ${productProvider.error}', style: const TextStyle(color: Colors.red)),
             )
           else if (products.isEmpty)
-            const Expanded(
+            Expanded(
               child: Center(
-                child: Text('No hay productos disponibles en este momento.'),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.shopping_bag_outlined, size: 64, color: Colors.grey),
+                    const SizedBox(height: 16),
+                    Text(
+                      _selectedClubId == null 
+                        ? 'Selecciona un club para ver productos'
+                        : 'No hay productos disponibles en este club en este momento.',
+                      style: const TextStyle(color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             )
           else
@@ -277,17 +421,29 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                           return;
                         }
 
-                        print('[DEBUG CREATE] Creando pedido con:');
-                        print('[DEBUG CREATE]   clubId: ${_membership!.clubId}');
-                        print('[DEBUG CREATE]   membresiaId: ${_membership!.id}');
-                        print('[DEBUG CREATE]   userId: ${user.id}');
-                        print('[DEBUG CREATE]   items: ${items.length}');
-                        print('[DEBUG CREATE]   tipoConsumo: $_tipoConsumo');
+                        // Validar que se haya seleccionado un club
+                        if (_selectedClubId == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Por favor selecciona un club para hacer el pedido'),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                          return;
+                        }
+
+                        debugPrint('[DEBUG CREATE] Creando pedido con:');
+                        debugPrint('[DEBUG CREATE]   clubId seleccionado: $_selectedClubId');
+                        debugPrint('[DEBUG CREATE]   clubId membresía: ${_membership!.clubId}');
+                        debugPrint('[DEBUG CREATE]   membresiaId: ${_membership!.id}');
+                        debugPrint('[DEBUG CREATE]   userId: ${user.id}');
+                        debugPrint('[DEBUG CREATE]   items: ${items.length}');
+                        debugPrint('[DEBUG CREATE]   tipoConsumo: $_tipoConsumo');
 
                         final newOrder = OrderEntity(
                           id: orderId,
                           userId: user.id,
-                          clubId: _membership!.clubId,
+                          clubId: _selectedClubId!, // Usar el club seleccionado, no el de la membresía
                           membresiaId: _membership!.id,
                           tipoConsumo: _tipoConsumo, // 'EN_LUGAR' o 'PARA_LLEVAR'
                           observaciones: _notaController.text.trim(), // Nota general del pedido
@@ -297,11 +453,11 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                           isSynced: false
                         );
 
-                        print('[DEBUG CREATE] OrderEntity creado - clubId: ${newOrder.clubId}, membresiaId: ${newOrder.membresiaId}');
+                        debugPrint('[DEBUG CREATE] OrderEntity creado - clubId: ${newOrder.clubId}, membresiaId: ${newOrder.membresiaId}');
                         
                         try {
                           await orderProvider.createOrder(newOrder);
-                          print('[DEBUG CREATE] Pedido creado y procesado');
+                          debugPrint('[DEBUG CREATE] Pedido creado y procesado');
                           
                           if (context.mounted) {
                             context.pop(); // Volver a lista
@@ -314,7 +470,7 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                             );
                           }
                         } catch (e) {
-                          print('[DEBUG CREATE] ERROR al crear pedido: $e');
+                          debugPrint('[DEBUG CREATE] ERROR al crear pedido: $e');
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(

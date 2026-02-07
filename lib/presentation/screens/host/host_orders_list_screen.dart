@@ -43,20 +43,30 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
         throw Exception('Usuario no autenticado');
       }
 
-      final int hostId = int.parse(user.id);
-      
-      // Obtener el club del anfitrión
+      // Obtener el club del anfitrión usando GET /api/clubes/mio
       final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
-      final club = await clubDataSource.getClubByHostId(hostId);
+      debugPrint('[DEBUG HOST] Obteniendo club del anfitrión autenticado...');
+      
+      Club? club;
+      try {
+        club = await clubDataSource.getMyClub();
+      } catch (e) {
+        debugPrint('[DEBUG HOST] ERROR al obtener club: $e');
+        // Si el error es 404 o contiene "No se encontró", es porque el usuario no tiene un club asignado
+        if (e.toString().contains('No se encontró') || e.toString().contains('404')) {
+          throw Exception('No tienes un club asignado como anfitrión. Contacta al administrador para que te asigne un club.');
+        }
+        rethrow;
+      }
       
       if (club == null) {
-        print('[DEBUG HOST] ERROR: No se encontró el club del anfitrión con hostId: $hostId');
-        throw Exception('No se encontró el club del anfitrión');
+        debugPrint('[DEBUG HOST] ERROR: No se encontró el club del anfitrión');
+        throw Exception('No se encontró el club del anfitrión. Verifica que tengas un club asignado.');
       }
 
-      print('[DEBUG HOST] Club encontrado - ID: ${club.id}, Nombre: ${club.nombreClub}, Anfitrión ID: ${club.anfitrionId}');
-      print('[DEBUG HOST] Buscando pedidos para clubId: ${club.id}');
-      print('[DEBUG HOST] Verificando que el clubId del anfitrión ($hostId) corresponda al club (${club.anfitrionId})');
+      debugPrint('[DEBUG HOST] Club encontrado - ID: ${club.id}, Nombre: ${club.nombreClub}');
+      debugPrint('[DEBUG HOST] ClubId anfitrión: ${club.id}');
+      debugPrint('[DEBUG HOST] Buscando pedidos para clubId: ${club.id}');
 
       // Obtener pedidos del club
       final orderDataSource = Provider.of<OrderRemoteDataSource>(context, listen: false);
@@ -64,9 +74,9 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
       // DEBUG: Obtener todos los pedidos para verificar si hay pedidos en la BD
       try {
         final allOrders = await orderDataSource.getAllOrders();
-        print('[DEBUG HOST] Total de pedidos en la BD (todos los clubes): ${allOrders.length}');
+        debugPrint('[DEBUG HOST] Total de pedidos en la BD (todos los clubes): ${allOrders.length}');
         if (allOrders.isNotEmpty) {
-          print('[DEBUG HOST] Verificando clubId de los pedidos existentes...');
+          debugPrint('[DEBUG HOST] Verificando clubId de los pedidos existentes...');
           for (var order in allOrders) {
             int? orderClubId;
             if (order.containsKey('clubId')) {
@@ -77,20 +87,20 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                 orderClubId = membresia['clubId'] as int?;
               }
             }
-            print('[DEBUG HOST]   Pedido ID: ${order['id']}, clubId: $orderClubId (buscamos: ${club.id})');
+            debugPrint('[DEBUG HOST]   Pedido ID: ${order['id']}, clubId: $orderClubId (buscamos: ${club.id})');
           }
         }
       } catch (e) {
-        print('[DEBUG HOST] No se pudo obtener todos los pedidos (puede que el endpoint no exista): $e');
+        debugPrint('[DEBUG HOST] No se pudo obtener todos los pedidos (puede que el endpoint no exista): $e');
       }
       
       final ordersData = await orderDataSource.getOrdersByClub(club.id);
       
-      print('[DEBUG HOST] Después de getOrdersByClub - Pedidos recibidos: ${ordersData.length}');
+      debugPrint('[DEBUG HOST] Después de getOrdersByClub - Pedidos recibidos: ${ordersData.length}');
       
-      print('[DEBUG HOST] Datos recibidos del backend: ${ordersData.length} pedidos');
+      debugPrint('[DEBUG HOST] Datos recibidos del backend: ${ordersData.length} pedidos');
       if (ordersData.isEmpty) {
-        print('[DEBUG HOST] No hay pedidos en la respuesta del backend');
+        debugPrint('[DEBUG HOST] No hay pedidos en la respuesta del backend');
         if (mounted) {
           setState(() {
             orders = [];
@@ -100,9 +110,9 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
         return;
       }
       
-      print('[DEBUG HOST] Ejemplo de estructura del primer pedido:');
-      print('[DEBUG HOST] Keys: ${ordersData.first.keys.toList()}');
-      print('[DEBUG HOST] Primer pedido: ${ordersData.first}');
+      debugPrint('[DEBUG HOST] Ejemplo de estructura del primer pedido:');
+      debugPrint('[DEBUG HOST] Keys: ${ordersData.first.keys.toList()}');
+      debugPrint('[DEBUG HOST] Primer pedido: ${ordersData.first}');
       
       // El backend devuelve pedidos individuales (uno por producto)
       // Agrupar por membresiaId y fechaPedido para mostrar pedidos completos
@@ -115,7 +125,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
           final int pedidoId = idValue is int ? idValue : (idValue != null ? int.tryParse(idValue.toString()) ?? 0 : 0);
           
           if (pedidoId == 0) {
-            print('[DEBUG HOST] WARNING: Pedido sin ID válido, saltando: $order');
+            debugPrint('[DEBUG HOST] WARNING: Pedido sin ID válido, saltando: $order');
             continue;
           }
           
@@ -150,9 +160,10 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
           }
           
           // Información del producto
-          final dynamic productoData = order['producto'];
-          final Map<String, dynamic> producto = productoData is Map ? productoData as Map<String, dynamic> : {};
-          final String productoNombre = producto['nombre']?.toString() ?? 'Producto';
+          // El backend devuelve productoNombre directamente como string, no como objeto
+          final String productoNombre = order['productoNombre']?.toString() ?? 
+                                      (order['producto'] is Map ? (order['producto'] as Map)['nombre']?.toString() : null) ?? 
+                                      'Producto';
           final dynamic cantidadValue = order['cantidad'];
           final int cantidad = cantidadValue is int ? cantidadValue : (cantidadValue != null ? int.tryParse(cantidadValue.toString()) ?? 1 : 1);
           
@@ -182,14 +193,14 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
             'time': time,
           });
         } catch (e, stackTrace) {
-          print('[DEBUG HOST] Error procesando pedido: $e');
-          print('[DEBUG HOST] Stack trace: $stackTrace');
-          print('[DEBUG HOST] Pedido que causó error: $order');
+          debugPrint('[DEBUG HOST] Error procesando pedido: $e');
+          debugPrint('[DEBUG HOST] Stack trace: $stackTrace');
+          debugPrint('[DEBUG HOST] Pedido que causó error: $order');
           continue; // Continuar con el siguiente pedido
         }
       }
       
-      print('[DEBUG HOST] Pedidos agrupados: ${groupedOrders.length} grupos');
+      debugPrint('[DEBUG HOST] Pedidos agrupados: ${groupedOrders.length} grupos');
       
       // Convertir grupos a formato de UI
       final mappedOrders = groupedOrders.entries.map((entry) {
@@ -201,11 +212,16 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
         final String customerName = firstItem['customerName'] as String;
         final bool isVip = firstItem['isVip'] as bool;
         
-        // Construir lista de items
-        final List<String> itemsList = items.map<String>((item) {
+        // Construir lista de items agrupando productos iguales y sumando cantidades
+        final Map<String, int> productosAgrupados = {};
+        for (var item in items) {
           final int cantidad = item['cantidad'] as int;
           final String productoNombre = item['productoNombre'] as String;
-          return '$cantidad x $productoNombre';
+          productosAgrupados[productoNombre] = (productosAgrupados[productoNombre] ?? 0) + cantidad;
+        }
+        
+        final List<String> itemsList = productosAgrupados.entries.map<String>((entry) {
+          return '${entry.value} x ${entry.key}';
         }).toList();
         
         return {
@@ -221,7 +237,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
         };
       }).toList();
       
-      print('[DEBUG HOST] Pedidos mapeados para UI: ${mappedOrders.length}');
+      debugPrint('[DEBUG HOST] Pedidos mapeados para UI: ${mappedOrders.length}');
 
       if (mounted) {
         setState(() {
@@ -230,8 +246,8 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
         });
       }
     } catch (e, stackTrace) {
-      print('[DEBUG HOST] Error completo en _loadOrders: $e');
-      print('[DEBUG HOST] Stack trace: $stackTrace');
+      debugPrint('[DEBUG HOST] Error completo en _loadOrders: $e');
+      debugPrint('[DEBUG HOST] Stack trace: $stackTrace');
       
       if (mounted) {
         String errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -296,14 +312,14 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
       
       // Actualizar localmente
       if (mounted) {
-        setState(() {
-          orders = orders.map((o) {
-            if (o['id'] == id) {
-              return {...o, 'status': newStatus};
-            }
-            return o;
-          }).toList();
-        });
+    setState(() {
+      orders = orders.map((o) {
+        if (o['id'] == id) {
+          return {...o, 'status': newStatus};
+        }
+        return o;
+      }).toList();
+    });
       }
     } catch (e) {
       if (mounted) {
@@ -401,7 +417,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                                 Icon(LucideIcons.package, size: 64, color: Colors.grey),
                                 const SizedBox(height: 16),
                                 const Text(
-                                  'No hay pedidos',
+                                  'No hay pedidos para este club',
                                   style: TextStyle(fontSize: 18, color: Colors.grey),
                                 ),
                                 const SizedBox(height: 8),
@@ -415,10 +431,10 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                           )
                         : RefreshIndicator(
                             onRefresh: _loadOrders,
-                            child: ListView.builder(
-                              padding: const EdgeInsets.all(16),
-                              itemCount: filteredOrders.length,
-                              itemBuilder: (context, index) {
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: filteredOrders.length,
+              itemBuilder: (context, index) {
                 final order = filteredOrders[index];
                 return Card(
                   margin: const EdgeInsets.only(bottom: 16),
@@ -520,7 +536,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                 );
               },
                             ),
-                          ),
+            ),
           )
         ],
       ),

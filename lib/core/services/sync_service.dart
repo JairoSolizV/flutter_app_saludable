@@ -18,18 +18,18 @@ class SyncService {
   }
 
   Future<void> _syncPendingOrders() async {
-    print('[DEBUG SYNC] Connection restored. Checking for pending orders...');
+    debugPrint('[DEBUG SYNC] Connection restored. Checking for pending orders...');
     
     final pendingOrders = await _orderRepository.getUnsyncedOrders();
     
     if (pendingOrders.isEmpty) {
-      print('[DEBUG SYNC] No pending orders to sync.');
+      debugPrint('[DEBUG SYNC] No pending orders to sync.');
       return;
     }
 
-    print('[DEBUG SYNC] Found ${pendingOrders.length} pending orders.');
+    debugPrint('[DEBUG SYNC] Found ${pendingOrders.length} pending orders.');
     for (var order in pendingOrders) {
-      print('[DEBUG SYNC] Pedido pendiente - ID: ${order.id}, clubId: ${order.clubId}, membresiaId: ${order.membresiaId}, items: ${order.items.length}');
+      debugPrint('[DEBUG SYNC] Pedido pendiente - ID: ${order.id}, clubId: ${order.clubId}, membresiaId: ${order.membresiaId}, items: ${order.items.length}');
     }
 
     for (var order in pendingOrders) {
@@ -39,18 +39,34 @@ class SyncService {
 
   Future<void> _syncOrder(OrderEntity order) async {
     try {
-      print('[DEBUG SYNC] Syncing order ${order.id}...');
-      print('[DEBUG SYNC] Order details - clubId: ${order.clubId}, membresiaId: ${order.membresiaId}, items: ${order.items.length}');
+      debugPrint('[DEBUG SYNC] Syncing order ${order.id}...');
+      debugPrint('[DEBUG SYNC] Order details - clubId: ${order.clubId}, membresiaId: ${order.membresiaId}, items: ${order.items.length}');
       
       await _orderRemoteDataSource.sendOrder(order, order.items);
 
       await _orderRepository.markAsSynced(order.id);
-      print('[DEBUG SYNC] Order ${order.id} synced successfully.');
+      debugPrint('[DEBUG SYNC] Order ${order.id} synced successfully.');
       
     } catch (e, stackTrace) {
-      print('[DEBUG SYNC] Failed to sync order ${order.id}: $e');
-      print('[DEBUG SYNC] Stack trace: $stackTrace');
+      debugPrint('[DEBUG SYNC] Failed to sync order ${order.id}: $e');
+      debugPrint('[DEBUG SYNC] Stack trace: $stackTrace');
       if (kDebugMode) print('SyncService: Failed to sync order ${order.id}: $e');
+      
+      // Si el error es por validación del backend (membresía inactiva, etc.),
+      // eliminar el pedido local ya que nunca se podrá sincronizar
+      final errorMessage = e.toString().toLowerCase();
+      if (errorMessage.contains('no está activa') || 
+          errorMessage.contains('no está activo') ||
+          errorMessage.contains('no está disponible') ||
+          errorMessage.contains('no está configurado')) {
+        debugPrint('[DEBUG SYNC] Pedido con error de validación, eliminando de local: ${order.id}');
+        try {
+          await _orderRepository.deleteOrder(order.id);
+          debugPrint('[DEBUG SYNC] Pedido ${order.id} eliminado de local storage');
+        } catch (deleteError) {
+          debugPrint('[DEBUG SYNC] Error al eliminar pedido: $deleteError');
+        }
+      }
     }
   }
 
