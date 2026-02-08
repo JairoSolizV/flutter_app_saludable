@@ -3,6 +3,24 @@ import 'package:flutter/foundation.dart';
 import '../../../domain/entities/club_membership.dart';
 
 
+class FotoClub {
+  final int id;
+  final int clubId;
+  final String urlFoto;
+  final String tipo;
+
+  FotoClub({required this.id, required this.clubId, required this.urlFoto, required this.tipo});
+
+  factory FotoClub.fromJson(Map<String, dynamic> json) {
+    return FotoClub(
+      id: json['id'],
+      clubId: json['clubId'],
+      urlFoto: json['urlFoto'],
+      tipo: json['tipo'] ?? '',
+    );
+  }
+}
+
 class Club {
   final int id;
   final int hubId;
@@ -327,6 +345,8 @@ class ClubRemoteDataSource {
     required int anfitrionId,
     required String nombreClub,
     required String direccion,
+    String? ciudad,
+    String? descripcion,
     int hubId = 2,
   }) async {
     try {
@@ -334,6 +354,8 @@ class ClubRemoteDataSource {
         'anfitrionId': anfitrionId,
         'nombreClub': nombreClub,
         'direccion': direccion,
+        'ciudad': ciudad ?? '',
+        'descripcion': descripcion ?? '',
         'hubId': hubId,
         'estado': 'PENDIENTE', 
       };
@@ -353,6 +375,66 @@ class ClubRemoteDataSource {
       }
       throw Exception('Error al solicitar club: $e');
     }
+  }
+
+  Future<void> updateClub(int id, Map<String, dynamic> data) async {
+    try {
+      // Remove fotoUrl from data if present to avoid 500 error
+      final cleanData = Map<String, dynamic>.from(data);
+      cleanData.remove('fotoUrl');
+
+      // Using PUT as per backend standard for full/partial updates often in Spring if @PutMapping is used
+      final response = await _client.put(
+        '/clubes/$id',
+        data: cleanData,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Error al actualizar club: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (e is DioException) {
+         throw Exception('Error actualizando club: ${e.message}');
+      }
+      throw Exception('Error al actualizar club: $e');
+    }
+  }
+
+  Future<List<FotoClub>> getFotosClub(int clubId) async {
+    try {
+      final response = await _client.get('/fotos-club/club/$clubId');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+        return data.map((e) => FotoClub.fromJson(e)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching fotos: $e');
+      return [];
+    }
+  }
+
+  Future<void> subirFotoClub(int clubId, String urlFoto) async {
+    try {
+      final response = await _client.post(
+        '/fotos-club/subir',
+        queryParameters: {
+          'clubId': clubId,
+          'urlFoto': urlFoto,
+          'tipo': 'PORTADA'
+        }
+      );
+
+      if (response.statusCode != 201 && response.statusCode != 200) {
+        throw Exception('Error subiendo foto: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error al subir foto: $e');
+    }
+  }
+
+  Future<void> eliminarFoto(int id) async {
+    await _client.delete('/fotos-club/$id');
   }
 }
 
