@@ -114,8 +114,8 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
       debugPrint('[DEBUG HOST] Keys: ${ordersData.first.keys.toList()}');
       debugPrint('[DEBUG HOST] Primer pedido: ${ordersData.first}');
       
-      // El backend devuelve pedidos individuales (uno por producto)
-      // Agrupar por membresiaId y fechaPedido para mostrar pedidos completos
+      // El backend ahora devuelve pedidos con múltiples items
+      // Agrupar por pedidoId para mostrar todos los items de cada pedido
       final Map<String, List<Map<String, dynamic>>> groupedOrders = {};
       
       for (var order in ordersData) {
@@ -141,6 +141,16 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
           final dynamic membresiaIdValue = membresia['id'] ?? order['membresiaId'];
           final int membresiaId = membresiaIdValue is int ? membresiaIdValue : (membresiaIdValue != null ? int.tryParse(membresiaIdValue.toString()) ?? pedidoId : pedidoId);
           
+          // Obtener número de socio (membresiaNumeroSocio)
+          String numeroSocio = '';
+          if (order['membresiaNumeroSocio'] != null) {
+            numeroSocio = order['membresiaNumeroSocio'].toString();
+          } else if (membresia['numeroSocio'] != null) {
+            numeroSocio = membresia['numeroSocio'].toString();
+          } else if (membresia['numero_socio'] != null) {
+            numeroSocio = membresia['numero_socio'].toString();
+          }
+          
           final dynamic usuarioData = membresia['usuario'] ?? order['socio'] ?? order['usuario'];
           final Map<String, dynamic> socio = usuarioData is Map ? usuarioData as Map<String, dynamic> : {};
           
@@ -159,39 +169,98 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
             }
           }
           
-          // Información del producto
-          // El backend devuelve productoNombre directamente como string, no como objeto
-          final String productoNombre = order['productoNombre']?.toString() ?? 
-                                      (order['producto'] is Map ? (order['producto'] as Map)['nombre']?.toString() : null) ?? 
-                                      'Producto';
-          final dynamic cantidadValue = order['cantidad'];
-          final int cantidad = cantidadValue is int ? cantidadValue : (cantidadValue != null ? int.tryParse(cantidadValue.toString()) ?? 1 : 1);
-          
           // Verificar si es VIP (puede venir del nivel de la membresía)
           final dynamic nivelData = membresia['nivel'];
           final Map<String, dynamic> nivel = nivelData is Map ? nivelData as Map<String, dynamic> : {};
           final String nivelNombre = nivel['nombre']?.toString() ?? nivel['nivelNombre']?.toString() ?? '';
           final bool isVip = nivelNombre.toUpperCase().contains('VIP') || nivelNombre.toUpperCase().contains('PREMIUM');
           
-          // Crear clave única para agrupar pedidos del mismo socio en la misma fecha
-          final String fechaKey = DateFormat('yyyy-MM-dd HH:mm').format(fecha);
-          final String groupKey = '${membresiaId}_$fechaKey';
+          // Crear clave única para agrupar pedidos por pedidoId
+          // Usar pedidoId como clave única ya que ahora un pedido puede tener múltiples items
+          final String groupKey = '${pedidoId}';
           
-          if (!groupedOrders.containsKey(groupKey)) {
-            groupedOrders[groupKey] = [];
+          // Obtener items del pedido (el backend ahora devuelve items como lista)
+          List<Map<String, dynamic>> itemsDelPedido = [];
+          
+          // Debug: Verificar estructura del pedido
+          debugPrint('[DEBUG HOST] Pedido #$pedidoId - Keys: ${order.keys.toList()}');
+          debugPrint('[DEBUG HOST] Pedido #$pedidoId - Tiene items?: ${order.containsKey('items')}');
+          if (order.containsKey('items')) {
+            debugPrint('[DEBUG HOST] Pedido #$pedidoId - Tipo de items: ${order['items'].runtimeType}');
           }
           
-          groupedOrders[groupKey]!.add({
-            'pedidoId': pedidoId,
-            'productoNombre': productoNombre,
-            'cantidad': cantidad,
-            'estado': estado,
-            'tipoConsumo': order['tipoConsumo']?.toString() ?? 'EN_LUGAR',
-            'observaciones': order['observaciones']?.toString() ?? '',
-            'customerName': customerName,
-            'isVip': isVip,
-            'time': time,
-          });
+          // Opción 1: Si el backend devuelve items como lista
+          if (order['items'] is List) {
+            final itemsList = order['items'] as List;
+            debugPrint('[DEBUG HOST] Pedido #$pedidoId tiene ${itemsList.length} items en la lista');
+            for (var item in itemsList) {
+              if (item is Map) {
+                final itemMap = Map<String, dynamic>.from(item);
+                debugPrint('[DEBUG HOST] Item keys: ${itemMap.keys.toList()}');
+                final String productoNombre = itemMap['productoNombre']?.toString() ?? 
+                    (itemMap['producto'] is Map ? (itemMap['producto'] as Map)['nombre']?.toString() : null) ?? 
+                    'Producto';
+                final dynamic cantidadValue = itemMap['cantidad'];
+                final int cantidad = cantidadValue is int ? cantidadValue : (cantidadValue != null ? int.tryParse(cantidadValue.toString()) ?? 1 : 1);
+                
+                debugPrint('[DEBUG HOST] Item procesado: $cantidad x $productoNombre');
+                
+                itemsDelPedido.add({
+                  'productoNombre': productoNombre,
+                  'cantidad': cantidad,
+                  'nota': itemMap['nota']?.toString() ?? '',
+                });
+              }
+            }
+          }
+          
+          // Opción 2: Si no hay items pero hay productoNombre y cantidad (compatibilidad con estructura antigua)
+          if (itemsDelPedido.isEmpty) {
+            debugPrint('[DEBUG HOST] Pedido #$pedidoId - No tiene items, usando estructura antigua');
+            final String productoNombre = order['productoNombre']?.toString() ?? 
+                                        (order['producto'] is Map ? (order['producto'] as Map)['nombre']?.toString() : null) ?? 
+                                        'Producto';
+            final dynamic cantidadValue = order['cantidad'];
+            final int cantidad = cantidadValue is int ? cantidadValue : (cantidadValue != null ? int.tryParse(cantidadValue.toString()) ?? 1 : 1);
+            
+            if (productoNombre != 'Producto' || cantidad > 0) {
+              debugPrint('[DEBUG HOST] Item (antiguo) procesado: $cantidad x $productoNombre');
+              itemsDelPedido.add({
+                'productoNombre': productoNombre,
+                'cantidad': cantidad,
+                'nota': order['observaciones']?.toString() ?? '',
+              });
+            }
+          }
+          
+          debugPrint('[DEBUG HOST] Pedido #$pedidoId - Total items procesados: ${itemsDelPedido.length}');
+          
+          // Solo agregar al grupo si hay items
+          if (itemsDelPedido.isNotEmpty) {
+            // Inicializar el grupo si no existe
+            if (!groupedOrders.containsKey(groupKey)) {
+              groupedOrders[groupKey] = [];
+            }
+            
+            // Agregar todos los items del pedido al grupo
+            for (var item in itemsDelPedido) {
+            groupedOrders[groupKey]!.add({
+              'pedidoId': pedidoId,
+              'productoNombre': item['productoNombre'] as String,
+              'cantidad': item['cantidad'] as int,
+              'estado': estado,
+              'tipoConsumo': order['tipoConsumo']?.toString() ?? 'EN_LUGAR',
+              'observaciones': order['observaciones']?.toString() ?? '',
+              'customerName': customerName,
+              'numeroSocio': numeroSocio,
+              'isVip': isVip,
+              'time': time,
+            });
+            }
+            debugPrint('[DEBUG HOST] Pedido #$pedidoId - Items agregados al grupo. Total en grupo: ${groupedOrders[groupKey]!.length}');
+          } else {
+            debugPrint('[DEBUG HOST] WARNING: Pedido #$pedidoId no tiene items para mostrar');
+          }
         } catch (e, stackTrace) {
           debugPrint('[DEBUG HOST] Error procesando pedido: $e');
           debugPrint('[DEBUG HOST] Stack trace: $stackTrace');
@@ -210,6 +279,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
         final String estado = firstItem['estado'] as String;
         final String time = firstItem['time'] as String;
         final String customerName = firstItem['customerName'] as String;
+        final String numeroSocio = firstItem['numeroSocio'] as String? ?? '';
         final bool isVip = firstItem['isVip'] as bool;
         
         // Construir lista de items agrupando productos iguales y sumando cantidades
@@ -228,6 +298,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
           'id': pedidoId.toString(),
           'pedidoId': pedidoId,
           'customer': customerName,
+          'numeroSocio': numeroSocio,
           'items': itemsList,
           'status': estado,
           'time': time,
@@ -448,25 +519,46 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Cabecera: Pedido #ID, Socio, Estado
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                    Text(order['id'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                    const SizedBox(width: 8),
-                                    if (order['isVip'])
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Pedido #${order['id']}',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      if (order['isVip'])
                                         Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(color: Colors.yellow[100], borderRadius: BorderRadius.circular(10)),
-                                            child: const Text('VIP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange)),
-                                        )
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(color: Colors.yellow[100], borderRadius: BorderRadius.circular(10)),
+                                          child: const Text('VIP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange)),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  if (order['numeroSocio'] != null && (order['numeroSocio'] as String).isNotEmpty)
+                                    Text(
+                                      'Número de Socio: ${order['numeroSocio']}',
+                                      style: const TextStyle(fontSize: 14, color: Color(0xFF333333)),
+                                    )
+                                  else
+                                    Text(
+                                      order['customer'] ?? 'Cliente',
+                                      style: const TextStyle(fontSize: 14, color: Color(0xFF333333)),
+                                    ),
                                 ],
+                              ),
                             ),
                             _StatusBadge(status: order['status']),
                           ],
                         ),
-                        Text('${order['customer']} • ${order['time']}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                         
                         const SizedBox(height: 12),
                         Container(
@@ -487,16 +579,17 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                               style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic),
                             ),
                           ),
+                        // Tipo de consumo
                         if (order['tipoConsumo'] != null)
                           Padding(
-                            padding: const EdgeInsets.only(top: 4),
+                            padding: const EdgeInsets.only(top: 8),
                             child: Row(
                               children: [
-                                Icon(LucideIcons.mapPin, size: 12, color: Colors.grey[600]),
+                                Icon(LucideIcons.mapPin, size: 14, color: Colors.grey[700]),
                                 const SizedBox(width: 4),
                                 Text(
                                   order['tipoConsumo'] == 'PARA_LLEVAR' ? 'Para llevar' : 'Consumir aquí',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                  style: TextStyle(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w500),
                                 ),
                               ],
                             ),

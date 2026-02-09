@@ -1,9 +1,102 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import '../../../data/datasources/remote/order_remote_data_source.dart';
+import '../../../data/datasources/remote/club_remote_data_source.dart';
 
-class HostDashboardScreen extends StatelessWidget {
+class HostDashboardScreen extends StatefulWidget {
   const HostDashboardScreen({super.key});
+
+  @override
+  State<HostDashboardScreen> createState() => _HostDashboardScreenState();
+}
+
+class _HostDashboardScreenState extends State<HostDashboardScreen> {
+  bool _isLoadingOrders = true;
+  int _totalPedidos = 0;
+  int _pedidosRecibidos = 0;
+  int _pedidosPreparando = 0;
+  int _pedidosListos = 0;
+  int _pedidosEntregados = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOrdersSummary();
+  }
+
+  Future<void> _loadOrdersSummary() async {
+    try {
+      setState(() => _isLoadingOrders = true);
+      
+      // Obtener el club del anfitrión
+      final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
+      final club = await clubDataSource.getMyClub();
+      
+      if (club == null) {
+        if (mounted) {
+          setState(() {
+            _isLoadingOrders = false;
+            _totalPedidos = 0;
+          });
+        }
+        return;
+      }
+
+      // Obtener pedidos del club
+      final orderDataSource = Provider.of<OrderRemoteDataSource>(context, listen: false);
+      final ordersData = await orderDataSource.getOrdersByClub(club.id);
+      
+      // Contar pedidos por estado
+      int recibidos = 0;
+      int preparando = 0;
+      int listos = 0;
+      int entregados = 0;
+      
+      for (var order in ordersData) {
+        final estado = order['estado']?.toString().toUpperCase() ?? 
+                      order['status']?.toString().toUpperCase() ?? 
+                      'RECIBIDO';
+        
+        switch (estado) {
+          case 'RECIBIDO':
+          case 'PENDIENTE':
+            recibidos++;
+            break;
+          case 'PREPARANDO':
+            preparando++;
+            break;
+          case 'LISTO':
+            listos++;
+            break;
+          case 'ENTREGADO':
+          case 'COMPLETADO':
+            entregados++;
+            break;
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _totalPedidos = recibidos + preparando + listos; // Solo pendientes
+          _pedidosRecibidos = recibidos;
+          _pedidosPreparando = preparando;
+          _pedidosListos = listos;
+          _pedidosEntregados = entregados;
+          _isLoadingOrders = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[DEBUG DASHBOARD] Error cargando resumen de pedidos: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingOrders = false;
+          _totalPedidos = 0;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -157,7 +250,13 @@ class HostDashboardScreen extends StatelessWidget {
 
                    // Orders Card
                    InkWell(
-                       onTap: () => context.go('/host-orders'),
+                       onTap: () {
+                         context.go('/host-orders');
+                         // Recargar datos al volver
+                         Future.delayed(const Duration(milliseconds: 500), () {
+                           if (mounted) _loadOrdersSummary();
+                         });
+                       },
                        child: Container(
                            padding: const EdgeInsets.all(20),
                            decoration: BoxDecoration(
@@ -174,20 +273,55 @@ class HostDashboardScreen extends StatelessWidget {
                                                const Text('Pedidos Recibidos', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                                                const Text('Gestionar órdenes de socios', style: TextStyle(color: Colors.white70, fontSize: 12)),
                                                const SizedBox(height: 12),
-                                               Row(
-                                                   children: [
-                                                       _DotInfo(label: '1 Preparando', color: Colors.orange),
-                                                       const SizedBox(width: 12),
-                                                       _DotInfo(label: '1 Listo', color: Colors.green),
-                                                   ],
-                                               )
+                                               _isLoadingOrders
+                                                   ? const SizedBox(
+                                                       height: 20,
+                                                       width: 20,
+                                                       child: CircularProgressIndicator(
+                                                         strokeWidth: 2,
+                                                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
+                                                       ),
+                                                     )
+                                                   : Row(
+                                                       children: [
+                                                         if (_pedidosRecibidos > 0)
+                                                           _DotInfo(label: '$_pedidosRecibidos Recibido${_pedidosRecibidos > 1 ? 's' : ''}', color: Colors.blue),
+                                                         if (_pedidosRecibidos > 0 && (_pedidosPreparando > 0 || _pedidosListos > 0))
+                                                           const SizedBox(width: 12),
+                                                         if (_pedidosPreparando > 0)
+                                                           _DotInfo(label: '$_pedidosPreparando Preparando', color: Colors.orange),
+                                                         if (_pedidosPreparando > 0 && _pedidosListos > 0)
+                                                           const SizedBox(width: 12),
+                                                         if (_pedidosListos > 0)
+                                                           _DotInfo(label: '$_pedidosListos Listo${_pedidosListos > 1 ? 's' : ''}', color: Colors.green),
+                                                         if (_totalPedidos == 0)
+                                                           const Text('Sin pedidos pendientes', style: TextStyle(color: Colors.white70, fontSize: 10)),
+                                                       ],
+                                                   )
                                            ],
                                        ),
                                    ),
                                    Container(
                                        width: 40, height: 40,
-                                       decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                                       child: const Center(child: Text('3', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                                       decoration: BoxDecoration(
+                                         color: _totalPedidos > 0 ? Colors.red : Colors.grey,
+                                         shape: BoxShape.circle,
+                                       ),
+                                       child: Center(
+                                         child: _isLoadingOrders
+                                             ? const SizedBox(
+                                                 width: 16,
+                                                 height: 16,
+                                                 child: CircularProgressIndicator(
+                                                   strokeWidth: 2,
+                                                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                 ),
+                                               )
+                                             : Text(
+                                                 '$_totalPedidos',
+                                                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                               ),
+                                       ),
                                    )
                                ],
                            ),

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:intl/intl.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../../data/datasources/remote/qr_remote_data_source.dart';
@@ -198,6 +199,14 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                        title: 'Teléfono',
                        value: user.phone ?? 'No registrado'
                    ),
+                   if (user.birthDate != null && user.birthDate!.isNotEmpty) ...[
+                     const SizedBox(height: 16),
+                     _ProfileCard(
+                         icon: LucideIcons.calendar,
+                         title: 'Fecha de Nacimiento',
+                         value: _formatBirthDate(user.birthDate!)
+                     ),
+                   ],
                    const SizedBox(height: 16),
                    _ProfileCard(
                        icon: LucideIcons.trophy,
@@ -245,41 +254,150 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
     );
   }
 
+  String _formatBirthDate(String dateStr) {
+    try {
+      // Intentar parsear como yyyy-MM-dd
+      final date = DateTime.parse(dateStr);
+      return DateFormat('dd/MM/yyyy').format(date);
+    } catch (e) {
+      return dateStr; // Si no se puede parsear, devolver el string original
+    }
+  }
+
   void _showEditDialog(BuildContext context, UserProvider provider) {
-      final nameCtrl = TextEditingController(text: provider.currentUser?.name);
-      final phoneCtrl = TextEditingController(text: provider.currentUser?.phone);
+      final user = provider.currentUser;
+      final nameCtrl = TextEditingController(text: user?.name);
+      final phoneCtrl = TextEditingController(text: user?.phone);
+      final birthDateCtrl = TextEditingController(text: user?.birthDate ?? '');
+      DateTime? selectedDate;
+
+      // Si hay fecha de nacimiento, parsearla
+      if (user?.birthDate != null && user!.birthDate!.isNotEmpty) {
+        try {
+          selectedDate = DateTime.parse(user.birthDate!);
+        } catch (e) {
+          // Ignorar error de parsing
+        }
+      }
 
       showDialog(
           context: context,
-          builder: (ctx) => AlertDialog(
-              title: const Text('Editar Perfil'),
-              content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                      TextField(
-                          controller: nameCtrl,
-                          decoration: const InputDecoration(labelText: 'Nombre'),
-                      ),
-                      TextField(
-                          controller: phoneCtrl,
-                          decoration: const InputDecoration(labelText: 'Teléfono'),
-                      ),
-                  ],
-              ),
-              actions: [
-                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
-                  ElevatedButton(
-                      onPressed: () async {
-                          await provider.updateUserProfile(
-                              name: nameCtrl.text,
-                              phone: phoneCtrl.text
-                          );
-                          if (ctx.mounted) Navigator.pop(ctx);
-                      }, 
-                      child: const Text('Guardar'),
-                  )
-              ],
-          )
+          builder: (ctx) => StatefulBuilder(
+            builder: (context, setState) => AlertDialog(
+                title: const Text('Editar Perfil'),
+                content: SingleChildScrollView(
+                  child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                          TextField(
+                              controller: nameCtrl,
+                              decoration: const InputDecoration(labelText: 'Nombre'),
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                              controller: phoneCtrl,
+                              decoration: const InputDecoration(labelText: 'Teléfono'),
+                              keyboardType: TextInputType.phone,
+                          ),
+                          const SizedBox(height: 16),
+                          GestureDetector(
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: selectedDate ?? DateTime.now().subtract(const Duration(days: 365 * 25)),
+                                firstDate: DateTime(1900),
+                                lastDate: DateTime.now(),
+                                builder: (context, child) {
+                                  return Theme(
+                                    data: Theme.of(context).copyWith(
+                                      colorScheme: const ColorScheme.light(
+                                        primary: Color(0xFF7AC142),
+                                      ),
+                                    ),
+                                    child: child!,
+                                  );
+                                },
+                              );
+                              if (picked != null) {
+                                setState(() {
+                                  selectedDate = picked;
+                                  birthDateCtrl.text = DateFormat('yyyy-MM-dd').format(picked);
+                                });
+                              }
+                            },
+                            child: AbsorbPointer(
+                              child: TextField(
+                                  controller: birthDateCtrl,
+                                  decoration: InputDecoration(
+                                    labelText: 'Fecha de Nacimiento',
+                                    suffixIcon: const Icon(LucideIcons.calendar),
+                                    hintText: 'Selecciona una fecha',
+                                  ),
+                              ),
+                            ),
+                          ),
+                      ],
+                  ),
+                ),
+                actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+                    ElevatedButton(
+                        onPressed: () async {
+                            try {
+                              // Mostrar indicador de carga
+                              showDialog(
+                                context: ctx,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(child: CircularProgressIndicator()),
+                              );
+                              
+                              await provider.updateUserProfile(
+                                  name: nameCtrl.text.trim(),
+                                  phone: phoneCtrl.text.trim(),
+                                  birthDate: birthDateCtrl.text.trim().isEmpty ? null : birthDateCtrl.text.trim(),
+                              );
+                              
+                              // Recargar usuario desde el backend para obtener datos actualizados
+                              try {
+                                final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                                await authProvider.syncProfile();
+                                
+                                // Actualizar UserProvider con el usuario sincronizado
+                                if (authProvider.currentUser != null) {
+                                  provider.setUser(authProvider.currentUser!);
+                                }
+                              } catch (e) {
+                                debugPrint('Error recargando usuario: $e');
+                                // Continuar aunque falle la recarga
+                              }
+                              
+                              if (ctx.mounted) {
+                                Navigator.pop(ctx); // Cerrar diálogo de carga
+                                Navigator.pop(ctx); // Cerrar diálogo de edición
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Perfil actualizado correctamente'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (ctx.mounted) {
+                                Navigator.pop(ctx); // Cerrar diálogo de carga si está abierto
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Error al actualizar: ${e.toString().replaceAll('Exception: ', '')}'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                        }, 
+                        child: const Text('Guardar'),
+                    )
+                ],
+            ),
+          ),
       );
   }
 }

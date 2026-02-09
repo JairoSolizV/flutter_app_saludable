@@ -6,6 +6,7 @@ import '../../../domain/entities/order_entity.dart';
 abstract class OrderRemoteDataSource {
   Future<void> sendOrder(OrderEntity order, List<OrderItem> items);
   Future<List<Map<String, dynamic>>> getOrdersByClub(int clubId);
+  Future<List<Map<String, dynamic>>> getOrdersBySocio(int membresiaId);
   Future<void> updateOrderStatus(int pedidoId, String newStatus);
   Future<List<Map<String, dynamic>>> getAllOrders(); // Método temporal para debug
 }
@@ -24,100 +25,84 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
     if (order.clubId == null) {
       throw Exception('Error: El pedido debe incluir clubId');
     }
+    if (items.isEmpty) {
+      throw Exception('Error: El pedido debe tener al menos un item');
+    }
 
     final int membresiaId = order.membresiaId!;
     final int clubId = order.clubId!;
 
-    debugPrint('[DEBUG SEND] Enviando pedido - membresiaId: $membresiaId, clubId: $clubId, items: ${items.length}');
+    debugPrint('[DEBUG SEND] Enviando pedido con múltiples items - membresiaId: $membresiaId, clubId: $clubId, items: ${items.length}');
 
     try {
-      // La API actual: POST /api/pedidos?membresiaId={...}&clubId={...}&productoId={...}
-      // El backend espera: cantidad, tipoConsumo, observaciones en el body
+      // Formatear horario deseado (usar hora actual + 30 min como ejemplo)
+      final horarioDeseado = DateFormat('HH:mm').format(
+        DateTime.now().add(const Duration(minutes: 30))
+      );
+      
+      // Preparar items para el backend
+      final List<Map<String, dynamic>> itemsData = [];
       for (var item in items) {
-        // Convertir productId de String a int para el backend
         final int productoId = int.parse(item.productId);
-        
-        // Combinar nota general del pedido con nota específica del item
-        String observacionesCompletas = '';
-        if (order.observaciones != null && order.observaciones!.isNotEmpty) {
-          observacionesCompletas = order.observaciones!;
-        }
-        if (item.note.isNotEmpty) {
-          if (observacionesCompletas.isNotEmpty) {
-            observacionesCompletas += ' | ';
-          }
-          observacionesCompletas += item.note;
-        }
-        if (observacionesCompletas.isEmpty) {
-          observacionesCompletas = 'Pedido desde App Móvil';
-        }
-        
-        // Formatear horario deseado (usar hora actual + 30 min como ejemplo)
-        final horarioDeseado = DateFormat('HH:mm').format(
-          DateTime.now().add(const Duration(minutes: 30))
-        );
-        
-        debugPrint('[DEBUG SEND] Enviando item - productoId: $productoId, cantidad: ${item.quantity}');
-        debugPrint('[DEBUG SEND] Endpoint: POST /api/pedidos?membresiaId=$membresiaId&clubId=$clubId&productoId=$productoId');
-        debugPrint('[DEBUG SEND] URL completa: ${_client.options.baseUrl}/pedidos?membresiaId=$membresiaId&clubId=$clubId&productoId=$productoId');
-        
-        // Enviar una petición por cada unidad según el backend
-        for (int i = 0; i < item.quantity; i++) {
-          try {
-            final response = await _client.post(
-              '/pedidos',
-              queryParameters: {
-                'membresiaId': membresiaId,
-                'clubId': clubId,
-                'productoId': productoId,
-              },
-              data: {
-                'horarioDeseado': horarioDeseado,
-                'tipoConsumo': order.tipoConsumo ?? 'EN_LUGAR', // 'EN_LUGAR' o 'PARA_LLEVAR'
-                'observaciones': observacionesCompletas,
-                'cantidad': 1, // Cada petición es 1 unidad
-              }
-            );
-            
-            debugPrint('[DEBUG SEND] Respuesta del POST /pedidos - Status: ${response.statusCode}');
-            debugPrint('[DEBUG SEND] Response body: ${response.data}');
-            
-            if (response.statusCode == 201 || response.statusCode == 200) {
-              debugPrint('[DEBUG SEND] Pedido enviado exitosamente');
-            } else if (response.statusCode == 401) {
-              debugPrint('[DEBUG SEND] ERROR 401: No autenticado');
-              throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
-            } else if (response.statusCode == 403) {
-              debugPrint('[DEBUG SEND] ERROR 403: Sin permisos');
-              throw Exception('No tienes permisos para crear pedidos.');
-            } else if (response.statusCode == 500) {
-              debugPrint('[DEBUG SEND] ERROR 500: Error del servidor');
-              throw Exception('Error del servidor. Por favor intenta más tarde.');
-            } else {
-              debugPrint('[DEBUG SEND] WARNING: Status code inesperado: ${response.statusCode}');
-            }
-          } on DioException catch (e) {
-            final statusCode = e.response?.statusCode;
-            debugPrint('[DEBUG SEND] ERROR al enviar pedido:');
-            debugPrint('[DEBUG SEND]   Status: $statusCode');
-            debugPrint('[DEBUG SEND]   Message: ${e.message}');
-            debugPrint('[DEBUG SEND]   Response data: ${e.response?.data}');
-            
-            if (statusCode == 401) {
-              throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
-            } else if (statusCode == 403) {
-              throw Exception('No tienes permisos para crear pedidos.');
-            } else if (statusCode == 500) {
-              throw Exception('Error del servidor. Por favor intenta más tarde.');
-            }
-            rethrow;
-          }
-        }
+        itemsData.add({
+          'productoId': productoId,
+          'cantidad': item.quantity,
+          'nota': item.note.isNotEmpty ? item.note : null,
+        });
       }
       
-      debugPrint('[DEBUG SEND] Todos los items del pedido enviados exitosamente');
+      // Preparar body del request
+      final requestBody = {
+        'horarioDeseado': horarioDeseado,
+        'tipoConsumo': order.tipoConsumo ?? 'EN_LUGAR', // 'EN_LUGAR' o 'PARA_LLEVAR'
+        'observaciones': order.observaciones ?? 'Pedido desde App Móvil',
+        'items': itemsData,
+      };
+      
+      debugPrint('[DEBUG SEND] Endpoint: POST /api/pedidos/con-items?membresiaId=$membresiaId&clubId=$clubId');
+      debugPrint('[DEBUG SEND] Request body: $requestBody');
+      
+      // Enviar un solo POST con todos los items
+      final response = await _client.post(
+        '/pedidos/con-items',
+        queryParameters: {
+          'membresiaId': membresiaId,
+          'clubId': clubId,
+        },
+        data: requestBody,
+      );
+      
+      debugPrint('[DEBUG SEND] Respuesta del POST /pedidos/con-items - Status: ${response.statusCode}');
+      debugPrint('[DEBUG SEND] Response body: ${response.data}');
+      
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        debugPrint('[DEBUG SEND] Pedido con múltiples items enviado exitosamente');
+      } else if (response.statusCode == 401) {
+        debugPrint('[DEBUG SEND] ERROR 401: No autenticado');
+        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
+      } else if (response.statusCode == 403) {
+        debugPrint('[DEBUG SEND] ERROR 403: Sin permisos');
+        throw Exception('No tienes permisos para crear pedidos.');
+      } else if (response.statusCode == 500) {
+        debugPrint('[DEBUG SEND] ERROR 500: Error del servidor');
+        throw Exception('Error del servidor. Por favor intenta más tarde.');
+      } else {
+        debugPrint('[DEBUG SEND] WARNING: Status code inesperado: ${response.statusCode}');
+      }
     } on DioException catch (e) {
       final statusCode = e.response?.statusCode;
+      debugPrint('[DEBUG SEND] DioException - Status: $statusCode');
+      debugPrint('[DEBUG SEND] Error: ${e.message}');
+      debugPrint('[DEBUG SEND] Response data: ${e.response?.data}');
+      
+      if (statusCode == 401) {
+        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
+      } else if (statusCode == 403) {
+        throw Exception('No tienes permisos para crear pedidos.');
+      } else if (statusCode == 500) {
+        throw Exception('Error del servidor. Por favor intenta más tarde.');
+      }
+      
       final errorMessage = e.response?.data?['message'] ?? e.message ?? 'Error desconocido';
       debugPrint('[DEBUG SEND] Error enviando pedido - Status: $statusCode, Error: $errorMessage');
       throw Exception('Error enviando pedido: $errorMessage');
@@ -230,6 +215,56 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
       }
       
       debugPrint('[DEBUG GET] Error obteniendo pedidos - Status: $statusCode, Error: $errorMessage');
+      throw Exception('Error obteniendo pedidos: $errorMessage');
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getOrdersBySocio(int membresiaId) async {
+    try {
+      debugPrint('[DEBUG GET SOCIO] Obteniendo pedidos para membresiaId: $membresiaId');
+      debugPrint('[DEBUG GET SOCIO] Endpoint: GET /api/pedidos/socio/$membresiaId');
+      
+      final response = await _client.get('/pedidos/socio/$membresiaId');
+      
+      debugPrint('[DEBUG GET SOCIO] Respuesta recibida - Status: ${response.statusCode}');
+      debugPrint('[DEBUG GET SOCIO] Response body: ${response.data}');
+      
+      if (response.statusCode == 200) {
+        final dynamic data = response.data;
+        List<Map<String, dynamic>> orders = [];
+        
+        if (data is List) {
+          orders = data.cast<Map<String, dynamic>>();
+        } else if (data is Map) {
+          if (data.containsKey('content') && data['content'] is List) {
+            orders = (data['content'] as List).cast<Map<String, dynamic>>();
+          } else if (data.containsKey('data') && data['data'] is List) {
+            orders = (data['data'] as List).cast<Map<String, dynamic>>();
+          }
+        }
+        
+        debugPrint('[DEBUG GET SOCIO] Total de pedidos obtenidos: ${orders.length}');
+        return orders;
+      } else if (response.statusCode == 401) {
+        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
+      } else if (response.statusCode == 403) {
+        throw Exception('No tienes permisos para ver los pedidos.');
+      } else {
+        throw Exception('Error al obtener pedidos: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+      debugPrint('[DEBUG GET SOCIO] DioException - Status: $statusCode');
+      debugPrint('[DEBUG GET SOCIO] Error: ${e.message}');
+      
+      if (statusCode == 401) {
+        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
+      } else if (statusCode == 403) {
+        throw Exception('No tienes permisos para ver los pedidos.');
+      }
+      
+      final errorMessage = e.response?.data?['message'] ?? e.message ?? 'Error desconocido';
       throw Exception('Error obteniendo pedidos: $errorMessage');
     }
   }
