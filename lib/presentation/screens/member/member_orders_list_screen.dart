@@ -167,7 +167,7 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen> with Si
             Tab(text: 'Activos'),
             Tab(text: 'Historial'),
           ],
-        ),
+        ), 
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF7AC142)))

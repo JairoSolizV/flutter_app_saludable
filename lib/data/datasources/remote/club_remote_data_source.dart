@@ -87,21 +87,47 @@ class ClubRemoteDataSource {
 
   ClubRemoteDataSource(this._client);
 
+  /// Obtiene todos los clubes activos
+  /// Endpoint: GET /api/clubes (o GET /api/public/clubes si el backend lo requiere)
   Future<List<Club>> getClubes() async {
     try {
-      // Uso del nuevo endpoint público
-      // Como la BaseUrl ya incluye /api (asumido por el uso de /clubes), usamos /public/clubes
-      // Si falla, verificar si la baseUrl del Dio incluye /api
-      final response = await _client.get('/public/clubes');
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
-        return data.map((json) => Club.fromJson(json)).toList();
-      } else {
-        throw Exception('Error al cargar clubes: ${response.statusCode}');
+      // Intentar primero con /api/clubes (endpoint estándar)
+      // Si falla, intentar con /public/clubes como fallback
+      try {
+        final response = await _client.get('/clubes');
+        
+        if (response.statusCode == 200) {
+          final dynamic data = response.data;
+          List<dynamic> clubesList = [];
+          
+          if (data is List) {
+            clubesList = data;
+          } else if (data is Map) {
+            if (data.containsKey('content') && data['content'] is List) {
+              clubesList = data['content'] as List<dynamic>;
+            } else if (data.containsKey('data') && data['data'] is List) {
+              clubesList = data['data'] as List<dynamic>;
+            }
+          }
+          
+          return clubesList.map((json) => Club.fromJson(json)).toList();
+        } else {
+          throw Exception('Error al cargar clubes: ${response.statusCode}');
+        }
+      } catch (e) {
+        // Fallback a endpoint público si el endpoint principal falla
+        debugPrint('[DEBUG CLUB] Intentando con endpoint público como fallback');
+        final response = await _client.get('/public/clubes');
+        
+        if (response.statusCode == 200) {
+          final List<dynamic> data = response.data;
+          return data.map((json) => Club.fromJson(json)).toList();
+        } else {
+          throw Exception('Error al cargar clubes: ${response.statusCode}');
+        }
       }
     } catch (e) {
-      throw Exception('Error obteniendo clubes públicos: $e');
+      throw Exception('Error obteniendo clubes: $e');
     }
   }
 

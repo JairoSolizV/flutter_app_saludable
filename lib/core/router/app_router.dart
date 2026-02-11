@@ -21,6 +21,8 @@ import '../../presentation/screens/member/member_home_screen.dart';
 import '../../presentation/screens/member/member_main_screen.dart';
 import '../../presentation/screens/member/member_orders_list_screen.dart';
 import '../../presentation/screens/member/member_create_order_screen.dart';
+import '../../presentation/screens/member/member_select_club_screen.dart';
+import '../../presentation/screens/member/member_club_products_screen.dart';
 import '../../presentation/screens/member/member_profile_screen.dart';
 import '../../presentation/screens/member/achievements/member_achievements_screen.dart'; // Added
 import '../../presentation/screens/member/attendance/member_attendance_screen.dart';
@@ -120,6 +122,23 @@ final appRouter = GoRouter(
             routes: [
               GoRoute(
                 path: 'new',
+                builder: (context, state) => const MemberSelectClubScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'club-products',
+                    builder: (context, state) {
+                      final extra = state.extra as Map<String, dynamic>;
+                      return MemberClubProductsScreen(
+                        clubId: extra['clubId'] as int,
+                        clubNombre: extra['clubNombre'] as String,
+                      );
+                    },
+                  ),
+                ],
+              ),
+              // Mantener ruta legacy para compatibilidad
+              GoRoute(
+                path: 'legacy',
                 builder: (context, state) => const MemberCreateOrderScreen(),
               ),
             ]
