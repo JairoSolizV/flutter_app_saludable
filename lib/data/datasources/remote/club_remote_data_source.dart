@@ -88,45 +88,66 @@ class ClubRemoteDataSource {
   ClubRemoteDataSource(this._client);
 
   /// Obtiene todos los clubes activos
-  /// Endpoint: GET /api/clubes (o GET /api/public/clubes si el backend lo requiere)
+  /// Endpoint: GET /api/public/clubes
+  /// Este endpoint devuelve solo clubes con estado ACTIVO o APROBADO
+  /// No requiere validación por HUB o membresía - cualquier socio puede ver todos los clubes activos
   Future<List<Club>> getClubes() async {
     try {
-      // Intentar primero con /api/clubes (endpoint estándar)
-      // Si falla, intentar con /public/clubes como fallback
-      try {
-        final response = await _client.get('/clubes');
+      debugPrint('[DEBUG CLUB] Obteniendo clubes activos desde endpoint público');
+      debugPrint('[DEBUG CLUB] Endpoint: GET /api/public/clubes');
+      
+      final response = await _client.get('/public/clubes');
+      
+      debugPrint('[DEBUG CLUB] Respuesta recibida - Status: ${response.statusCode}');
+      debugPrint('[DEBUG CLUB] Response body type: ${response.data.runtimeType}');
+      
+      if (response.statusCode == 200) {
+        final dynamic data = response.data;
+        List<dynamic> clubesList = [];
         
-        if (response.statusCode == 200) {
-          final dynamic data = response.data;
-          List<dynamic> clubesList = [];
-          
-          if (data is List) {
-            clubesList = data;
-          } else if (data is Map) {
-            if (data.containsKey('content') && data['content'] is List) {
-              clubesList = data['content'] as List<dynamic>;
-            } else if (data.containsKey('data') && data['data'] is List) {
-              clubesList = data['data'] as List<dynamic>;
-            }
+        if (data is List) {
+          clubesList = data;
+        } else if (data is Map) {
+          if (data.containsKey('content') && data['content'] is List) {
+            clubesList = data['content'] as List<dynamic>;
+          } else if (data.containsKey('data') && data['data'] is List) {
+            clubesList = data['data'] as List<dynamic>;
           }
-          
-          return clubesList.map((json) => Club.fromJson(json)).toList();
-        } else {
-          throw Exception('Error al cargar clubes: ${response.statusCode}');
         }
-      } catch (e) {
-        // Fallback a endpoint público si el endpoint principal falla
-        debugPrint('[DEBUG CLUB] Intentando con endpoint público como fallback');
-        final response = await _client.get('/public/clubes');
         
-        if (response.statusCode == 200) {
-          final List<dynamic> data = response.data;
-          return data.map((json) => Club.fromJson(json)).toList();
-        } else {
-          throw Exception('Error al cargar clubes: ${response.statusCode}');
+        final clubes = clubesList.map((json) => Club.fromJson(json)).toList();
+        debugPrint('[DEBUG CLUB] Clubes activos encontrados: ${clubes.length}');
+        
+        // Log de los primeros 3 clubes para debug
+        if (clubes.isNotEmpty) {
+          debugPrint('[DEBUG CLUB] Primeros clubes:');
+          clubes.take(3).forEach((club) {
+            debugPrint('[DEBUG CLUB]   - ${club.nombreClub} (ID: ${club.id}, Estado: ${club.estado}, HUB: ${club.hubId})');
+          });
         }
+        
+        return clubes;
+      } else {
+        throw Exception('Error al cargar clubes: ${response.statusCode}');
       }
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+      debugPrint('[DEBUG CLUB] DioException - Status: $statusCode');
+      debugPrint('[DEBUG CLUB] Error: ${e.message}');
+      debugPrint('[DEBUG CLUB] Response data: ${e.response?.data}');
+      
+      if (statusCode == 401) {
+        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
+      } else if (statusCode == 403) {
+        throw Exception('No tienes permisos para ver los clubes.');
+      } else if (statusCode == 500) {
+        throw Exception('Error del servidor. Por favor intenta más tarde.');
+      }
+      
+      final errorMessage = e.response?.data?['message'] ?? e.message ?? 'Error desconocido';
+      throw Exception('Error obteniendo clubes activos: $errorMessage');
     } catch (e) {
+      debugPrint('[DEBUG CLUB] Error general obteniendo clubes: $e');
       throw Exception('Error obteniendo clubes: $e');
     }
   }

@@ -31,11 +31,14 @@ class _MemberSelectClubScreenState extends State<MemberSelectClubScreen> {
 
     try {
       final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
+      // getClubes() ya devuelve solo clubes ACTIVOS o APROBADO desde /api/public/clubes
+      // No necesitamos filtrar adicionalmente, pero mantenemos el filtro por si acaso
       final clubes = await clubDataSource.getClubes();
       
-      // Filtrar solo clubes activos
+      // El endpoint público ya devuelve solo ACTIVOS/APROBADO, pero filtramos por seguridad
+      // para asegurar que solo mostramos ACTIVOS
       final clubesActivos = clubes.where((club) => 
-        club.estado.toUpperCase() == 'ACTIVO'
+        club.estado.toUpperCase() == 'ACTIVO' || club.estado.toUpperCase() == 'APROBADO'
       ).toList();
 
       if (mounted) {
