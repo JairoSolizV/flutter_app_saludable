@@ -217,7 +217,7 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
 
                       // Botón CTA (Hacer Pedido)
                       InkWell(
-                        onTap: () => context.push('/member-orders/new'),
+                        onTap: () => context.push('/member-club-selector'),
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(

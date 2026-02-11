@@ -22,9 +22,47 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       });
       return _parseAuthResponse(response);
     } on DioException catch (e) {
-      throw Exception('Error de red: ${e.message}');
+      throw Exception(_parseErrorMessage(e, 'Credenciales inválidas'));
     }
   }
+
+  /// Helper para parsear errores de forma amigable
+  String _parseErrorMessage(DioException e, String defaultMessage) {
+    final statusCode = e.response?.statusCode;
+    final responseData = e.response?.data;
+
+    // Intentar extraer mensaje del backend
+    if (responseData is Map && responseData.containsKey('message')) {
+      return responseData['message'];
+    }
+
+    // Mensajes por código de estado
+    switch (statusCode) {
+      case 400:
+        return 'Datos inv álidos. Por favor verifica tu información.';
+      case 401:
+        return 'Credenciales incorrectas. Verifica tu correo y contraseña.';
+      case 403:
+        return 'No tienes permisos para acceder.';
+      case 404:
+        return 'Usuario no encontrado.';
+      case 500:
+        return 'Error del servidor. Por favor intenta más tarde.';
+      case 503:
+        return 'Servicio no disponible. Intenta más tarde.';
+      default:
+        if (e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.sendTimeout ||
+            e.type == DioExceptionType.receiveTimeout) {
+          return 'Tiempo de espera agotado. Verifica tu conexión.';
+        }
+        if (e.type == DioExceptionType.connectionError) {
+          return 'Error de conexión. Verifica tu internet.';
+        }
+        return defaultMessage;
+    }
+  }
+
 
   @override
   Future<User> register(String nombre, String apellido, String email, String password, String telefono, {int? rolId}) async {
@@ -44,7 +82,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final response = await _client.post('/auth/register', data: data);
       return _parseAuthResponse(response);
     } on DioException catch (e) {
-      throw Exception('Error al registrar: ${e.response?.data['message'] ?? e.message}');
+      throw Exception(_parseErrorMessage(e, 'Error al registrar usuario'));
     }
   }
 
@@ -75,8 +113,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       return user;
 
     } on DioException catch (e) {
-       // Si falla, lanzar excepción
-       throw Exception('Error al actualizar perfil: ${e.response?.data['message'] ?? e.message}');
+       throw Exception(_parseErrorMessage(e, 'Error al actualizar perfil'));
     }
   }
 
@@ -87,7 +124,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final response = await _client.get('/auth/me');
       return _parseAuthResponse(response);
     } on DioException catch (e) {
-      throw Exception('Error al sincronizar perfil: ${e.message}');
+      throw Exception(_parseErrorMessage(e, 'Error al sincronizar perfil'));
     }
   }
 

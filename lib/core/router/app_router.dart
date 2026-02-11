@@ -28,6 +28,8 @@ import '../../presentation/screens/member/achievements/member_achievements_scree
 import '../../presentation/screens/member/attendance/member_attendance_screen.dart';
 import '../../presentation/screens/member/qrcode/member_qr_scan_screen.dart'; // Added
 import '../../presentation/screens/member/request_club_screen.dart'; // Added
+import '../../presentation/screens/member/club_selector_screen.dart'; // New
+import '../../presentation/screens/member/member_products_screen.dart'; // New
 import '../../presentation/screens/host/qrcode/host_qr_display_screen.dart'; // Added
 import '../../presentation/screens/host/host_main_screen.dart';
 import '../../presentation/screens/host/host_dashboard_screen.dart';
@@ -159,6 +161,14 @@ final appRouter = GoRouter(
           path: '/member-qr-scan',
           builder: (context, state) => const MemberQrScanScreen(),
         ),
+        GoRoute(
+          path: '/member-club-selector',
+          builder: (context, state) => const ClubSelectorScreen(),
+        ),
+        GoRoute(
+          path: '/member-request-club',
+          builder: (context, state) => const RequestClubScreen(),
+        ),
       ],
     ),
     // Rutas de Anfitrión con Shell
@@ -242,6 +252,15 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/request-club',
       builder: (context, state) => const RequestClubScreen(),
+    ),
+    // Ruta de Productos por Club para Miembros (Fuera de Shell)
+    GoRoute(
+      path: '/member/products/:clubId',
+      builder: (context, state) {
+        final clubId = state.pathParameters['clubId']!;
+        final club = state.extra as Club?;
+        return MemberProductsScreen(clubId: clubId, club: club);
+      },
     ),
   ],
 );
