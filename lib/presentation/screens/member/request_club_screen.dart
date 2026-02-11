@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:latlong2/latlong.dart';
 import '../../providers/user_provider.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
 import 'package:flutter_app_saludable/core/utils/validators.dart';
+import '../../widgets/schedule_selector.dart';
+import '../../widgets/location_picker_dialog.dart';
 
 class RequestClubScreen extends StatefulWidget {
   const RequestClubScreen({super.key});
@@ -17,8 +20,10 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
-  final _cityController = TextEditingController();
-  final _descController = TextEditingController();
+  
+  String _schedule = '';
+  double? _lat;
+  double? _lng;
   
   bool _isLoading = false;
 
@@ -26,13 +31,25 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
   void dispose() {
     _nameController.dispose();
     _addressController.dispose();
-    _cityController.dispose();
-    _descController.dispose();
     super.dispose();
   }
 
   Future<void> _submitRequest() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_schedule.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona el horario de atención'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    if (_lat == null || _lng == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona la ubicación del club'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -50,8 +67,9 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
         anfitrionId: int.parse(user.id),
         nombreClub: _nameController.text.trim(),
         direccion: _addressController.text.trim(),
-        ciudad: _cityController.text.trim(),
-        descripcion: _descController.text.trim(),
+        horario: _schedule,
+        lat: _lat!,
+        lng: _lng!,
         hubId: 2, // Default HUB Santa Cruz
       );
 
@@ -148,24 +166,77 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
                 icon: LucideIcons.mapPin,
                 validator: (v) => v == null || v.isEmpty ? "Ingresa una dirección" : null,
               ),
+              const SizedBox(height: 24),
+              const Divider(),
               const SizedBox(height: 16),
-
-              _buildTextField(
-                controller: _cityController,
-                label: "Ciudad",
-                hint: "Ej. Santa Cruz",
-                icon: LucideIcons.building,
-                validator: Validators.validateTextNoNumbers,
-              ),
+              const Text("Horario de Atención", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-
-              _buildTextField(
-                controller: _descController,
-                label: "Descripción (Opcional)",
-                hint: "Breve descripción...",
-                icon: LucideIcons.fileText,
-                maxLines: 3,
+              
+              ScheduleSelector(
+                onScheduleChanged: (schedule) {
+                  setState(() => _schedule = schedule);
+                },
               ),
+              
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
+              const Text("Ubicación del Club", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.push<LatLng>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => LocationPickerDialog(
+                        initialLocation: _lat != null && _lng != null
+                            ? LatLng(_lat!, _lng!)
+                            : null,
+                      ),
+                    ),
+                  );
+                  
+                  if (result != null) {
+                    setState(() {
+                      _lat = result.latitude;
+                      _lng = result.longitude;
+                    });
+                  }
+                },
+                icon: const Icon(LucideIcons.mapPin),
+                label: Text(_lat == null ? 'Seleccionar Ubicación' : 'Ubicación seleccionada'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  side: BorderSide(
+                    color: _lat == null ? Colors.grey.shade400 : const Color(0xFF7AC142),
+                    width: 2,
+                  ),
+                ),
+              ),
+              
+              if (_lat != null && _lng != null) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F9E8),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Color(0xFF7AC142), size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Lat: ${_lat!.toStringAsFixed(6)}, Lng: ${_lng!.toStringAsFixed(6)}',
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF2C5E1A)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               
               const SizedBox(height: 32),
               

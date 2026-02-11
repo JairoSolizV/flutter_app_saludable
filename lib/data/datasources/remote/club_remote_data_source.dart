@@ -347,22 +347,28 @@ class ClubRemoteDataSource {
     required String direccion,
     String? ciudad,
     String? descripcion,
+    required String horario,
+    required double lat,
+    required double lng,
     int hubId = 2,
   }) async {
     try {
       final body = {
-        'anfitrionId': anfitrionId,
         'nombreClub': nombreClub,
         'direccion': direccion,
-        'ciudad': ciudad ?? '',
-        'descripcion': descripcion ?? '',
-        'hubId': hubId,
+        'horario': horario,
+        'lat': lat,
+        'lng': lng,
         'estado': 'PENDIENTE', 
       };
 
       final response = await _client.post(
         '/clubes', 
         data: body,
+        queryParameters: {
+          'hubId': hubId,
+          'anfitrionId': anfitrionId,
+        },
       );
 
       if (response.statusCode != 201 && response.statusCode != 200) {

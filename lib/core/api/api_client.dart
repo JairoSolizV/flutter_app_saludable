@@ -9,8 +9,8 @@ class ApiClient {
   ApiClient(this._userRepository)
       : _dio = Dio(BaseOptions(
           baseUrl: 'https://clubs-api.onrender.com/api',
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 10),
+          connectTimeout: const Duration(seconds: 60), // Aumentado para Render cold start
+          receiveTimeout: const Duration(seconds: 60), // Aumentado para respuestas lentas
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
