@@ -130,9 +130,12 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                                 Text('Club Vida Activa', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
                               ],
                             ),
-                            const CircleAvatar(
-                              backgroundColor: Colors.white30,
-                              child: Icon(LucideIcons.settings, color: Colors.white),
+                            InkWell(
+                              onTap: () => context.push('/host-profile'),
+                              child: const CircleAvatar(
+                                backgroundColor: Colors.white30,
+                                child: Icon(LucideIcons.settings, color: Colors.white),
+                              ),
                             )
                           ],
                         ),

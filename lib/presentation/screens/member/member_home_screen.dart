@@ -106,10 +106,6 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
                     icon: const Icon(LucideIcons.qrCode, color: Colors.white),
                     onPressed: () => context.push('/member-qr-scan'),
                   ),
-                  IconButton(
-                    icon: const Icon(LucideIcons.bell, color: Colors.white),
-                    onPressed: () {},
-                  ),
                   const SizedBox(width: 8),
                   CircleAvatar(
                     backgroundColor: Colors.white,

@@ -4,9 +4,9 @@ import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
-import '../../data/datasources/remote/club_remote_data_source.dart';
+import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../providers/user_provider.dart';
-import '../widgets/club_card.dart';
+import '../../widgets/club_card.dart';
 import 'package:go_router/go_router.dart';
 
 class ClubSelectorScreen extends StatefulWidget {

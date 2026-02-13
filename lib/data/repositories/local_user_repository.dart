@@ -18,19 +18,37 @@ class LocalUserRepository implements UserRepository {
     );
 
     if (maps.isNotEmpty) {
-      return User.fromMap(maps.first);
+      print('[DEBUG LOCAL_REPO] getUser($id) - Found in DB:');
+      print('[DEBUG LOCAL_REPO] Raw map: ${maps.first}');
+      final user = User.fromMap(maps.first);
+      print('[DEBUG LOCAL_REPO] Parsed User - phone: ${user.phone}');
+      return user;
     }
+    print('[DEBUG LOCAL_REPO] getUser($id) - NOT found in DB');
     return null;
   }
 
   @override
   Future<void> saveUser(User user) async {
+    print('[DEBUG LOCAL_REPO] saveUser called:');
+    print('[DEBUG LOCAL_REPO]   - id: ${user.id}');
+    print('[DEBUG LOCAL_REPO]   - name: ${user.name}');
+    print('[DEBUG LOCAL_REPO]   - phone: ${user.phone}');
+    print('[DEBUG LOCAL_REPO]   - email: ${user.email}');
+    
+    final userMap = user.toMap();
+    print('[DEBUG LOCAL_REPO] User.toMap() result:');
+    print('[DEBUG LOCAL_REPO] Map: $userMap');
+    print('[DEBUG LOCAL_REPO] phone key in map: ${userMap['phone']}');
+    
     final db = await _dbHelper.database;
     await db.insert(
       'users',
-      user.toMap(),
+      userMap,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    
+    print('[DEBUG LOCAL_REPO] User saved to database successfully');
   }
 
   @override

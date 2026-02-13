@@ -89,12 +89,18 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<User> updateUser(User user) async {
     try {
+      Object? redesSocialesToSend = user.socialMedia;
+      if (user.socialMedia != null && user.socialMedia!['instagram'] != null) {
+        // Handle instagram string case
+        redesSocialesToSend = user.socialMedia!['instagram'];
+      }
+
       final Map<String, dynamic> data = {
-        'nombre': user.name.split(' ').first, // Aproximación
+        'nombre': user.name.split(' ').first, 
         'apellido': user.name.split(' ').length > 1 ? user.name.split(' ').sublist(1).join(' ') : '',
         'telefono': user.phone,
         'fechaNacimiento': user.birthDate,
-        'redesSociales': user.socialMedia,
+        'redesSociales': redesSocialesToSend,
       };
 
       // Asumimos endpoint /auth/profile o /users/{id}
@@ -131,19 +137,18 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   User _parseAuthResponse(Response response) {
     if (response.statusCode == 200 || response.statusCode == 201) {
       final data = response.data;
-      // El token viene en login/register, pero NO en getMe (según evidencia)
       final token = data['token'];
       
-      final Map<String, dynamic> userData;
-      if (data.containsKey('usuario') && data['usuario'] != null) {
-        userData = data['usuario'];
-      } else {
-        userData = data; 
-      }
+      // Asegurar que userData esté definido. 
+      // A veces viene en data['usuario'], a veces en data directamente.
+      final userData = data['usuario'] ?? data;
+
+      // DEBUG: Print raw userData
+      print('[DEBUG AUTH] Raw userData from backend: $userData');
       
       String role = 'member';
       
-      // Lógica robusta para Rol (puede venir como rolId, rolNombre, o objeto rol {id, nombre})
+      // Lógica robusta para Rol
       dynamic rolIdVal;
       String? rolNombreVal;
 
@@ -165,7 +170,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final int? rolId = rolIdVal is int ? rolIdVal : int.tryParse(rolIdVal?.toString() ?? '');
       
       if (rolId != null) {
-        if (rolId == 2 || rolId == 3) {
+        if (rolId == 1 || rolId == 3) { 
           role = 'host'; 
         } else if (rolId == 4) {
           role = 'basic_user';
@@ -179,18 +184,32 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
          }
       }
 
-      return User(
+      final user = User(
         id: (userData['userId'] ?? userData['id']).toString(), 
         name: "${userData['nombre']} ${userData['apellido']}",
         email: userData['email'],
         role: role, 
-        token: token, // Será null en getMe, AuthProvider debe manejar esto para no borrar el token local si ya existe
-        phone: userData['telefono'],
-        birthDate: userData['fechaNacimiento'],
-        socialMedia: userData['redesSociales'] != null ? Map<String, dynamic>.from(userData['redesSociales']) : null,
+        token: token, 
+        phone: userData['telefono'] ?? userData['phone'],
+        birthDate: userData['fechaNacimiento'] ?? userData['birthDate'] ?? userData['birth_date'],
+        socialMedia: _parseSocialMedia(userData['redesSociales'] ?? userData['socialMedia'] ?? userData['social_media']),
       );
+      
+      return user;
     } else {
       throw Exception('Error de autenticación: ${response.statusCode}');
     }
+  }
+
+  Map<String, dynamic>? _parseSocialMedia(dynamic socialMediaData) {
+    if (socialMediaData == null) return null;
+    if (socialMediaData is Map) {
+      return Map<String, dynamic>.from(socialMediaData);
+    }
+    if (socialMediaData is String) {
+      // Si el backend devuelve un string (ej: "@usuario"), lo asumimos como instagram o generic
+      return {'instagram': socialMediaData};
+    }
+    return null;
   }
 }

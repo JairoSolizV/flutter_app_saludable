@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../../data/datasources/remote/qr_remote_data_source.dart';
+import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 
 class MemberProfileScreen extends StatefulWidget {
   const MemberProfileScreen({super.key});
@@ -20,10 +21,50 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
   bool _isLoadingQR = true;
   String? _qrError;
 
+  String? _membershipLevel;
+  bool _isLoadingMembership = true;
+
   @override
   void initState() {
     super.initState();
     _loadQR();
+    // Cargar membresía después del primer frame para tener acceso al context/providers si es necesario
+    // aunque en initState se puede llamar métodos que usen context si listen: false
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+       _loadMembership();
+    });
+  }
+
+  Future<void> _loadMembership() async {
+      try {
+          final userProvider = Provider.of<UserProvider>(context, listen: false);
+          final user = userProvider.currentUser;
+          
+          if (user != null) {
+              final membresiaDataSource = Provider.of<MembresiaRemoteDataSource>(context, listen: false);
+              final membrs = await membresiaDataSource.getMembresiasPorUsuario(int.parse(user.id));
+              
+              if (mounted) {
+                  setState(() {
+                      if (membrs.isNotEmpty) {
+                          // Tomamos la primera membresía o la más relevante
+                          _membershipLevel = membrs.first.nivelNombre;
+                      } else {
+                          _membershipLevel = 'Sin Membresía';
+                      }
+                      _isLoadingMembership = false;
+                  });
+              }
+          }
+      } catch (e) {
+          debugPrint('Error cargando membresía: $e');
+          if (mounted) {
+              setState(() {
+                  _membershipLevel = 'No disponible';
+                  _isLoadingMembership = false;
+              });
+          }
+      }
   }
 
   Future<void> _loadQR() async {
@@ -117,14 +158,7 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                    if (_isLoadingQR)
                      Container(
                        padding: const EdgeInsets.all(20),
-                       decoration: BoxDecoration(
-                         color: Colors.white,
-                         borderRadius: BorderRadius.circular(16),
-                         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))]
-                       ),
-                       child: const Center(
-                         child: CircularProgressIndicator(),
-                       ),
+                       child: const Center(child: CircularProgressIndicator()),
                      )
                    else if (_qrError != null)
                      Container(
@@ -211,7 +245,7 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                    _ProfileCard(
                        icon: LucideIcons.trophy,
                        title: 'Membresía',
-                       value: 'Nivel Oro',
+                       value: _isLoadingMembership ? 'Cargando...' : (_membershipLevel ?? 'Sin Info'),
                        trailing: const Icon(Icons.star, color: Colors.orange),
                    ),
                    const SizedBox(height: 16),
@@ -264,8 +298,10 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
     }
   }
 
-  void _showEditDialog(BuildContext context, UserProvider provider) {
-      final user = provider.currentUser;
+  void _showEditDialog(BuildContext context, UserProvider userProvider) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = authProvider.currentUser ?? userProvider.currentUser;
+      
       final nameCtrl = TextEditingController(text: user?.name);
       final phoneCtrl = TextEditingController(text: user?.phone);
       final birthDateCtrl = TextEditingController(text: user?.birthDate ?? '');
@@ -328,9 +364,9 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                             child: AbsorbPointer(
                               child: TextField(
                                   controller: birthDateCtrl,
-                                  decoration: InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText: 'Fecha de Nacimiento',
-                                    suffixIcon: const Icon(LucideIcons.calendar),
+                                    suffixIcon: Icon(LucideIcons.calendar),
                                     hintText: 'Selecciona una fecha',
                                   ),
                               ),
@@ -351,24 +387,16 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                                 builder: (context) => const Center(child: CircularProgressIndicator()),
                               );
                               
-                              await provider.updateUserProfile(
+                              // Usar AuthProvider para actualizar en Backend
+                              await authProvider.updateProfile(
                                   name: nameCtrl.text.trim(),
                                   phone: phoneCtrl.text.trim(),
                                   birthDate: birthDateCtrl.text.trim().isEmpty ? null : birthDateCtrl.text.trim(),
                               );
                               
-                              // Recargar usuario desde el backend para obtener datos actualizados
-                              try {
-                                final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                                await authProvider.syncProfile();
-                                
-                                // Actualizar UserProvider con el usuario sincronizado
-                                if (authProvider.currentUser != null) {
-                                  provider.setUser(authProvider.currentUser!);
-                                }
-                              } catch (e) {
-                                debugPrint('Error recargando usuario: $e');
-                                // Continuar aunque falle la recarga
+                              // Actualizar UserProvider con el usuario actualizado de AuthProvider
+                              if (authProvider.currentUser != null) {
+                                userProvider.setUser(authProvider.currentUser!);
                               }
                               
                               if (ctx.mounted) {

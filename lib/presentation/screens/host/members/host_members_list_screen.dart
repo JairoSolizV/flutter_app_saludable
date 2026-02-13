@@ -68,15 +68,6 @@ class _HostMembersListScreenState extends State<HostMembersListScreen> {
         elevation: 0,
       ),
       body: _buildBody(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Función de registro manual próximamente')),
-          );
-        },
-        backgroundColor: const Color(0xFF7AC142),
-        child: const Icon(Icons.person_add),
-      ),
     );
   }
 

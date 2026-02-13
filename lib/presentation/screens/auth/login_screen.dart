@@ -109,6 +109,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 if (_formKey.currentState!.validate()) {
                                   final success = await auth.login(_emailCtrl.text, _passCtrl.text);
                                   if (success && context.mounted) {
+                                    // Sync profile to get complete user data (including telefono)
+                                    // Login doesn't return telefono, but /auth/me does
+                                    await auth.syncProfile();
+                                    
                                     final user = auth.currentUser;
                                     if (user != null) {
                                       // Actualizar UserProvider con el usuario logueado

@@ -49,7 +49,15 @@ class AuthProvider extends ChangeNotifier {
   }
   Future<void> syncProfile() async {
     try {
+      print('[DEBUG AUTH_PROVIDER] Starting syncProfile()');
+      
       final fetchedUser = await _remoteDataSource.getMe();
+      
+      print('[DEBUG AUTH_PROVIDER] Fetched user from getMe():');
+      print('[DEBUG AUTH_PROVIDER]   - id: ${fetchedUser.id}');
+      print('[DEBUG AUTH_PROVIDER]   - name: ${fetchedUser.name}');
+      print('[DEBUG AUTH_PROVIDER]   - phone: ${fetchedUser.phone}');
+      print('[DEBUG AUTH_PROVIDER]   - email: ${fetchedUser.email}');
       
       // Preservar el token actual si el endpoint no lo devuelve (caso getMe)
       String? tokenToSave = fetchedUser.token;
@@ -58,13 +66,64 @@ class AuthProvider extends ChangeNotifier {
       }
       
       final userToSave = fetchedUser.copyWith(token: tokenToSave);
+      
+      print('[DEBUG AUTH_PROVIDER] User after copyWith (with token):');
+      print('[DEBUG AUTH_PROVIDER]   - phone: ${userToSave.phone}');
+      print('[DEBUG AUTH_PROVIDER]   - token: ${userToSave.token != null ? "present" : "null"}');
 
       await _localRepository.saveUser(userToSave);
+      
+      print('[DEBUG AUTH_PROVIDER] User saved to local repository');
+      
       _currentUser = userToSave;
       notifyListeners();
+      
+      print('[DEBUG AUTH_PROVIDER] syncProfile completed successfully');
     } catch (e) {
-      print('Error syncing profile: $e');
+      print('[DEBUG AUTH_PROVIDER] Error syncing profile: $e');
       // No lanzamos error para no interrumpir UI, solo log
+    }
+  }
+
+  Future<void> updateProfile({
+    String? name, 
+    String? phone, 
+    String? birthDate,
+    Map<String, dynamic>? socialMedia,
+  }) async {
+    if (_currentUser == null) return;
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final updatedUser = _currentUser!.copyWith(
+        name: name,
+        phone: phone,
+        birthDate: birthDate,
+        socialMedia: socialMedia,
+      );
+
+      print('[DEBUG AUTH_PROVIDER] Updating profile for user ${updatedUser.id}');
+      
+      // 1. Llamada al Backend
+      final resultUser = await _remoteDataSource.updateUser(updatedUser);
+      
+      // 2. Actualizar localmente
+      // El backend devuelve el usuario actualizado (o parseamos el que enviamos si confíamos)
+      // Aseguramos mantener el token
+      final userToSave = resultUser.copyWith(token: _currentUser!.token);
+      
+      await _localRepository.saveUser(userToSave);
+      _currentUser = userToSave;
+      
+      print('[DEBUG AUTH_PROVIDER] Profile updated successfully');
+    } catch (e) {
+      print('[DEBUG AUTH_PROVIDER] Error updating profile: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 

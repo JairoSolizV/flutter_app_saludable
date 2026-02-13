@@ -25,12 +25,7 @@ class GuestHomeScreen extends StatelessWidget {
         ),
         backgroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(LucideIcons.bell, color: Colors.black87),
-            onPressed: (){},
-          )
-        ],
+        actions: [],
       ),
       body: SingleChildScrollView(
         child: Column(

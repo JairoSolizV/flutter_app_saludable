@@ -106,13 +106,6 @@ class _MemberAttendanceScreenState extends State<MemberAttendanceScreen> {
             onPressed: () => context.push('/member-qr-scan'),
             tooltip: 'Escanear QR',
           ),
-          // Botón para registrar asistencia manualmente
-          if (_availableClubes.isNotEmpty)
-            IconButton(
-              icon: const Icon(LucideIcons.mapPin),
-              onPressed: () => _showManualAttendanceDialog(context),
-              tooltip: 'Registrar asistencia',
-            ),
         ],
       ),
       body: _asistencias.isEmpty 
@@ -157,152 +150,17 @@ class _MemberAttendanceScreenState extends State<MemberAttendanceScreen> {
           const SizedBox(height: 16),
           const Text("No tienes asistencias registradas aún.", style: TextStyle(color: Colors.grey)),
           const SizedBox(height: 24),
-          if (_availableClubes.isNotEmpty)
-            ElevatedButton.icon(
-              onPressed: () => _showManualAttendanceDialog(context),
-              icon: const Icon(LucideIcons.mapPin),
-              label: const Text('Registrar Asistencia'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7AC142),
-                foregroundColor: Colors.white,
-              ),
-            ),
-          const SizedBox(height: 8),
           ElevatedButton.icon(
             onPressed: () => context.push('/member-qr-scan'),
             icon: const Icon(LucideIcons.qrCode),
             label: const Text('Escanear QR'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.grey[700],
+              backgroundColor: const Color(0xFF7AC142),
               foregroundColor: Colors.white,
             ),
           ),
         ],
       ),
     );
-  }
-
-  Future<void> _showManualAttendanceDialog(BuildContext context) async {
-    if (_currentMembership == null || _availableClubes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No hay clubes disponibles para registrar asistencia'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    int? selectedClubId;
-    
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Registrar Asistencia'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Selecciona el club donde quieres registrar tu asistencia:'),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<int>(
-                value: selectedClubId,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.store),
-                  labelText: 'Club',
-                ),
-                items: _availableClubes.map<DropdownMenuItem<int>>((club) {
-                  return DropdownMenuItem<int>(
-                    value: club.id,
-                    child: Text(club.nombreClub),
-                  );
-                }).toList(),
-                onChanged: (int? newClubId) {
-                  setState(() {
-                    selectedClubId = newClubId;
-                  });
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: selectedClubId == null
-                  ? null
-                  : () => Navigator.of(dialogContext).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7AC142),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Registrar'),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (result == true && selectedClubId != null) {
-      await _registerManualAttendance(selectedClubId!);
-    }
-  }
-
-  Future<void> _registerManualAttendance(int clubId) async {
-    try {
-      // Mostrar loading
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
-
-      final membresiaDataSource = Provider.of<MembresiaRemoteDataSource>(context, listen: false);
-      
-      // Usar la membresía del socio (asistencias globales - cualquier club activo)
-      final asistenciaResponse = await membresiaDataSource.registrarAsistencia(
-        membresiaId: _currentMembership!.id,
-        clubId: clubId,
-        latitud: 0.0, // No requerimos geolocalización para registro manual
-        longitud: 0.0,
-      );
-
-      if (!mounted) return;
-      Navigator.of(context).pop(); // Cerrar loading
-
-      // Mostrar éxito con información de racha
-      String mensaje = asistenciaResponse.mensaje ?? '¡Asistencia registrada correctamente!';
-      if (asistenciaResponse.rachaActual != null) {
-        mensaje += '\nRacha actual: ${asistenciaResponse.rachaActual} días';
-      }
-      if (asistenciaResponse.rachaMaxima != null) {
-        mensaje += '\nRacha máxima: ${asistenciaResponse.rachaMaxima} días';
-      }
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(mensaje),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 4),
-        ),
-      );
-
-      // Recargar datos
-      await _loadData();
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop(); // Cerrar loading si está abierto
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 }
