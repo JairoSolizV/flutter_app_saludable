@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'dart:convert';
 import 'package:provider/provider.dart';
@@ -10,6 +11,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
+import '../../../../domain/entities/membresia_logro.dart';
 import '../../../providers/user_provider.dart';
 
 class MemberQrScanScreen extends StatefulWidget {
@@ -399,7 +401,17 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
       // Usar la primera membresía activa (asistencias globales - sin restricción de HUB/club)
       final membership = membresias.first;
 
-      // 7. Registrar Asistencia (asistencias globales - el backend valida que el club esté activo)
+      // 7. Obtener logros ANTES de registrar asistencia (para comparar después)
+      List<MembresiaLogro> logrosAntes = [];
+      try {
+        logrosAntes = await membresiaDataSource.getLogrosByMembresia(membership.id);
+      } catch (e) {
+        // Si falla, continuar sin comparar logros
+        debugPrint('[DEBUG QR] Error obteniendo logros antes: $e');
+      }
+
+      // 8. Registrar Asistencia (asistencias globales - el backend valida que el club esté activo)
+      // El backend ahora otorga logros automáticamente al registrar asistencia
       final asistenciaResponse = await membresiaDataSource.registrarAsistencia(
         membresiaId: membership.id,
         clubId: clubId, // Club del QR escaneado (cualquier club activo)
@@ -409,12 +421,24 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
 
       if (!mounted) return;
 
+      // 9. Obtener logros DESPUÉS de registrar asistencia (para detectar nuevos logros)
+      List<MembresiaLogro> logrosDespues = [];
+      try {
+        logrosDespues = await membresiaDataSource.getLogrosByMembresia(membership.id);
+      } catch (e) {
+        debugPrint('[DEBUG QR] Error obteniendo logros después: $e');
+      }
+
+      // 10. Detectar nuevos logros
+      final logrosAntesIds = logrosAntes.map((ml) => ml.logro.id).toSet();
+      final nuevosLogros = logrosDespues.where((ml) => !logrosAntesIds.contains(ml.logro.id)).toList();
+
       // Detener la cámara
       await cameraController.stop();
       if (!mounted) return;
       setState(() => _isProcessing = false);
 
-      // Mostrar éxito con información de racha
+      // Mostrar éxito con información de racha y nuevos logros
       final shouldReload = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
@@ -431,45 +455,99 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
               ),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(asistenciaResponse.mensaje ?? "Tu visita ha sido registrada correctamente. ¡Disfruta tu consumo!"),
-              if (asistenciaResponse.rachaActual != null || asistenciaResponse.rachaMaxima != null) ...[
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 8),
-                if (asistenciaResponse.rachaActual != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(asistenciaResponse.mensaje ?? "Tu visita ha sido registrada correctamente. ¡Disfruta tu consumo!"),
+                if (asistenciaResponse.rachaActual != null || asistenciaResponse.rachaMaxima != null) ...[
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  if (asistenciaResponse.rachaActual != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          const Icon(LucideIcons.flame, color: Colors.orange, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Racha Actual: ${asistenciaResponse.rachaActual} días',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (asistenciaResponse.rachaMaxima != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          const Icon(LucideIcons.trophy, color: Colors.amber, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Racha Máxima: ${asistenciaResponse.rachaMaxima} días',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+                // Mostrar nuevos logros obtenidos
+                if (nuevosLogros.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.amber.shade300, width: 1),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(LucideIcons.flame, color: Colors.orange, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Racha Actual: ${asistenciaResponse.rachaActual} días',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        Row(
+                          children: [
+                            const Icon(LucideIcons.award, color: Colors.amber, size: 20),
+                            const SizedBox(width: 8),
+                            const Text(
+                              '¡Nuevo Logro Obtenido!',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Colors.amber,
+                              ),
+                            ),
+                          ],
                         ),
+                        const SizedBox(height: 8),
+                        ...nuevosLogros.map((membresiaLogro) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              const Icon(LucideIcons.star, color: Colors.amber, size: 16),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  membresiaLogro.logro.nombre,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )),
                       ],
                     ),
                   ),
-                if (asistenciaResponse.rachaMaxima != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      children: [
-                        const Icon(LucideIcons.trophy, color: Colors.amber, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Racha Máxima: ${asistenciaResponse.rachaMaxima} días',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ),
+                ],
               ],
-            ],
+            ),
           ),
           actions: [
             TextButton(

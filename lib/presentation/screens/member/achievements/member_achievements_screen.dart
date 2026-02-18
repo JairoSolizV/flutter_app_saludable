@@ -413,27 +413,13 @@ class _MemberAchievementsScreenState extends State<MemberAchievementsScreen> {
     );
   }
 
-  String _getRequisitoTexto(String? tipoRequisito) {
-    if (tipoRequisito == null || tipoRequisito.isEmpty) {
+  String _getRequisitoTexto(int? tipoRequisito) {
+    if (tipoRequisito == null) {
       return '';
     }
     
-    switch (tipoRequisito.toUpperCase()) {
-      case 'RACHA_3':
-        return 'Racha de 3 días';
-      case 'RACHA_7':
-        return 'Racha de 7 días';
-      case 'RACHA_14':
-        return 'Racha de 14 días';
-      case 'ASISTENCIAS_5':
-        return '5 asistencias';
-      case 'ASISTENCIAS_10':
-        return '10 asistencias';
-      case 'ASISTENCIAS_20':
-        return '20 asistencias';
-      default:
-        return tipoRequisito.replaceAll('_', ' ');
-    }
+    // tipoRequisito ahora es un int que representa la cantidad de asistencias requeridas
+    return '$tipoRequisito ${tipoRequisito == 1 ? 'asistencia' : 'asistencias'}';
   }
 
 }
