@@ -26,6 +26,17 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
     }
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Mover el mapa a la ubicación inicial después de que el widget esté completamente construido
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.initialLocation != null) {
+        _mapController.move(widget.initialLocation!, 15.0);
+      }
+    });
+  }
+
   Future<void> _getCurrentLocation() async {
     setState(() => _loading = true);
 

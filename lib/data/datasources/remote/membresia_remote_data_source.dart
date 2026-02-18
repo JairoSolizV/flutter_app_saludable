@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../../domain/entities/club_membership.dart';
 import '../../../domain/entities/attendance.dart';
+import '../../../domain/entities/logro.dart';
+import '../../../domain/entities/membresia_logro.dart';
 
 abstract class MembresiaRemoteDataSource {
   Future<void> crearMembresia({required int usuarioId, required int clubId, int? nivelId, Map<String, dynamic>? extraData});
@@ -14,6 +16,8 @@ abstract class MembresiaRemoteDataSource {
     required double latitud,
     required double longitud,
   });
+  Future<List<Logro>> getLogros();
+  Future<List<MembresiaLogro>> getLogrosByMembresia(int membresiaId);
 }
 
 /// Modelo para la respuesta de registro de asistencia
@@ -254,6 +258,38 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
     } catch (e) {
       debugPrint('[DEBUG MEMBRESIA] Error general registrando asistencia: $e');
       throw Exception('Error al registrar asistencia: $e');
+    }
+  }
+
+  @override
+  Future<List<Logro>> getLogros() async {
+    try {
+      final response = await _client.get('/logros');
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+        return data.map((json) => Logro.fromJson(Map<String, dynamic>.from(json))).toList();
+      } else {
+        throw Exception('Error cargando logros: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error al obtener logros: $e');
+    }
+  }
+
+  @override
+  Future<List<MembresiaLogro>> getLogrosByMembresia(int membresiaId) async {
+    try {
+      final response = await _client.get('/membresia-logros/membresia/$membresiaId');
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+        return data.map((json) => MembresiaLogro.fromJson(Map<String, dynamic>.from(json))).toList();
+      } else {
+        throw Exception('Error cargando logros de membresía: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error al obtener logros de membresía: $e');
     }
   }
 }

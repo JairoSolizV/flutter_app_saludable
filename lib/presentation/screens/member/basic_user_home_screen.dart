@@ -99,9 +99,9 @@ class BasicUserHomeScreen extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
-                  // QR Generado con el ID del usuario
+                  // QR Generado con formato ACTIVATE:{userId} para que el anfitrión pueda activarlo como socio
                   QrImageView(
-                    data: user?.id ?? 'invitado',
+                    data: user != null ? 'ACTIVATE:${user.id}' : 'ACTIVATE:invitado',
                     version: QrVersions.auto,
                     size: 200.0,
                     foregroundColor: const Color(0xFF333333),

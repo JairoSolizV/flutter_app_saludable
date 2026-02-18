@@ -2,26 +2,117 @@ import 'package:flutter/material.dart';
 
 class ScheduleSelector extends StatefulWidget {
   final Function(String) onScheduleChanged;
+  final String? initialSchedule;
   
-  const ScheduleSelector({super.key, required this.onScheduleChanged});
+  const ScheduleSelector({
+    super.key, 
+    required this.onScheduleChanged,
+    this.initialSchedule,
+  });
 
   @override
   State<ScheduleSelector> createState() => _ScheduleSelectorState();
 }
 
 class _ScheduleSelectorState extends State<ScheduleSelector> {
-  final Map<String, bool> _selectedDays = {
-    'L': false,
-    'M': false,
-    'X': false,
-    'J': false,
-    'V': false,
-    'S': false,
-    'D': false,
+  late Map<String, bool> _selectedDays;
+  late TimeOfDay _startTime;
+  late TimeOfDay _endTime;
+  
+  // Mapa para mostrar nombres de días en español
+  static const Map<String, String> _dayNames = {
+    'L': 'Lun',
+    'M': 'Mar',
+    'X': 'Mier',
+    'J': 'Jue',
+    'V': 'Vie',
+    'S': 'Sab',
+    'D': 'Dom',
+  };
+  
+  // Mapa inverso para parsear nombres completos a letras simples
+  static const Map<String, String> _dayNamesToKey = {
+    'Lun': 'L',
+    'Mar': 'M',
+    'Mier': 'X',
+    'Jue': 'J',
+    'Vie': 'V',
+    'Sab': 'S',
+    'Dom': 'D',
   };
 
-  TimeOfDay _startTime = const TimeOfDay(hour: 7, minute: 0);
-  TimeOfDay _endTime = const TimeOfDay(hour: 20, minute: 0);
+  @override
+  void initState() {
+    super.initState();
+    _selectedDays = {
+      'L': false,
+      'M': false,
+      'X': false,
+      'J': false,
+      'V': false,
+      'S': false,
+      'D': false,
+    };
+    
+    _startTime = const TimeOfDay(hour: 7, minute: 0);
+    _endTime = const TimeOfDay(hour: 20, minute: 0);
+    
+    // Parsear horario inicial si existe
+    if (widget.initialSchedule != null && widget.initialSchedule!.isNotEmpty) {
+      _parseSchedule(widget.initialSchedule!);
+      // Notificar el horario inicial después de parsearlo
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _updateSchedule();
+      });
+    }
+  }
+
+  void _parseSchedule(String schedule) {
+    // Formato esperado: "L-M-X 08:00-18:00" o "Lun-Mar-Mier 08:00-18:00"
+    try {
+      final parts = schedule.split(' ');
+      if (parts.length >= 2) {
+        // Parsear días (ej: "L-M-X" o "Lun-Mar-Mier" o "L-M-X-J-V")
+        final daysPart = parts[0];
+        final dayList = daysPart.split('-');
+        for (var day in dayList) {
+          // Intentar primero con la letra simple (formato antiguo: L, M, X)
+          if (_selectedDays.containsKey(day)) {
+            _selectedDays[day] = true;
+          } 
+          // Si no funciona, intentar con el nombre completo (formato nuevo: Lun, Mar, Mier)
+          else if (_dayNamesToKey.containsKey(day)) {
+            final key = _dayNamesToKey[day]!;
+            if (_selectedDays.containsKey(key)) {
+              _selectedDays[key] = true;
+            }
+          }
+        }
+        
+        // Parsear horario (ej: "08:00-18:00")
+        final timePart = parts[1];
+        final timeRange = timePart.split('-');
+        if (timeRange.length == 2) {
+          final startParts = timeRange[0].split(':');
+          final endParts = timeRange[1].split(':');
+          
+          if (startParts.length == 2 && endParts.length == 2) {
+            _startTime = TimeOfDay(
+              hour: int.parse(startParts[0]),
+              minute: int.parse(startParts[1]),
+            );
+            _endTime = TimeOfDay(
+              hour: int.parse(endParts[0]),
+              minute: int.parse(endParts[1]),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      // Si hay error al parsear, usar valores por defecto
+      debugPrint('Error parsing schedule: $e');
+    }
+  }
 
   String _buildScheduleString() {
     final selectedDayKeys = _selectedDays.entries
@@ -31,7 +122,11 @@ class _ScheduleSelectorState extends State<ScheduleSelector> {
 
     if (selectedDayKeys.isEmpty) return '';
 
-    final daysStr = selectedDayKeys.join('-');
+    // Convertir letras simples a nombres completos para enviar al backend
+    // Formato: "Lun-Mar-Mier 08:00-18:00" (más legible para React admin)
+    final daysStr = selectedDayKeys
+        .map((key) => _dayNames[key] ?? key)
+        .join('-');
     final startStr = '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}';
     final endStr = '${_endTime.hour.toString().padLeft(2, '0')}:${_endTime.minute.toString().padLeft(2, '0')}';
 
@@ -82,7 +177,7 @@ class _ScheduleSelectorState extends State<ScheduleSelector> {
           spacing: 8,
           children: _selectedDays.keys.map((day) {
             return FilterChip(
-              label: Text(day),
+              label: Text(_dayNames[day] ?? day),
               selected: _selectedDays[day]!,
               onSelected: (selected) {
                 setState(() {

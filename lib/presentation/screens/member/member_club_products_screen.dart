@@ -141,6 +141,11 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
   }
 
   Future<void> _createOrder() async {
+    // Bloquear el botón inmediatamente para evitar doble clic
+    if (_isCreatingOrder) {
+      return; // Ya hay un pedido en proceso
+    }
+
     if (_cart.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -161,6 +166,7 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
       return;
     }
 
+    // Establecer el estado de carga inmediatamente
     setState(() => _isCreatingOrder = true);
 
     try {
@@ -537,9 +543,15 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
                             : 'Crear Pedido ($_totalItems ${_totalItems == 1 ? 'item' : 'items'})',
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF7AC142),
+                        backgroundColor: _isCreatingOrder 
+                            ? Colors.grey[400] 
+                            : const Color(0xFF7AC142),
                         foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey[400],
+                        disabledForegroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
+
+                        
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),

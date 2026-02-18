@@ -397,9 +397,23 @@ class ClubRemoteDataSource {
     required String horario,
     required double lat,
     required double lng,
-    int hubId = 2,
+    int hubId = 1,
   }) async {
     try {
+      // Validar que lat y lng sean valores válidos
+      if (lat.isNaN || lng.isNaN || lat.isInfinite || lng.isInfinite) {
+        throw Exception('Las coordenadas de ubicación no son válidas');
+      }
+      
+      debugPrint('[CLUB DS] Solicitud de creación de club:');
+      debugPrint('[CLUB DS]   nombreClub: $nombreClub');
+      debugPrint('[CLUB DS]   direccion: $direccion');
+      debugPrint('[CLUB DS]   horario: $horario');
+      debugPrint('[CLUB DS]   lat: $lat (tipo: ${lat.runtimeType})');
+      debugPrint('[CLUB DS]   lng: $lng (tipo: ${lng.runtimeType})');
+      debugPrint('[CLUB DS]   hubId: $hubId');
+      debugPrint('[CLUB DS]   anfitrionId: $anfitrionId');
+      
       final body = {
         'nombreClub': nombreClub,
         'direccion': direccion,
@@ -409,6 +423,8 @@ class ClubRemoteDataSource {
         'estado': 'PENDIENTE', 
       };
 
+      debugPrint('[CLUB DS] Body a enviar: $body');
+
       final response = await _client.post(
         '/clubes', 
         data: body,
@@ -417,6 +433,9 @@ class ClubRemoteDataSource {
           'anfitrionId': anfitrionId,
         },
       );
+      
+      debugPrint('[CLUB DS] Respuesta del servidor: ${response.statusCode}');
+      debugPrint('[CLUB DS] Response data: ${response.data}');
 
       if (response.statusCode != 201 && response.statusCode != 200) {
         throw Exception('Error al solicitar club: ${response.statusCode}');

@@ -27,23 +27,42 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   /// Helper para parsear errores de forma amigable
+  /// El backend devuelve ApiResponse con estructura: { success: false, message: "...", data: null }
   String _parseErrorMessage(DioException e, String defaultMessage) {
     final statusCode = e.response?.statusCode;
     final responseData = e.response?.data;
 
-    // Intentar extraer mensaje del backend
-    if (responseData is Map && responseData.containsKey('message')) {
-      return responseData['message'];
+    // El backend usa ApiResponse con estructura:
+    // { success: false, message: "mensaje", data: null, timestamp: "..." }
+    if (responseData is Map) {
+      // Intentar extraer mensaje del ApiResponse del backend
+      if (responseData.containsKey('message') && responseData['message'] != null) {
+        final message = responseData['message'].toString();
+        if (message.isNotEmpty) {
+          return message;
+        }
+      }
+      
+      // Fallback: buscar en 'error' o 'errorMessage' (por si acaso)
+      if (responseData.containsKey('error') && responseData['error'] != null) {
+        return responseData['error'].toString();
+      }
+      if (responseData.containsKey('errorMessage') && responseData['errorMessage'] != null) {
+        return responseData['errorMessage'].toString();
+      }
     }
 
-    // Mensajes por código de estado
+    // Mensajes por código de estado (fallback si no hay mensaje en la respuesta)
     switch (statusCode) {
       case 400:
-        return 'Datos inv álidos. Por favor verifica tu información.';
+        return 'Datos inválidos. Por favor verifica tu información.';
       case 401:
+        // 401 puede ser: BadCredentialsException o AuthenticationException
+        // El backend ya envía mensaje específico, pero si no llega, usamos este
         return 'Credenciales incorrectas. Verifica tu correo y contraseña.';
       case 403:
-        return 'No tienes permisos para acceder.';
+        // 403 es DisabledException - usuario deshabilitado
+        return 'Usuario deshabilitado. Contacte al administrador.';
       case 404:
         return 'Usuario no encontrado.';
       case 500:
@@ -139,12 +158,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final data = response.data;
       final token = data['token'];
       
+      print('[DEBUG AUTH_REMOTE] Parsing auth response:');
+      print('[DEBUG AUTH_REMOTE]   - Status: ${response.statusCode}');
+      print('[DEBUG AUTH_REMOTE]   - Token presente: ${token != null}');
+      if (token != null) {
+        print('[DEBUG AUTH_REMOTE]   - Token length: ${token.length}');
+        if (token.length > 20) {
+          print('[DEBUG AUTH_REMOTE]   - Token preview: ${token.substring(0, 20)}...');
+        }
+      }
+      
       // Asegurar que userData esté definido. 
       // A veces viene en data['usuario'], a veces en data directamente.
       final userData = data['usuario'] ?? data;
 
       // DEBUG: Print raw userData
-      print('[DEBUG AUTH] Raw userData from backend: $userData');
+      print('[DEBUG AUTH_REMOTE] Raw userData from backend: $userData');
       
       String role = 'member';
       

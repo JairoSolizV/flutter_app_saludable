@@ -84,7 +84,7 @@ class HostQrDisplayScreen extends StatelessWidget {
                   children: const [
                     Icon(LucideIcons.scanLine, color: Color(0xFF7AC142)),
                     SizedBox(width: 10),
-                    Text("Muestra este código a tus socios", style: TextStyle(color: Color(0xFF7AC142), fontWeight: FontWeight.bold)),
+                    Text("Muestra este QR a tus socios", style: TextStyle(color: Color(0xFF7AC142), fontWeight: FontWeight.bold)),
                   ],
                 ),
               )

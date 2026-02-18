@@ -62,7 +62,7 @@ class _HostMembersListScreenState extends State<HostMembersListScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50], // Fondo suave
       appBar: AppBar(
-        title: const Text('Socios del Club'),
+        title: Text('Socios del Club'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0,
@@ -127,13 +127,60 @@ class _HostMembersListScreenState extends State<HostMembersListScreen> {
     return RefreshIndicator(
       onRefresh: _loadMembers,
       color: const Color(0xFF7AC142),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _members.length,
-        itemBuilder: (context, index) {
-          final member = _members[index];
-          return _buildMemberCard(member);
-        },
+      child: Column(
+        children: [
+          // Encabezado con conteo
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            color: Colors.white,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(LucideIcons.users, color: Color(0xFF7AC142), size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Total de Socios: ${_members.length}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF333333),
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7AC142).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${_members.length}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF7AC142),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Lista de socios
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _members.length,
+              itemBuilder: (context, index) {
+                final member = _members[index];
+                return _buildMemberCard(member);
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -200,6 +247,8 @@ class _HostMembersListScreenState extends State<HostMembersListScreen> {
               "Puntos",
               style: TextStyle(fontSize: 10, color: Colors.grey),
             ),
+            // Los puntos se actualizan automáticamente en el backend cuando se registra una asistencia
+            // No se calculan ni actualizan manualmente en el frontend
             Text(
               "${member.puntosAcumulados}",
               style: const TextStyle(

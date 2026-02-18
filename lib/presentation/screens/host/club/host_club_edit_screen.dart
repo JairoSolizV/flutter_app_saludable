@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../main.dart'; // acceso a clubRemoteDataSource global
+import '../../../widgets/schedule_selector.dart';
+import '../../../widgets/location_picker_dialog.dart';
 
 class HostClubEditScreen extends StatefulWidget {
   final Club club;
@@ -18,8 +21,11 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameCtrl;
   late TextEditingController _addressCtrl;
-  late TextEditingController _scheduleCtrl;
   late TextEditingController _imageCtrl;
+
+  String _schedule = '';
+  double? _lat;
+  double? _lng;
 
   bool _isLoading = false;
 
@@ -28,7 +34,9 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.club.nombreClub);
     _addressCtrl = TextEditingController(text: widget.club.direccion);
-    _scheduleCtrl = TextEditingController(text: widget.club.horario);
+    _schedule = widget.club.horario; // Inicializar con el horario del club
+    _lat = widget.club.lat; // Inicializar con las coordenadas del club
+    _lng = widget.club.lng;
     _imageCtrl = TextEditingController(); // Initially empty, will fetch
     _loadCurrentPhoto();
   }
@@ -52,7 +60,6 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
   void dispose() {
     _nameCtrl.dispose();
     _addressCtrl.dispose();
-    _scheduleCtrl.dispose();
     _imageCtrl.dispose();
     super.dispose();
   }
@@ -63,10 +70,28 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
     setState(() => _isLoading = true);
 
     try {
+      if (_schedule.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Selecciona el horario de atención'), backgroundColor: Colors.orange),
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      if (_lat == null || _lng == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Selecciona la ubicación del club'), backgroundColor: Colors.orange),
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
       final Map<String, dynamic> data = {
         'nombreClub': _nameCtrl.text.trim(),
         'direccion': _addressCtrl.text.trim(),
-        'horario': _scheduleCtrl.text.trim(),
+        'horario': _schedule,
+        'lat': _lat!,
+        'lng': _lng!,
         // 'fotoUrl': _imageCtrl.text.trim(), // REMOVED: Managed separately
       };
 
@@ -113,8 +138,9 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Sección: Detalles del Club
               const Text("Detalles del Club", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
               _buildTextField(
                 label: "Nombre del Club",
@@ -122,24 +148,97 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                 icon: LucideIcons.store,
                 validator: (v) => v!.isEmpty ? "Requerido" : null,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
+              // Sección: Horario de Atención
+              const Divider(height: 1),
+              const SizedBox(height: 24),
+              const Text("Horario de Atención", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              
+              ScheduleSelector(
+                initialSchedule: _schedule.isNotEmpty ? _schedule : null,
+                onScheduleChanged: (schedule) {
+                  setState(() => _schedule = schedule);
+                },
+              ),
+              const SizedBox(height: 24),
+
+              // Sección: Ubicación del Club
+              const Divider(height: 1),
+              const SizedBox(height: 24),
+              const Text("Ubicación del Club", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.push<LatLng>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => LocationPickerDialog(
+                        initialLocation: _lat != null && _lng != null
+                            ? LatLng(_lat!, _lng!)
+                            : null,
+                      ),
+                    ),
+                  );
+                  
+                  if (result != null) {
+                    setState(() {
+                      _lat = result.latitude;
+                      _lng = result.longitude;
+                    });
+                  }
+                },
+                icon: const Icon(LucideIcons.mapPin),
+                label: Text(_lat == null ? 'Seleccionar Ubicación' : 'Ubicación seleccionada'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  side: BorderSide(
+                    color: _lat == null ? Colors.grey.shade400 : const Color(0xFF7AC142),
+                    width: 2,
+                  ),
+                ),
+              ),
+              
+              if (_lat != null && _lng != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F9E8),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Color(0xFF7AC142), size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Lat: ${_lat!.toStringAsFixed(6)}, Lng: ${_lng!.toStringAsFixed(6)}',
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF2C5E1A)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+
+              // Sección: Dirección
+              const Divider(height: 1),
+              const SizedBox(height: 24),
               _buildTextField(
                 label: "Dirección",
                 controller: _addressCtrl,
                 icon: LucideIcons.mapPin,
                 validator: (v) => v!.isEmpty ? "Requerido" : null,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-              _buildTextField(
-                label: "Horario",
-                controller: _scheduleCtrl,
-                icon: LucideIcons.clock,
-                hint: "Ej. Lun-Vie 08:00 - 12:00",
-              ),
-              const SizedBox(height: 30),
-
+              // Sección: Imagen del Club
+              const Divider(height: 1),
+              const SizedBox(height: 24),
               const Text("Imagen del Club", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               const Text("Ingresa la URL de la imagen de portada de tu club.", style: TextStyle(color: Colors.grey)),
@@ -176,7 +275,7 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                 },
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
 
               SizedBox(
                 width: double.infinity,

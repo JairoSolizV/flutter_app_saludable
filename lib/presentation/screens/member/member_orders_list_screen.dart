@@ -267,23 +267,26 @@ class _OrdersList extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                // Fecha y hora (hora debajo de la fecha)
+                // Fecha
                 Row(
                   children: [
                     Icon(LucideIcons.calendar, size: 14, color: Colors.grey[600]),
                     const SizedBox(width: 4),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          dateStr,
-                          style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                        ),
-                        Text(
-                          timeStr,
-                          style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                        ),
-                      ],
+                    Text(
+                      dateStr,
+                      style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                // Hora
+                Row(
+                  children: [
+                    Icon(LucideIcons.clock, size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
+                    Text(
+                      timeStr,
+                      style: TextStyle(fontSize: 13, color: Colors.grey[700]),
                     ),
                   ],
                 ),

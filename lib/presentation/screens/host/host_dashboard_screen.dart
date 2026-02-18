@@ -19,6 +19,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
   int _pedidosPreparando = 0;
   int _pedidosListos = 0;
   int _pedidosEntregados = 0;
+  Club? _club; // Club del anfitrión
 
   @override
   void initState() {
@@ -39,9 +40,17 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
           setState(() {
             _isLoadingOrders = false;
             _totalPedidos = 0;
+            _club = null;
           });
         }
         return;
+      }
+      
+      // Guardar el club en el estado
+      if (mounted) {
+        setState(() {
+          _club = club;
+        });
       }
 
       // Obtener pedidos del club
@@ -125,16 +134,19 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                           children: [
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
-                                Text('Panel de Anfitrión', style: TextStyle(color: Colors.white70)),
-                                Text('Club Vida Activa', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                              children: [
+                                const Text('Panel de Anfitrión', style: TextStyle(color: Colors.white70)),
+                                Text(
+                                  _club?.nombreClub ?? 'Cargando...',
+                                  style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                                ),
                               ],
                             ),
                             InkWell(
                               onTap: () => context.push('/host-profile'),
                               child: const CircleAvatar(
-                                backgroundColor: Colors.white30,
-                                child: Icon(LucideIcons.settings, color: Colors.white),
+                              backgroundColor: Colors.white30,
+                              child: Icon(LucideIcons.settings, color: Colors.white),
                               ),
                             )
                           ],
@@ -203,7 +215,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                                      child: const Center(child: Icon(LucideIcons.scanLine, size: 50, color: Color(0xFF333333))),
                                  ),
                                  const SizedBox(height: 12),
-                                 const Text('Registrar asistencia o pedido', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                                 const Text('Identifica la identidad del socio', style: TextStyle(color: Colors.grey, fontSize: 12)),
                              ],
                          ),
                      ),
@@ -213,10 +225,10 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
 
                    // Nueva Tarjeta: Mostrar QR del Club
                    InkWell(
-                     onTap: () => context.push('/host-qr-display', extra: {
-                       'clubId': 2, // Hardcoded por ahora para demo
-                       'clubName': 'Club Vida Activa'
-                     }),
+                     onTap: _club != null ? () => context.push('/host-qr-display', extra: {
+                       'clubId': _club!.id,
+                       'clubName': _club!.nombreClub,
+                     }) : null,
                      child: Container(
                          padding: const EdgeInsets.all(24),
                          decoration: BoxDecoration(
@@ -286,7 +298,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                                                        ),
                                                      )
                                                    : Row(
-                                                       children: [
+                                                   children: [
                                                          if (_pedidosRecibidos > 0)
                                                            _DotInfo(label: '$_pedidosRecibidos Recibido${_pedidosRecibidos > 1 ? 's' : ''}', color: Colors.blue),
                                                          if (_pedidosRecibidos > 0 && (_pedidosPreparando > 0 || _pedidosListos > 0))
@@ -294,13 +306,13 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                                                          if (_pedidosPreparando > 0)
                                                            _DotInfo(label: '$_pedidosPreparando Preparando', color: Colors.orange),
                                                          if (_pedidosPreparando > 0 && _pedidosListos > 0)
-                                                           const SizedBox(width: 12),
+                                                       const SizedBox(width: 12),
                                                          if (_pedidosListos > 0)
                                                            _DotInfo(label: '$_pedidosListos Listo${_pedidosListos > 1 ? 's' : ''}', color: Colors.green),
                                                          if (_totalPedidos == 0)
                                                            const Text('Sin pedidos pendientes', style: TextStyle(color: Colors.white70, fontSize: 10)),
-                                                       ],
-                                                   )
+                                                   ],
+                                               )
                                            ],
                                        ),
                                    ),
@@ -329,6 +341,44 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                                ],
                            ),
                        ),
+                   ),
+
+                   const SizedBox(height: 24),
+
+                   // Eventos Card
+                   InkWell(
+                     onTap: () => context.push('/events'),
+                     child: Container(
+                       padding: const EdgeInsets.all(20),
+                       decoration: BoxDecoration(
+                         color: Colors.white,
+                         borderRadius: BorderRadius.circular(20),
+                         boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: const Offset(0, 5))],
+                       ),
+                       child: Row(
+                         children: [
+                           Container(
+                             padding: const EdgeInsets.all(12),
+                             decoration: BoxDecoration(
+                               color: const Color(0xFF7AC142).withOpacity(0.1),
+                               borderRadius: BorderRadius.circular(12),
+                             ),
+                             child: const Icon(LucideIcons.calendar, color: Color(0xFF7AC142), size: 30),
+                           ),
+                           const SizedBox(width: 16),
+                           const Expanded(
+                             child: Column(
+                               crossAxisAlignment: CrossAxisAlignment.start,
+                               children: [
+                                 Text('Eventos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                 Text('Ver eventos programados', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                               ],
+                             ),
+                           ),
+                           const Icon(LucideIcons.chevronRight, color: Colors.grey),
+                         ],
+                       ),
+                     ),
                    ),
 
                    const SizedBox(height: 24),

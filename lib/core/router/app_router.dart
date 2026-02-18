@@ -40,6 +40,7 @@ import '../../presentation/screens/host/products/host_edit_product_screen.dart';
 import '../../presentation/screens/host/members/host_members_list_screen.dart';
 import '../../presentation/screens/host/members/host_member_registration_screen.dart';
 import '../../presentation/screens/host/host_profile_screen.dart';
+import '../../presentation/screens/events/events_list_screen.dart';
 
 
 
@@ -169,6 +170,10 @@ final appRouter = GoRouter(
           path: '/member-request-club',
           builder: (context, state) => const RequestClubScreen(),
         ),
+        GoRoute(
+          path: '/member-events',
+          builder: (context, state) => const EventsListScreen(),
+        ),
       ],
     ),
     // Rutas de Anfitrión con Shell
@@ -216,6 +221,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/host-profile',
           builder: (context, state) => const HostProfileScreen(),
+        ),
+        GoRoute(
+          path: '/events',
+          builder: (context, state) => const EventsListScreen(),
         ),
         GoRoute(
           path: '/host/products',

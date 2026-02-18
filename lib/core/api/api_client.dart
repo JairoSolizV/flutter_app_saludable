@@ -43,6 +43,15 @@ class ApiClient {
         final user = await _userRepository.getCurrentUser();
         if (user?.token != null) {
           options.headers['Authorization'] = 'Bearer ${user!.token}';
+          if (kDebugMode) {
+            print('[DEBUG API_CLIENT] Token encontrado para usuario ${user.id}');
+            print('[DEBUG API_CLIENT] Token (primeros 20 chars): ${user.token!.substring(0, user.token!.length > 20 ? 20 : user.token!.length)}...');
+          }
+        } else {
+          if (kDebugMode) {
+            print('[DEBUG API_CLIENT] WARNING: No se encontró token para la petición a ${options.path}');
+            print('[DEBUG API_CLIENT] Usuario actual: ${user?.id ?? "null"}');
+          }
         }
         
         if (kDebugMode) {
@@ -59,6 +68,13 @@ class ApiClient {
       onError: (DioException e, handler) {
         if (kDebugMode) {
           print('ERROR[${e.response?.statusCode}] => PATH: ${e.requestOptions.path}');
+          if (e.response?.statusCode == 401) {
+            print('[DEBUG API_CLIENT] ERROR 401: Token expirado o inválido');
+            print('[DEBUG API_CLIENT] Verificando token actual...');
+            // El token podría estar expirado, pero no podemos hacer logout aquí
+            // porque no tenemos acceso al contexto. El error se propagará y
+            // la UI debería manejarlo.
+          }
         }
         return handler.next(e);
       },

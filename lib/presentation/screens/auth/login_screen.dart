@@ -75,6 +75,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           border: OutlineInputBorder(),
                         ),
                         validator: (v) => v!.isEmpty ? 'Campo requerido' : null,
+                        onChanged: (value) {
+                          // Limpiar error cuando el usuario empiece a escribir
+                          final auth = Provider.of<AuthProvider>(context, listen: false);
+                          if (auth.errorMessage != null) {
+                            auth.clearError();
+                          }
+                        },
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -86,14 +93,42 @@ class _LoginScreenState extends State<LoginScreen> {
                           border: OutlineInputBorder(),
                         ),
                         validator: (v) => v!.isEmpty ? 'Campo requerido' : null,
+                        onChanged: (value) {
+                          // Limpiar error cuando el usuario empiece a escribir
+                          final auth = Provider.of<AuthProvider>(context, listen: false);
+                          if (auth.errorMessage != null) {
+                            auth.clearError();
+                          }
+                        },
                       ),
                       const SizedBox(height: 24),
                       Consumer<AuthProvider>(
                         builder: (context, auth, _) {
                             if (auth.errorMessage != null) {
-                                return Padding(
-                                    padding: const EdgeInsets.only(bottom: 16),
-                                    child: Text(auth.errorMessage!, style: const TextStyle(color: Colors.red)),
+                                return Container(
+                                    padding: const EdgeInsets.all(12),
+                                    margin: const EdgeInsets.only(bottom: 16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.shade50,
+                                      border: Border.all(color: Colors.red.shade300, width: 1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            auth.errorMessage!,
+                                            style: TextStyle(
+                                              color: Colors.red.shade700,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                 );
                             }
                             return const SizedBox.shrink();

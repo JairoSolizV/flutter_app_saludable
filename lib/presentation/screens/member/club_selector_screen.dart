@@ -73,8 +73,8 @@ class _ClubSelectorScreenState extends State<ClubSelectorScreen> with SingleTick
       // Get user's membership to find hubId
       final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
       
-      // For now, we'll use hubId = 2 (Santa Cruz). In production, get from user's membership
-      final int hubId = 2; // TODO: Get from user's membership
+      // For now, we'll use hubId = 1 (Santa Cruz). In production, get from user's membership
+      final int hubId = 1; // TODO: Get from user's membership
       
       final clubs = await clubDataSource.getClubesByHub(hubId);
       
@@ -96,8 +96,11 @@ class _ClubSelectorScreenState extends State<ClubSelectorScreen> with SingleTick
   }
 
   void _navigateToProducts(Club club) {
-    // Navigate to products screen with clubId
-    context.push('/member/products/${club.id}', extra: club);
+    // Navigate to products screen with clubId and clubNombre
+    context.push('/member-orders/new/club-products', extra: {
+      'clubId': club.id,
+      'clubNombre': club.nombreClub,
+    });
   }
 
   @override

@@ -119,20 +119,124 @@ class _MemberAttendanceScreenState extends State<MemberAttendanceScreen> {
               separatorBuilder: (context, index) => const Divider(),
               itemBuilder: (context, index) {
                 final asistencia = _asistencias[index];
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.green[50],
-                    child: const Icon(LucideIcons.calendarCheck, color: Color(0xFF7AC142)),
+                // Extraer solo la hora (HH:mm) de fechaHora
+                String hora = '';
+                try {
+                  // fechaHora puede venir como "2026-02-17 20:30:00" o "17/02/2026 20:30:00"
+                  if (asistencia.fechaHora.contains(' ')) {
+                    final parts = asistencia.fechaHora.split(' ');
+                    if (parts.length >= 2) {
+                      final timePart = parts[1]; // "20:30:00"
+                      final timeComponents = timePart.split(':');
+                      if (timeComponents.length >= 2) {
+                        hora = '${timeComponents[0]}:${timeComponents[1]}'; // "20:30"
+                      }
+                    }
+                  }
+                } catch (e) {
+                  hora = asistencia.fechaHora; // Fallback si no se puede parsear
+                }
+                
+                return Container(
+                  margin: const EdgeInsets.symmetric(vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  title: Text(asistencia.fechaDia, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text("${asistencia.clubNombre} • ${asistencia.fechaHora}"),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.green[100],
-                      borderRadius: BorderRadius.circular(12)
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    leading: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7AC142).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        LucideIcons.calendarCheck,
+                        color: Color(0xFF7AC142),
+                        size: 24,
+                      ),
                     ),
-                    child: const Text("Asistió", style: TextStyle(fontSize: 10, color: Colors.green)),
+                    title: Text(
+                      asistencia.fechaDia,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Color(0xFF333333),
+                      ),
+                    ),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                LucideIcons.mapPin,
+                                size: 14,
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  asistencia.clubNombre,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (hora.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(
+                                  LucideIcons.clock,
+                                  size: 14,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  hora,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.green[50],
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.green[200]!),
+                      ),
+                      child: const Text(
+                        "Asistió",
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.green,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ),
                 );
               },

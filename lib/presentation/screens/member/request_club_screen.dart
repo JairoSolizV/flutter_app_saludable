@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -15,7 +16,6 @@ class RequestClubScreen extends StatefulWidget {
   @override
   State<RequestClubScreen> createState() => _RequestClubScreenState();
 }
-
 class _RequestClubScreenState extends State<RequestClubScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
@@ -63,6 +63,20 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
 
       final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
       
+      // Debug: Verificar valores antes de enviar
+      debugPrint('[REQUEST CLUB] Enviando solicitud:');
+      debugPrint('[REQUEST CLUB]   nombreClub: ${_nameController.text.trim()}');
+      debugPrint('[REQUEST CLUB]   direccion: ${_addressController.text.trim()}');
+      debugPrint('[REQUEST CLUB]   horario: $_schedule');
+      debugPrint('[REQUEST CLUB]   lat: $_lat');
+      debugPrint('[REQUEST CLUB]   lng: $_lng');
+      debugPrint('[REQUEST CLUB]   hubId: 1');
+      debugPrint('[REQUEST CLUB]   anfitrionId: ${user.id}');
+      
+      if (_lat == null || _lng == null) {
+        throw Exception('La ubicación no está seleccionada. Por favor, selecciona la ubicación del club.');
+      }
+      
       await clubDataSource.solicitarCreacionClub(
         anfitrionId: int.parse(user.id),
         nombreClub: _nameController.text.trim(),
@@ -70,9 +84,8 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
         horario: _schedule,
         lat: _lat!,
         lng: _lng!,
-        hubId: 2, // Default HUB Santa Cruz
+        hubId: 1, // Default HUB Santa Cruz----------------------------------------------------------- Esto puede cambiarse a HUBID de la BD cuando se extienda por  hubs
       );
-
       if (mounted) {
         showDialog(
           context: context,
@@ -198,10 +211,22 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
                   );
                   
                   if (result != null) {
+                    debugPrint('[REQUEST CLUB] Ubicación seleccionada: Lat=${result.latitude}, Lng=${result.longitude}');
                     setState(() {
                       _lat = result.latitude;
                       _lng = result.longitude;
                     });
+                  } else {
+                    debugPrint('[REQUEST CLUB] Usuario canceló la selección de ubicación');
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Debes confirmar la ubicación para continuar'),
+                          backgroundColor: Colors.orange,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
                   }
                 },
                 icon: const Icon(LucideIcons.mapPin),

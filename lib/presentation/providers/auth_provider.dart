@@ -18,6 +18,12 @@ class AuthProvider extends ChangeNotifier {
   User? _currentUser;
   User? get currentUser => _currentUser;
 
+  /// Limpiar mensaje de error
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
+
   Future<bool> login(String email, String password) async {
     return _authenticate(() => _remoteDataSource.login(email, password));
   }
@@ -33,8 +39,25 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final user = await authMethod();
+      print('[DEBUG AUTH_PROVIDER] Usuario autenticado:');
+      print('[DEBUG AUTH_PROVIDER]   - id: ${user.id}');
+      print('[DEBUG AUTH_PROVIDER]   - email: ${user.email}');
+      print('[DEBUG AUTH_PROVIDER]   - token: ${user.token != null ? "PRESENTE (${user.token!.length} chars)" : "NULL"}');
+      if (user.token != null && user.token!.length > 20) {
+        print('[DEBUG AUTH_PROVIDER]   - token preview: ${user.token!.substring(0, 20)}...');
+      }
+      
+      // SOLUCIÓN: Limpiar BD local antes de guardar el nuevo usuario
+      // Esto asegura que solo haya un usuario en la BD local (single-user app)
+      // y evita problemas con tokens expirados de sesiones anteriores
+      print('[DEBUG AUTH_PROVIDER] Limpiando BD local antes de guardar nuevo usuario...');
+      await _localRepository.logout(); // Limpia todos los usuarios viejos
+      print('[DEBUG AUTH_PROVIDER] BD local limpiada correctamente');
+      
       // Guardar usuario y token localmente
       await _localRepository.saveUser(user);
+      print('[DEBUG AUTH_PROVIDER] Usuario guardado en BD local');
+      
       _currentUser = user; 
       
       _isLoading = false;
@@ -128,7 +151,10 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+      print('[DEBUG AUTH_PROVIDER] logout() - Iniciando cierre de sesión');
+      _currentUser = null;
       await _localRepository.logout();
+      print('[DEBUG AUTH_PROVIDER] logout() - Sesión cerrada, usuario limpiado');
       notifyListeners();
   }
 }
