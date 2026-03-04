@@ -35,7 +35,7 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
   ClubMembership? _membership;
   bool _isLoadingMembership = true;
   bool _isCreatingOrder = false;
-  String _tipoConsumo = 'EN_LUGAR'; // 'EN_LUGAR' o 'PARA_LLEVAR'
+  String _tipoConsumo = 'EN_LUGAR'; // 'EN_LUGAR' o 'PARA_RECOGER'
   final TextEditingController _notaController = TextEditingController();
 
   @override
@@ -494,11 +494,11 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: ChoiceChip(
-                          label: const Text('Para Llevar'),
-                          selected: _tipoConsumo == 'PARA_LLEVAR',
+                          label: const Text('Para Recoger'),
+                          selected: _tipoConsumo == 'PARA_RECOGER',
                           onSelected: (selected) {
                             if (selected) {
-                              setState(() => _tipoConsumo = 'PARA_LLEVAR');
+                              setState(() => _tipoConsumo = 'PARA_RECOGER');
                             }
                           },
                           selectedColor: const Color(0xFF7AC142),

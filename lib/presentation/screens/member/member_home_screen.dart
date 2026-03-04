@@ -271,7 +271,18 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
 
                       // Botón CTA (Hacer Pedido)
                       InkWell(
-                        onTap: () => context.push('/member-club-selector'),
+                        onTap: () {
+                          if (_activeMembership != null) {
+                            context.push('/member-orders/new/club-products', extra: {
+                              'clubId': _activeMembership!.clubId,
+                              'clubNombre': _activeMembership!.clubNombre,
+                            });
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('No tienes un club asociado')),
+                            );
+                          }
+                        },
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(

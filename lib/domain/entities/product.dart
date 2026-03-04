@@ -2,7 +2,8 @@ class Product {
   final String id;
   final String name;
   final String description;
-  final double price; // Optional for now
+  final double price; // Optional/legacy
+  final int puntosValor; // MR QUILLO Points
   final String category;
   final String imageUrl;
   final int? hubId;
@@ -14,6 +15,7 @@ class Product {
     required this.name,
     required this.description,
     this.price = 0.0,
+    this.puntosValor = 0,
     this.category = 'General',
     this.imageUrl = '',
     this.hubId,
@@ -39,6 +41,7 @@ class Product {
       name: map['name']?.toString() ?? '',
       description: map['description']?.toString() ?? '',
       price: (map['price'] ?? 0).toDouble(),
+      puntosValor: map['puntosValor'] ?? 0,
       category: map['category']?.toString() ?? 'General',
       imageUrl: map['image_url']?.toString() ?? '',
       hubId: hubId,
@@ -53,6 +56,7 @@ class Product {
       'name': name,
       'description': description,
       'price': price,
+      'puntosValor': puntosValor,
       'category': category,
       'image_url': imageUrl,
       'hubId': hubId,

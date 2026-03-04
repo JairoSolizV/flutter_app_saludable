@@ -19,7 +19,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'nutrilife_club.db');
     return await openDatabase(
       path,
-      version: 5,
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -49,6 +49,7 @@ class DatabaseHelper {
         name TEXT,
         description TEXT,
         price REAL,
+        puntosValor INTEGER DEFAULT 0,
         category TEXT,
         image_url TEXT,
         hubId INTEGER,
@@ -69,6 +70,7 @@ class DatabaseHelper {
         status TEXT, -- pending, preparing, ready, completed
         created_at TEXT,
         is_synced INTEGER DEFAULT 0, -- 0: No enviado al server, 1: Sincronizado
+        tiempoEstimadoMinutos INTEGER,
         FOREIGN KEY(user_id) REFERENCES users(id)
       )
     ''');
@@ -138,6 +140,22 @@ class DatabaseHelper {
         // Eliminar price: SQLite no soporta DROP COLUMN, pero podemos ignorarlo en el código
       } catch (e) {
         print("Error migrando tabla orders/order_items: $e");
+      }
+    }
+    if (oldVersion < 6) {
+      // Agregar puntosValor a products
+      try {
+        await db.execute('ALTER TABLE products ADD COLUMN puntosValor INTEGER DEFAULT 0');
+      } catch (e) {
+        print("Error migrando tabla products (puntosValor): $e");
+      }
+    }
+    if (oldVersion < 7) {
+      // Agregar tiempoEstimadoMinutos a orders
+      try {
+        await db.execute('ALTER TABLE orders ADD COLUMN tiempoEstimadoMinutos INTEGER');
+      } catch (e) {
+        print("Error migrando tabla orders (tiempoEstimadoMinutos): $e");
       }
     }
   }

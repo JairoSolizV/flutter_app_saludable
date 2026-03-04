@@ -607,18 +607,30 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
                                                 child: const Text('Preparar', style: TextStyle(color: Colors.white)),
                                             ),
-                                        if (order['status'] == 'preparing')
+                                        if (order['status'] == 'preparing') ...[
+                                            IconButton(
+                                              icon: const Icon(Icons.undo, color: Colors.grey),
+                                              onPressed: () => updateStatus(order['id'], 'pending'),
+                                              tooltip: 'Deshacer (Volver a Pendiente)',
+                                            ),
                                             ElevatedButton(
                                                 onPressed: () => updateStatus(order['id'], 'ready'),
                                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                                                 child: const Text('Listo', style: TextStyle(color: Colors.white)),
                                             ),
-                                        if (order['status'] == 'ready')
+                                        ],
+                                        if (order['status'] == 'ready') ...[
+                                            IconButton(
+                                              icon: const Icon(Icons.undo, color: Colors.grey),
+                                              onPressed: () => updateStatus(order['id'], 'preparing'),
+                                              tooltip: 'Deshacer (Volver a Preparando)',
+                                            ),
                                             ElevatedButton(
                                                 onPressed: () => updateStatus(order['id'], 'completed'),
                                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
                                                 child: const Text('Entregar', style: TextStyle(color: Colors.white)),
                                             ),
+                                        ],
                                     ],
                                 )
                             ],

@@ -5,12 +5,18 @@ class LoyaltyCard extends StatelessWidget {
   final int stamps;
   final int maxStamps;
   final String clubName;
+  final String? fechaFin;
+  final String tipoMetrica; // 'ASISTENCIA', 'CONSUMO', 'REFERIDOS'
+  final int puntosRecompensa;
 
   const LoyaltyCard({
     super.key,
     this.stamps = 0,
     this.maxStamps = 10,
     this.clubName = 'Sin Club Asignado',
+    this.fechaFin,
+    this.tipoMetrica = 'ASISTENCIA',
+    this.puntosRecompensa = 0,
   });
 
   @override
@@ -37,9 +43,9 @@ class LoyaltyCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Tarjeta de Fidelidad',
-                    style: TextStyle(
+                  Text(
+                    titleForMetrica(),
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF333333),
@@ -138,8 +144,34 @@ class LoyaltyCard extends StatelessWidget {
           ),
           
           const SizedBox(height: 20),
+          if (puntosRecompensa > 0)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                   const Icon(LucideIcons.medal, size: 14, color: Colors.orange),
+                   const SizedBox(width: 4),
+                   Text(
+                     'Recompensa: $puntosRecompensa pts',
+                     style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12),
+                   ),
+                ],
+              ),
+            ),
+          if (fechaFin != null)
+            Text(
+              'Válido hasta: $fechaFin',
+              style: const TextStyle(fontSize: 12, color: Colors.redAccent, fontWeight: FontWeight.w600),
+            ),
+          const SizedBox(height: 4),
           Text(
-            '¡Solo ${maxStamps - stamps} consumos más para tu recompensa sorpresa!',
+            '¡Solo ${maxStamps - stamps} ${unidadForMetrica()} más para tu meta!',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12,
@@ -150,5 +182,23 @@ class LoyaltyCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String titleForMetrica() {
+    switch (tipoMetrica) {
+      case 'CONSUMO': return 'Logro de Consumo';
+      case 'REFERIDOS': return 'Reto de Referidos';
+      case 'ASISTENCIA':
+      default: return 'Tarjeta de Fidelidad';
+    }
+  }
+
+  String unidadForMetrica() {
+    switch (tipoMetrica) {
+      case 'CONSUMO': return 'compras';
+      case 'REFERIDOS': return 'invitados';
+      case 'ASISTENCIA':
+      default: return 'consumos';
+    }
   }
 }

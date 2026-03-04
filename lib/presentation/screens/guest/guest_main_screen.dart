@@ -23,9 +23,6 @@ class GuestMainScreen extends StatelessWidget {
               context.go('/guest-home');
               break;
             case 1:
-              context.go('/guest-map');
-              break;
-            case 2:
               context.go('/login');
               break;
           }
@@ -34,10 +31,6 @@ class GuestMainScreen extends StatelessWidget {
           NavigationDestination(
             icon: Icon(LucideIcons.home),
             label: 'Inicio',
-          ),
-          NavigationDestination(
-            icon: Icon(LucideIcons.map),
-            label: 'Explorar',
           ),
           NavigationDestination(
             icon: Icon(LucideIcons.logIn),
@@ -49,8 +42,7 @@ class GuestMainScreen extends StatelessWidget {
   }
 
   int _getIndexFromLocation(String location) {
-    if (location.startsWith('/guest-map')) return 1;
-    if (location.startsWith('/login')) return 2;
+    if (location.startsWith('/login')) return 1;
     return 0; // Default home
   }
 }

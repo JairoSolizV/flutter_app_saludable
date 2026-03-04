@@ -26,7 +26,7 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
   final Map<String, String> _productNotes = {};
   ClubMembership? _membership;
   bool _isLoadingMembership = true;
-  String _tipoConsumo = 'EN_LUGAR'; // 'EN_LUGAR' o 'PARA_LLEVAR'
+  String _tipoConsumo = 'EN_LUGAR'; // 'EN_LUGAR' o 'PARA_RECOGER'
   final TextEditingController _notaController = TextEditingController();
   
   // Nuevos campos para selector de club
@@ -357,8 +357,8 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                             icon: Icon(Icons.restaurant),
                           ),
                           ButtonSegment(
-                            value: 'PARA_LLEVAR',
-                            label: Text('Para llevar'),
+                            value: 'PARA_RECOGER',
+                            label: Text('Para Recoger'),
                             icon: Icon(Icons.shopping_bag),
                           ),
                         ],
@@ -445,7 +445,7 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                           userId: user.id,
                           clubId: _selectedClubId!, // Usar el club seleccionado, no el de la membresía
                           membresiaId: _membership!.id,
-                          tipoConsumo: _tipoConsumo, // 'EN_LUGAR' o 'PARA_LLEVAR'
+                          tipoConsumo: _tipoConsumo, // 'EN_LUGAR' o 'PARA_RECOGER'
                           observaciones: _notaController.text.trim(), // Nota general del pedido
                           status: 'pending',
                           createdAt: DateTime.now(),

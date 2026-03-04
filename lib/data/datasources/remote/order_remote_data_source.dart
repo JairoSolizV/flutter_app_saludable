@@ -35,11 +35,6 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
     debugPrint('[DEBUG SEND] Enviando pedido con múltiples items - membresiaId: $membresiaId, clubId: $clubId, items: ${items.length}');
 
     try {
-      // Formatear horario deseado (usar hora actual + 30 min como ejemplo)
-      final horarioDeseado = DateFormat('HH:mm').format(
-        DateTime.now().add(const Duration(minutes: 30))
-      );
-      
       // Preparar items para el backend
       final List<Map<String, dynamic>> itemsData = [];
       for (var item in items) {
@@ -53,8 +48,7 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
       
       // Preparar body del request
       final requestBody = {
-        'horarioDeseado': horarioDeseado,
-        'tipoConsumo': order.tipoConsumo ?? 'EN_LUGAR', // 'EN_LUGAR' o 'PARA_LLEVAR'
+        'tipoConsumo': order.tipoConsumo ?? 'EN_LUGAR', // 'EN_LUGAR' o 'PARA_RECOGER'
         'observaciones': order.observaciones ?? 'Pedido desde App Móvil',
         'items': itemsData,
       };

@@ -8,6 +8,7 @@ class OrderEntity {
   final String status; // 'pending', 'preparing', 'ready', 'completed'
   final DateTime createdAt;
   final bool isSynced;
+  final int? tiempoEstimadoMinutos; // min
   final List<OrderItem> items;
 
   OrderEntity({
@@ -20,6 +21,7 @@ class OrderEntity {
     required this.status,
     required this.createdAt,
     this.isSynced = false,
+    this.tiempoEstimadoMinutos,
     this.items = const [],
   });
 
@@ -34,6 +36,7 @@ class OrderEntity {
       'status': status,
       'created_at': createdAt.toIso8601String(),
       'is_synced': isSynced ? 1 : 0,
+      'tiempoEstimadoMinutos': tiempoEstimadoMinutos,
     };
   }
 
@@ -48,6 +51,7 @@ class OrderEntity {
       status: map['status'],
       createdAt: DateTime.parse(map['created_at']),
       isSynced: map['is_synced'] == 1,
+      tiempoEstimadoMinutos: map['tiempoEstimadoMinutos'],
       items: items,
     );
   }

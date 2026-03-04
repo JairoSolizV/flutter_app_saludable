@@ -8,6 +8,7 @@ import '../../providers/user_provider.dart';
 import '../../../data/datasources/remote/order_remote_data_source.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
+import '../../../domain/entities/club_membership.dart';
 
 class MemberOrdersListScreen extends StatefulWidget {
   const MemberOrdersListScreen({super.key});
@@ -21,6 +22,7 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen> with Si
   bool _isLoading = true;
   List<Map<String, dynamic>> _orders = [];
   String? _error;
+  ClubMembership? _activeMembership;
 
   @override
   void initState() {
@@ -33,6 +35,7 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen> with Si
     setState(() {
       _isLoading = true;
       _error = null;
+      _activeMembership = null;
     });
 
     try {
@@ -55,6 +58,8 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen> with Si
 
       // Obtener pedidos de la primera membresía activa
       final membresia = membresias.first;
+      _activeMembership = membresia;
+
       final orderDataSource = Provider.of<OrderRemoteDataSource>(context, listen: false);
       final ordersData = await orderDataSource.getOrdersBySocio(membresia.id);
 
@@ -70,6 +75,8 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen> with Si
         final String clubNombre = order['clubNombre']?.toString() ?? 'Club';
         final String tipoConsumo = order['tipoConsumo']?.toString() ?? 'EN_LUGAR';
         final String observaciones = order['observaciones']?.toString() ?? '';
+        final dynamic tiempoValue = order['tiempoEstimadoMinutos'];
+        final int? tiempoEstimadoMinutos = tiempoValue is int ? tiempoValue : (tiempoValue != null ? int.tryParse(tiempoValue.toString()) : null);
         
         // Obtener items del pedido
         List<Map<String, dynamic>> items = [];
@@ -120,6 +127,7 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen> with Si
           'clubNombre': clubNombre,
           'tipoConsumo': tipoConsumo,
           'observaciones': observaciones,
+          'tiempoEstimadoMinutos': tiempoEstimadoMinutos,
           'items': items,
         };
       }).toList();
@@ -188,7 +196,16 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen> with Si
                 ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          context.push('/member-orders/new');
+          if (_activeMembership != null) {
+            context.push('/member-orders/new/club-products', extra: {
+              'clubId': _activeMembership!.clubId,
+              'clubNombre': _activeMembership!.clubNombre,
+            });
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('No tienes un club asociado')),
+            );
+          }
         },
         backgroundColor: const Color(0xFF7AC142),
         icon: const Icon(LucideIcons.plus, color: Colors.white),
@@ -255,6 +272,28 @@ class _OrdersList extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
+                if ((estado == 'PREPARANDO' || estado == 'PREPARING') && order['tiempoEstimadoMinutos'] != null)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(LucideIcons.clock, size: 16, color: Colors.blue),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '¡Tu pedido se está preparando! Estará listo en aprox. ${order['tiempoEstimadoMinutos']} minutos.',
+                            style: const TextStyle(color: Colors.blue, fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 // Club
                 Row(
                   children: [
@@ -355,7 +394,7 @@ class _OrdersList extends StatelessWidget {
                         Icon(LucideIcons.mapPin, size: 12, color: Colors.grey[600]),
                         const SizedBox(width: 4),
                         Text(
-                          tipoConsumo == 'PARA_LLEVAR' ? 'Para llevar' : 'Consumir aquí',
+                          tipoConsumo == 'PARA_RECOGER' ? 'Para Recoger' : 'Consumir aquí',
                           style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                         ),
                       ],

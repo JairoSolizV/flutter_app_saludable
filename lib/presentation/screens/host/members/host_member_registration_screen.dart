@@ -77,14 +77,16 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
 
               TextFormField(
                 controller: _referidoCtrl,
+                keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
-                  labelText: 'Referido Por (Opcional)',
+                  labelText: 'ID Membresía de Quien Refiere (Opcional)',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.people_outline),
+                  prefixIcon: Icon(Icons.numbers),
                 ),
                 validator: (value) {
                    if (value == null || value.isEmpty) return null;
-                   return Validators.validateName(value);
+                   if (int.tryParse(value) == null) return 'Debe ser un número válido';
+                   return null;
                 },
               ),
               const SizedBox(height: 16),
@@ -134,7 +136,7 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
       await membresiaDataSource.activarSocio(
         clubId: widget.clubId,
         activationPayload: widget.qrPayload,
-        referidoPor: _referidoCtrl.text,
+        referidoPorMembresiaId: int.tryParse(_referidoCtrl.text),
         comoConocio: _conocioCtrl.text,
       ).timeout(const Duration(seconds: 15), onTimeout: () {
         throw Exception('Tiempo de espera agotado. Verifica tu conexión.');

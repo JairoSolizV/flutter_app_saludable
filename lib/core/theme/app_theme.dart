@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  static const Color primaryColor = Color(0xFF7AC142); // Herbalife Green
+  static const Color primaryColor = Color(0xFF7AC142); // MR QUILLO Green
   static const Color primaryDark = Color(0xFF6BB032);
   static const Color background = Color(0xFFF5F5F5);
   static const Color surface = Colors.white;

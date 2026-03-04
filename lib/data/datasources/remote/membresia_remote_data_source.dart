@@ -7,7 +7,7 @@ import '../../../domain/entities/membresia_logro.dart';
 
 abstract class MembresiaRemoteDataSource {
   Future<void> crearMembresia({required int usuarioId, required int clubId, int? nivelId, Map<String, dynamic>? extraData});
-  Future<void> activarSocio({required int clubId, required String activationPayload, String? referidoPor, String? comoConocio});
+  Future<void> activarSocio({required int clubId, required String activationPayload, int? referidoPorMembresiaId, String? comoConocio});
   Future<List<ClubMembership>> getMembresiasPorUsuario(int usuarioId);
   Future<List<Attendance>> getAsistencias(int membresiaId);
   Future<AsistenciaResponse> registrarAsistencia({
@@ -56,13 +56,13 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
   Future<void> activarSocio({
     required int clubId, 
     required String activationPayload, 
-    String? referidoPor, 
+    int? referidoPorMembresiaId, 
     String? comoConocio
   }) async {
     try {
       final body = {
         'activationPayload': activationPayload.trim(),
-        'referidoPor': referidoPor,
+        'referidoPorMembresiaId': referidoPorMembresiaId,
         'comoConocio': comoConocio,
       };
 

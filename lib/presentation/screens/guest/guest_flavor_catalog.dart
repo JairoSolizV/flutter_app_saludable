@@ -79,7 +79,7 @@ class GuestFlavorCatalog extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Bs ${product.price.toStringAsFixed(2)}',
+                                  '🪙 ${product.puntosValor} pts',
                                   style: TextStyle(
                                     color: Theme.of(context).primaryColor,
                                     fontWeight: FontWeight.bold,

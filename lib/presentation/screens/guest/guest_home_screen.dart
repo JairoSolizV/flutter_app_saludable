@@ -67,11 +67,11 @@ class GuestHomeScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _BigCard(
-                      title: 'Encuentra tu Club',
-                      icon: LucideIcons.mapPin,
-                      color: const Color(0xFFE0F2F1), // Cyan muy claro
-                      iconColor: Colors.teal,
-                      onTap: () => context.go('/guest-map'), // Switch tab
+                      title: 'Crear Cuenta',
+                      icon: LucideIcons.userPlus,
+                      color: const Color(0xFFE8F5E9), // Light green
+                      iconColor: const Color(0xFF7AC142), // Primary green
+                      onTap: () => context.go('/register'), 
                     ),
                   ),
                 ],
@@ -90,7 +90,7 @@ class GuestHomeScreen extends StatelessWidget {
                child: Column(
                  crossAxisAlignment: CrossAxisAlignment.start,
                  children: [
-                   const Text('Novedades', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                   const Text('Consejos Diarios', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                    const SizedBox(height: 12),
                    Container(
                      decoration: BoxDecoration(
@@ -119,6 +119,59 @@ class GuestHomeScreen extends StatelessWidget {
                                 const SizedBox(height: 8),
                                 Text(
                                   'Descubre cómo el té verde puede ayudarte a mejorar tu metabolismo y aumentar tu energía diaria de forma natural...',
+                                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          ),
+                       ],
+                     ),
+                   ),
+
+                   const SizedBox(height: 24),
+
+                   const Text('Próximos Eventos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                   const SizedBox(height: 12),
+                   Container(
+                     decoration: BoxDecoration(
+                       color: Colors.white,
+                       borderRadius: BorderRadius.circular(16),
+                       boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]
+                     ),
+                     child: Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                            child: Image.network(
+                              'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', // Yoga / Exercise image
+                              height: 150,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Expanded(child: Text('Día de Entrenamiento Fit', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Text('Mañana, 18:00', style: TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.bold)),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Únete a nosotros para una sesión intensa de entrenamiento al aire libre. Todos los niveles son bienvenidos.',
                                   style: TextStyle(color: Colors.grey[600], fontSize: 14),
                                 ),
                               ],
