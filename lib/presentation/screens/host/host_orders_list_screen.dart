@@ -19,6 +19,84 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
   bool _isLoading = true;
   String? _error;
 
+  String _formatTipoConsumoLabel(dynamic tipoConsumo) {
+    final v = tipoConsumo?.toString().toUpperCase();
+    switch (v) {
+      case 'PARA_RECOGER':
+        return 'Para recoger';
+      case 'EN_LUGAR':
+        return 'En el lugar';
+      default:
+        // Fallback por si backend envía otro valor
+        return v ?? '';
+    }
+  }
+
+  IconData _formatTipoConsumoIcon(dynamic tipoConsumo) {
+    final v = tipoConsumo?.toString().toUpperCase();
+    switch (v) {
+      case 'PARA_RECOGER':
+        return LucideIcons.shoppingBag;
+      case 'EN_LUGAR':
+        return LucideIcons.store;
+      default:
+        return LucideIcons.info;
+    }
+  }
+
+  Future<int?> _selectTiempoEstimadoMinutos() async {
+    if (!mounted) return null;
+
+    return showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: false,
+      builder: (ctx) {
+        final opciones = <int>[10, 15, 20, 30];
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Tiempo estimado',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Selecciona en cuántos minutos estará listo el pedido.',
+                  style: TextStyle(color: Colors.grey[700]),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final min in opciones)
+                      OutlinedButton(
+                        onPressed: () => Navigator.of(ctx).pop(min),
+                        child: Text('$min min'),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(null),
+                    child: const Text('Cancelar'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -379,7 +457,22 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
       // Actualizar en el backend
       final orderDataSource = Provider.of<OrderRemoteDataSource>(context, listen: false);
       final backendStatus = _mapUIToBackendStatus(newStatus);
-      await orderDataSource.updateOrderStatus(pedidoId, backendStatus);
+
+      // Requisito backend: si estado=PREPARANDO, debemos enviar tiempoEstimadoMinutos
+      if (backendStatus.toUpperCase() == 'PREPARANDO') {
+        final tiempo = await _selectTiempoEstimadoMinutos();
+        if (tiempo == null) {
+          // Cancelado por el anfitrión -> no hacemos la petición
+          return;
+        }
+        await orderDataSource.updateOrderStatus(
+          pedidoId,
+          backendStatus,
+          tiempoEstimadoMinutos: tiempo,
+        );
+      } else {
+        await orderDataSource.updateOrderStatus(pedidoId, backendStatus);
+      }
       
       // Actualizar localmente
       if (mounted) {
@@ -585,10 +678,10 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                             padding: const EdgeInsets.only(top: 8),
                             child: Row(
                               children: [
-                                Icon(LucideIcons.mapPin, size: 14, color: Colors.grey[700]),
+                                Icon(_formatTipoConsumoIcon(order['tipoConsumo']), size: 14, color: Colors.grey[700]),
                                 const SizedBox(width: 4),
                                 Text(
-                                  order['tipoConsumo'] == 'PARA_LLEVAR' ? 'Para llevar' : 'Consumir aquí',
+                                  _formatTipoConsumoLabel(order['tipoConsumo']),
                                   style: TextStyle(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w500),
                                 ),
                               ],

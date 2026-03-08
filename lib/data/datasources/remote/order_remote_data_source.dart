@@ -7,7 +7,7 @@ abstract class OrderRemoteDataSource {
   Future<void> sendOrder(OrderEntity order, List<OrderItem> items);
   Future<List<Map<String, dynamic>>> getOrdersByClub(int clubId);
   Future<List<Map<String, dynamic>>> getOrdersBySocio(int membresiaId);
-  Future<void> updateOrderStatus(int pedidoId, String newStatus);
+  Future<void> updateOrderStatus(int pedidoId, String newStatus, {int? tiempoEstimadoMinutos});
   Future<List<Map<String, dynamic>>> getAllOrders(); // Método temporal para debug
 }
 
@@ -321,15 +321,27 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
   }
 
   @override
-  Future<void> updateOrderStatus(int pedidoId, String newStatus) async {
+  Future<void> updateOrderStatus(int pedidoId, String newStatus, {int? tiempoEstimadoMinutos}) async {
     try {
+      // Requisito backend: si estado=PREPARANDO, es obligatorio enviar tiempoEstimadoMinutos
+      final normalizedStatus = newStatus.toUpperCase();
+      if (normalizedStatus == 'PREPARANDO' && tiempoEstimadoMinutos == null) {
+        throw Exception('Debes seleccionar un tiempo estimado antes de pasar el pedido a PREPARANDO.');
+      }
+
       debugPrint('[DEBUG PATCH] Actualizando estado del pedido $pedidoId a $newStatus');
-      debugPrint('[DEBUG PATCH] Endpoint: PATCH /api/pedidos/$pedidoId/estado?estado=$newStatus');
-      debugPrint('[DEBUG PATCH] URL completa: ${_client.options.baseUrl}/pedidos/$pedidoId/estado?estado=$newStatus');
+      final qpLog = normalizedStatus == 'PREPARANDO'
+          ? 'estado=$newStatus&tiempoEstimadoMinutos=$tiempoEstimadoMinutos'
+          : 'estado=$newStatus';
+      debugPrint('[DEBUG PATCH] Endpoint: PATCH /api/pedidos/$pedidoId/estado?$qpLog');
+      debugPrint('[DEBUG PATCH] URL completa: ${_client.options.baseUrl}/pedidos/$pedidoId/estado?$qpLog');
       
       final response = await _client.patch(
         '/pedidos/$pedidoId/estado',
-        queryParameters: {'estado': newStatus},
+        queryParameters: {
+          'estado': newStatus,
+          if (tiempoEstimadoMinutos != null) 'tiempoEstimadoMinutos': tiempoEstimadoMinutos,
+        },
       );
       
       debugPrint('[DEBUG PATCH] Respuesta recibida - Status: ${response.statusCode}');
@@ -362,7 +374,11 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
         throw Exception('Error del servidor. Por favor intenta más tarde.');
       }
       
-      final errorMessage = e.response?.data?['message'] ?? e.message ?? 'Error desconocido';
+      String errorMessage = e.message ?? 'Error desconocido';
+      final data = e.response?.data;
+      if (data is Map && data['message'] != null) {
+        errorMessage = data['message'].toString();
+      }
       debugPrint('[DEBUG PATCH] Error actualizando estado - Status: $statusCode, Error: $errorMessage');
       throw Exception('Error actualizando estado: $errorMessage');
     }

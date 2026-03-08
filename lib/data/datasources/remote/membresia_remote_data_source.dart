@@ -18,6 +18,15 @@ abstract class MembresiaRemoteDataSource {
   });
   Future<List<Logro>> getLogros();
   Future<List<MembresiaLogro>> getLogrosByMembresia(int membresiaId);
+  Future<void> createClubLogro({
+    required String nombre,
+    required String descripcion,
+    required String fechaInicio, // Formato YYYY-MM-DD
+    required String fechaFin,    // Formato YYYY-MM-DD
+    required String tipoMetrica, // CONSUMO, ASISTENCIA, REFERIDOS
+    required int metaCantidad,
+    required int puntosRecompensa,
+  });
 }
 
 /// Modelo para la respuesta de registro de asistencia
@@ -290,6 +299,48 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
       }
     } catch (e) {
       throw Exception('Error al obtener logros de membresía: $e');
+    }
+  }
+
+  @override
+  Future<void> createClubLogro({
+    required String nombre,
+    required String descripcion,
+    required String fechaInicio,
+    required String fechaFin,
+    required String tipoMetrica,
+    required int metaCantidad,
+    required int puntosRecompensa,
+  }) async {
+    try {
+      final body = {
+        'nombre': nombre,
+        'descripcion': descripcion,
+        'fechaInicio': fechaInicio,
+        'fechaFin': fechaFin,
+        'tipoMetrica': tipoMetrica,
+        'metaCantidad': metaCantidad,
+        'puntosRecompensa': puntosRecompensa,
+      };
+
+      debugPrint('[DEBUG LOGROS] Enviando reto/logro de club: $body');
+      final response = await _client.post('/logros', data: body);
+
+      debugPrint('[DEBUG LOGROS] Respuesta crear logro - Status: ${response.statusCode}');
+      debugPrint('[DEBUG LOGROS] Body: ${response.data}');
+
+      if (response.statusCode != 201 && response.statusCode != 200) {
+        throw Exception('Error al crear logro del club: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+      final data = e.response?.data;
+      String message = e.message ?? 'Error desconocido';
+      if (data is Map && data['message'] != null) {
+        message = data['message'].toString();
+      }
+      debugPrint('[DEBUG LOGROS] Error creando logro - Status: $statusCode, Message: $message');
+      throw Exception('Error al crear logro del club: $message');
     }
   }
 }

@@ -37,6 +37,9 @@ import '../../presentation/screens/host/host_orders_list_screen.dart';
 import '../../presentation/screens/host/host_scan_screen.dart';
 import '../../presentation/screens/host/products/host_product_list_screen.dart';
 import '../../presentation/screens/host/products/host_edit_product_screen.dart';
+import '../../presentation/screens/host/products/host_product_proposal_screen.dart';
+import '../../presentation/screens/host/achievements/host_club_logros_screen.dart';
+import '../../presentation/screens/host/achievements/host_logro_create_screen.dart';
 import '../../presentation/screens/host/members/host_members_list_screen.dart';
 import '../../presentation/screens/host/members/host_member_registration_screen.dart';
 import '../../presentation/screens/host/host_profile_screen.dart';
@@ -227,9 +230,23 @@ final appRouter = GoRouter(
           builder: (context, state) => const EventsListScreen(),
         ),
         GoRoute(
+          path: '/host/logros',
+          builder: (context, state) => const HostClubLogrosScreen(),
+          routes: [
+            GoRoute(
+              path: 'new',
+              builder: (context, state) => const HostLogroCreateScreen(),
+            ),
+          ],
+        ),
+        GoRoute(
           path: '/host/products',
           builder: (context, state) => const HostProductListScreen(),
           routes: [
+            GoRoute(
+              path: 'proposal',
+              builder: (context, state) => const HostProductProposalScreen(),
+            ),
             GoRoute(
               path: 'new',
               builder: (context, state) {

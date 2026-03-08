@@ -6,6 +6,16 @@ abstract class ProductRemoteDataSource {
   Future<List<Product>> getProducts({required int hubId, required int clubId});
   Future<List<Product>> getAvailableProductsByClub(int clubId); // Para socios: solo productos disponibles
   Future<void> createProduct(Product product, int clubId);
+  /// Enviar propuesta de producto del Club al Administrador para aprobación.
+  /// Requiere hubId (obligatorio según backend).
+  /// No se envía clubId ni estado; el backend los infiere del token del anfitrión.
+  Future<void> createProductProposal({
+    required int hubId,
+    required String nombre,
+    required String descripcion,
+    required String ingredientes,
+    required int puntosValor,
+  });
   Future<void> updateProduct(Product product);
   Future<void> deleteProduct(String id);
   Future<void> toggleProductAvailability(int clubId, String productId);
@@ -88,15 +98,16 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
   @override
   Future<List<Product>> getAvailableProductsByClub(int clubId) async {
     try {
-      // Endpoint: GET /api/productos?clubId={clubId}
-      // Este endpoint devuelve solo productos disponibles (disponible = true)
+      // Nuevo endpoint: GET /api/productos/club/{clubId}
+      // El backend devuelve:
+      // - Productos globales habilitados
+      // - Productos locales del club en estado APROBADO y disponibles
       debugPrint('[DEBUG PRODUCTOS] Obteniendo productos disponibles del club - clubId: $clubId');
-      debugPrint('[DEBUG PRODUCTOS] Endpoint: GET /api/productos?clubId=$clubId');
-      debugPrint('[DEBUG PRODUCTOS] URL completa: ${_client.options.baseUrl}/productos?clubId=$clubId');
+      debugPrint('[DEBUG PRODUCTOS] Endpoint: GET /api/productos/club/$clubId');
+      debugPrint('[DEBUG PRODUCTOS] URL completa: ${_client.options.baseUrl}/productos/club/$clubId');
       
       final response = await _client.get(
-        '/productos',
-        queryParameters: {'clubId': clubId}
+        '/productos/club/$clubId',
       );
 
       debugPrint('[DEBUG PRODUCTOS] Respuesta recibida - Status: ${response.statusCode}');
@@ -245,6 +256,52 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       );
     } on DioException catch (e) {
       throw Exception('Error al crear producto: ${e.response?.data['message'] ?? e.message}');
+    }
+  }
+
+  @override
+  Future<void> createProductProposal({
+    required int hubId,
+    required String nombre,
+    required String descripcion,
+    required String ingredientes,
+    required int puntosValor,
+  }) async {
+    try {
+      final data = {
+        'hubId': hubId, // Campo obligatorio que faltaba
+        'nombre': nombre,
+        'descripcion': descripcion,
+        'ingredientes': ingredientes,
+        'puntosValor': puntosValor,
+        'activo': true, // Incluido por si el DTO lo requiere
+      };
+
+      debugPrint('[DEBUG PRODUCTOS] Enviando propuesta de producto: $data');
+      debugPrint('[DEBUG PRODUCTOS] Endpoint: POST /api/productos');
+      debugPrint('[DEBUG PRODUCTOS] hubId incluido: $hubId');
+
+      final response = await _client.post(
+        '/productos',
+        data: data,
+      );
+
+      debugPrint('[DEBUG PRODUCTOS] Respuesta propuesta producto - Status: ${response.statusCode}');
+      debugPrint('[DEBUG PRODUCTOS] Body: ${response.data}');
+
+      if (response.statusCode != 201 && response.statusCode != 200) {
+        throw Exception('Error al enviar propuesta de producto: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+      final data = e.response?.data;
+      String message = e.message ?? 'Error desconocido';
+      if (data is Map && data['message'] != null) {
+        message = data['message'].toString();
+      }
+      debugPrint('[DEBUG PRODUCTOS] Error propuesta producto - Status: $statusCode, Message: $message');
+      debugPrint('[DEBUG PRODUCTOS] Response data completo: $data');
+      throw Exception('Error al enviar propuesta de producto: $message');
     }
   }
 

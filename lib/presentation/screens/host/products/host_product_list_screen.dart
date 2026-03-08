@@ -192,6 +192,15 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                     );
                   },
                 ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          // Propuesta de nuevo producto del club (no requiere clubId explícito)
+          context.push('/host/products/proposal');
+        },
+        icon: const Icon(LucideIcons.plus),
+        label: const Text('Proponer producto'),
+        backgroundColor: const Color(0xFF7AC142),
+      ),
     );
   }
 
