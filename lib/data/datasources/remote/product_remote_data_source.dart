@@ -29,47 +29,53 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
   @override
   Future<List<Product>> getProducts({required int hubId, required int clubId}) async {
     try {
-      // Nuevo endpoint: GET /api/productos/hub/{hubId}?clubId={clubId}
-      debugPrint('[DEBUG PRODUCTOS] Obteniendo productos - hubId: $hubId, clubId: $clubId');
-      debugPrint('[DEBUG PRODUCTOS] Endpoint: GET /api/productos/hub/$hubId?clubId=$clubId');
-      debugPrint('[DEBUG PRODUCTOS] URL completa: ${_client.options.baseUrl}/productos/hub/$hubId?clubId=$clubId');
+      // Nuevos endpoints separados para Globales y Locales
+      debugPrint('[DEBUG PRODUCTOS] Obteniendo productos separados por tipo para el club $clubId');
       
-      final response = await _client.get(
-        '/productos/hub/$hubId', 
-        queryParameters: {'clubId': clubId}
-      );
+      final globalResponseFuture = _client.get('/productos', queryParameters: {'clubId': clubId, 'tipo': 'GLOBAL'});
+      final localResponseFuture = _client.get('/productos', queryParameters: {'clubId': clubId, 'tipo': 'LOCAL'});
 
-      debugPrint('[DEBUG PRODUCTOS] Respuesta recibida - Status: ${response.statusCode}');
-      debugPrint('[DEBUG PRODUCTOS] Response body: ${response.data}');
-      debugPrint('[DEBUG PRODUCTOS] Tipo de data: ${response.data.runtimeType}');
+      final responses = await Future.wait([globalResponseFuture, localResponseFuture]);
+      final globalResponse = responses[0];
+      final localResponse = responses[1];
       
-      if (response.statusCode == 200) {
-        // Manejar diferentes formatos de respuesta del backend
-        List<dynamic> data = [];
-        if (response.data is List) {
-          data = response.data as List<dynamic>;
-        } else if (response.data is Map) {
-          final Map<String, dynamic> responseMap = response.data as Map<String, dynamic>;
-          if (responseMap.containsKey('content') && responseMap['content'] is List) {
-            data = responseMap['content'] as List<dynamic>;
-          } else if (responseMap.containsKey('data') && responseMap['data'] is List) {
-            data = responseMap['data'] as List<dynamic>;
+      if (globalResponse.statusCode == 200 && localResponse.statusCode == 200) {
+        // Función para extraer lista de response data
+        List<dynamic> extractData(Response res) {
+          debugPrint('[DEBUG PRODUCTOS] Extrayendo data de repuesta. Tipo real: ${res.data.runtimeType}\nContenido bruto: ${res.data}');
+          if (res.data is List) {
+            return res.data as List<dynamic>;
+          } else if (res.data is Map) {
+            final Map<String, dynamic> responseMap = res.data as Map<String, dynamic>;
+            if (responseMap.containsKey('content') && responseMap['content'] is List) {
+              return responseMap['content'] as List<dynamic>;
+            } else if (responseMap.containsKey('data') && responseMap['data'] is List) {
+              return responseMap['data'] as List<dynamic>;
+            } else if (responseMap.containsKey('productos') && responseMap['productos'] is List) {
+              return responseMap['productos'] as List<dynamic>;
+            }
           }
+          return [];
         }
+
+        debugPrint('[DEBUG PRODUCTOS] Extrayendo datos globales...');
+        final globalDataList = extractData(globalResponse);
+        debugPrint('[DEBUG PRODUCTOS] Global length: ${globalDataList.length}');
         
-        debugPrint('[DEBUG PRODUCTOS] Total de productos en respuesta: ${data.length}');
+        debugPrint('[DEBUG PRODUCTOS] Extrayendo datos locales...');
+        final localDataList = extractData(localResponse);
+        debugPrint('[DEBUG PRODUCTOS] Local length: ${localDataList.length}');
         
-        return data.map<Product>((json) {
+        final combinedProducts = <Product>[];
+
+        Product parseProduct(dynamic json, String defaultTipo) {
            // Manejar el id correctamente: puede venir como int o String del backend
            final dynamic idValue = json['id'];
            final String productId = idValue is int ? idValue.toString() : (idValue?.toString() ?? '');
            
-           // Debug: imprimir el ID del producto obtenido
-           debugPrint('[DEBUG PRODUCTOS] Producto obtenido - ID original: $idValue, ID convertido: $productId, Nombre: ${json['nombre']}');
-           
            // Manejar hubId correctamente: puede venir como int o null
            final dynamic hubIdValue = json['hubId'];
-           final int? hubId = hubIdValue is int ? hubIdValue : (hubIdValue != null ? int.tryParse(hubIdValue.toString()) : null);
+           final int? parsedHubId = hubIdValue is int ? hubIdValue : (hubIdValue != null ? int.tryParse(hubIdValue.toString()) : null);
            
            // Manejar disponible: null significa que no hay relación, debe ser false por defecto
            final dynamic disponibleValue = json['disponible'];
@@ -86,16 +92,28 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
              name: json['nombre']?.toString() ?? 'Sin nombre',
              description: json['descripcion']?.toString() ?? '',
              price: 0.0, // Backend no envía precio aún
+             puntosValor: json['puntosValor'] ?? 0,
              category: 'General', 
              imageUrl: '', 
-             hubId: hubId,
+             hubId: parsedHubId,
              clubCreadorId: parsedClubCreadorId,
+             tipo: json['tipo']?.toString().toUpperCase() ?? defaultTipo,
+             estadoAprobacion: json['estadoAprobacion']?.toString().toUpperCase() ?? 'APROBADO',
              active: json['activo'] == true || json['activo'] == 1,
              available: available, // false si es null, true/false según el valor
            );
-        }).toList();
+        }
+
+        for (var json in globalDataList) {
+          combinedProducts.add(parseProduct(json, 'GLOBAL'));
+        }
+        for (var json in localDataList) {
+          combinedProducts.add(parseProduct(json, 'LOCAL'));
+        }
+
+        return combinedProducts;
       } else {
-        throw Exception('Error al cargar productos: ${response.statusCode}');
+        throw Exception('Error al cargar productos: globales status ${globalResponse.statusCode}, locales status ${localResponse.statusCode}');
       }
     } on DioException catch (e) {
       throw Exception('Error de red al cargar productos: ${e.message}');
@@ -105,16 +123,16 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
   @override
   Future<List<Product>> getAvailableProductsByClub(int clubId) async {
     try {
-      // Nuevo endpoint: GET /api/productos/club/{clubId}
-      // El backend devuelve:
+      // Nuevo endpoint validado para socios: GET /api/productos?clubId={id}
+      // El backend devuelve automáticamente:
       // - Productos globales habilitados
       // - Productos locales del club en estado APROBADO y disponibles
       debugPrint('[DEBUG PRODUCTOS] Obteniendo productos disponibles del club - clubId: $clubId');
-      debugPrint('[DEBUG PRODUCTOS] Endpoint: GET /api/productos/club/$clubId');
-      debugPrint('[DEBUG PRODUCTOS] URL completa: ${_client.options.baseUrl}/productos/club/$clubId');
+      debugPrint('[DEBUG PRODUCTOS] Endpoint: GET /api/productos?clubId=$clubId');
+      debugPrint('[DEBUG PRODUCTOS] URL completa: ${_client.options.baseUrl}/productos?clubId=$clubId');
       
       final response = await _client.get(
-        '/productos/club/$clubId',
+        '/productos?clubId=$clubId',
       );
 
       debugPrint('[DEBUG PRODUCTOS] Respuesta recibida - Status: ${response.statusCode}');

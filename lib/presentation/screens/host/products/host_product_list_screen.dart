@@ -117,11 +117,8 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                                product.description.toLowerCase().contains(_searchQuery);
                       }).toList();
 
-                      final globalProducts = filteredProducts.where((p) => p.clubCreadorId == null).toList();
-                      final ownProducts = filteredProducts.where((p) {
-                        debugPrint('[DEBUG FILTRO] Producto: ${p.name}, clubCreadorId: ${p.clubCreadorId}, _clubId local: $_clubId');
-                        return p.clubCreadorId == _clubId;
-                      }).toList();
+                      final globalProducts = filteredProducts.where((p) => p.tipo == 'GLOBAL').toList();
+                      final ownProducts = filteredProducts.where((p) => p.tipo == 'LOCAL').toList();
 
                       return Column(
                         children: [
@@ -162,15 +159,8 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                       );
                     },
                   ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () {
-            // Propuesta de nuevo producto del club (no requiere clubId explícito)
-            context.push('/host/products/proposal');
-          },
-          icon: const Icon(LucideIcons.plus),
-          label: const Text('Proponer producto'),
-          backgroundColor: const Color(0xFF7AC142),
-        ),
+        // El botón de + Nuevo se movió al tab de Propios
+
       ),
     );
   }
@@ -207,17 +197,44 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                       color: product.available ? Colors.black : Colors.grey,
                     ),
                   ),
-                  subtitle: Text(
-                    product.description,
-                    maxLines: 2, 
-                    overflow: TextOverflow.ellipsis,
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product.description,
+                        maxLines: 2, 
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Puntos Volumen: ${product.puntosValor}',
+                        style: const TextStyle(fontWeight: FontWeight.w500, color: Color(0xFF7AC142)),
+                      ),
+                      if (!isGlobal && product.estadoAprobacion != 'APROBADO') 
+                        Container(
+                          margin: const EdgeInsets.only(top: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: product.estadoAprobacion == 'RECHAZADO' ? Colors.red.shade100 : Colors.orange.shade100,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            product.estadoAprobacion == 'RECHAZADO' ? 'Rechazado' : 'Pendiente de aprobación',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: product.estadoAprobacion == 'RECHAZADO' ? Colors.red.shade900 : Colors.orange.shade900,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        )
+                    ],
                   ),
                   trailing: Switch(
                     activeColor: const Color(0xFF7AC142),
-                    value: product.available,
-                    onChanged: (bool value) {
+                    value: product.available && product.estadoAprobacion == 'APROBADO',
+                    onChanged: product.estadoAprobacion == 'APROBADO' ? (bool value) {
                       provider.toggleAvailability(_clubId!, product.id, _hubId!);
-                    },
+                    } : null,
                   ),
                   // Opcional: permitir editar productos propios con onLongPress o algo similar
                   onLongPress: !isGlobal ? () {
@@ -235,14 +252,13 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
           Positioned(
             bottom: 16,
             right: 16,
-            child: FloatingActionButton(
+            child: FloatingActionButton.extended(
               heroTag: 'addProductFab',
               backgroundColor: const Color(0xFF7AC142),
-              child: const Icon(Icons.add, color: Colors.white),
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text('Nuevo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               onPressed: () {
-                if (_clubId != null) {
-                  context.push('/host/products/new', extra: _clubId);
-                }
+                context.push('/host/products/proposal');
               },
             ),
           ),

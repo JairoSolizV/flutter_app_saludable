@@ -8,6 +8,8 @@ class Product {
   final String imageUrl;
   final int? hubId;
   final int? clubCreadorId;
+  final String tipo; // 'GLOBAL' o 'LOCAL'
+  final String estadoAprobacion; // 'APROBADO', 'PENDIENTE', 'RECHAZADO'
   final bool active; // Global status
   final bool available; // Local club status (disponible)
 
@@ -21,6 +23,8 @@ class Product {
     this.imageUrl = '',
     this.hubId,
     this.clubCreadorId,
+    this.tipo = 'GLOBAL',
+    this.estadoAprobacion = 'APROBADO',
     this.active = true,
     this.available = false,
   });
@@ -52,6 +56,8 @@ class Product {
       imageUrl: map['image_url']?.toString() ?? '',
       hubId: hubId,
       clubCreadorId: clubIdParsed,
+      tipo: map['tipo']?.toString() ?? 'GLOBAL',
+      estadoAprobacion: map['estadoAprobacion']?.toString() ?? 'APROBADO',
       active: map['active'] == true || map['activo'] == true || map['active'] == 1 || map['activo'] == 1,
       available: available, // false si es null, true/false según el valor
     );
@@ -68,6 +74,8 @@ class Product {
       'image_url': imageUrl,
       'hubId': hubId,
       'clubCreadorId': clubCreadorId,
+      'tipo': tipo,
+      'estadoAprobacion': estadoAprobacion,
       'active': active ? 1 : 0,
       'disponible': available ? 1 : 0,
     };
