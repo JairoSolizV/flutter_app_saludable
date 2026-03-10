@@ -75,6 +75,12 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
            final dynamic disponibleValue = json['disponible'];
            final bool available = disponibleValue == true || disponibleValue == 1;
            
+           // Obtener inteligentemente el clubCreadorId y parsearlo a int
+           final dynamic rawClubCreadorId = json['clubCreadorId'] ?? json['club_creador_id'] ?? json['clubId'] ?? json['club_id'];
+           final int? parsedClubCreadorId = rawClubCreadorId != null 
+                ? (rawClubCreadorId is int ? rawClubCreadorId : int.tryParse(rawClubCreadorId.toString())) 
+                : null;
+           
            return Product(
              id: productId,
              name: json['nombre']?.toString() ?? 'Sin nombre',
@@ -83,6 +89,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
              category: 'General', 
              imageUrl: '', 
              hubId: hubId,
+             clubCreadorId: parsedClubCreadorId,
              active: json['activo'] == true || json['activo'] == 1,
              available: available, // false si es null, true/false según el valor
            );
@@ -142,6 +149,16 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
            final dynamic hubIdValue = json['hubId'];
            final int? hubId = hubIdValue is int ? hubIdValue : (hubIdValue != null ? int.tryParse(hubIdValue.toString()) : null);
            
+           // Manejar disponible: si viene false, es false. Si viene null, true por defecto para este endpoint
+           final dynamic disponibleValue = json['disponible'];
+           final bool isAvailable = disponibleValue == false || disponibleValue == 0 ? false : true;
+
+           // Obtener inteligentemente el clubCreadorId y parsearlo a int
+           final dynamic rawClubCreadorId = json['clubCreadorId'] ?? json['club_creador_id'] ?? json['clubId'] ?? json['club_id'];
+           final int? parsedClubCreadorId = rawClubCreadorId != null 
+                ? (rawClubCreadorId is int ? rawClubCreadorId : int.tryParse(rawClubCreadorId.toString())) 
+                : null;
+
            return Product(
              id: productId,
              name: json['nombre']?.toString() ?? 'Sin nombre',
@@ -150,8 +167,9 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
              category: 'General', 
              imageUrl: '', 
              hubId: hubId,
+             clubCreadorId: parsedClubCreadorId,
              active: json['activo'] == true || json['activo'] == 1,
-             available: true, // Estos productos siempre están disponibles (ya filtrados por el backend)
+             available: isAvailable, 
            );
         }).toList();
       } else if (response.statusCode == 401) {

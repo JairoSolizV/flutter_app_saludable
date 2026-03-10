@@ -146,7 +146,8 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                 label: "Nombre del Club",
                 controller: _nameCtrl,
                 icon: LucideIcons.store,
-                validator: (v) => v!.isEmpty ? "Requerido" : null,
+                readOnly: true,
+                helperText: "El nombre del club no se puede cambiar libremente. Por favor, comunícate con soporte.",
               ),
               const SizedBox(height: 24),
 
@@ -305,16 +306,22 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
     String? Function(String?)? validator,
     String? hint,
     int maxLines = 1,
+    bool readOnly = false,
+    String? helperText,
   }) {
     return TextFormField(
       controller: controller,
       validator: validator,
       maxLines: maxLines,
+      readOnly: readOnly,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
+        helperText: helperText,
         prefixIcon: Icon(icon, color: Colors.grey),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        filled: readOnly,
+        fillColor: readOnly ? Colors.grey[100] : null,
       ),
     );
   }

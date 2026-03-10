@@ -7,6 +7,7 @@ class Product {
   final String category;
   final String imageUrl;
   final int? hubId;
+  final int? clubCreadorId;
   final bool active; // Global status
   final bool available; // Local club status (disponible)
 
@@ -19,6 +20,7 @@ class Product {
     this.category = 'General',
     this.imageUrl = '',
     this.hubId,
+    this.clubCreadorId,
     this.active = true,
     this.available = false,
   });
@@ -35,17 +37,22 @@ class Product {
     // Manejar disponible: null significa que no hay relación, debe ser false por defecto
     final dynamic disponibleValue = map['disponible'];
     final bool available = disponibleValue == true || disponibleValue == 1;
+
+    // Manejar clubCreadorId para separar globales de propios
+    final dynamic clubIdValue = map['clubCreadorId'] ?? map['club_creador_id'] ?? map['clubId'] ?? map['club_id'];
+    final int? clubIdParsed = clubIdValue is int ? clubIdValue : (clubIdValue != null ? int.tryParse(clubIdValue.toString()) : null);
     
     return Product(
       id: productId,
-      name: map['name']?.toString() ?? '',
-      description: map['description']?.toString() ?? '',
+      name: map['name']?.toString() ?? map['nombre']?.toString() ?? '',
+      description: map['description']?.toString() ?? map['descripcion']?.toString() ?? '',
       price: (map['price'] ?? 0).toDouble(),
       puntosValor: map['puntosValor'] ?? 0,
       category: map['category']?.toString() ?? 'General',
       imageUrl: map['image_url']?.toString() ?? '',
       hubId: hubId,
-      active: map['active'] == true || map['active'] == 1,
+      clubCreadorId: clubIdParsed,
+      active: map['active'] == true || map['activo'] == true || map['active'] == 1 || map['activo'] == 1,
       available: available, // false si es null, true/false según el valor
     );
   }
@@ -60,6 +67,7 @@ class Product {
       'category': category,
       'image_url': imageUrl,
       'hubId': hubId,
+      'clubCreadorId': clubCreadorId,
       'active': active ? 1 : 0,
       'disponible': available ? 1 : 0,
     };

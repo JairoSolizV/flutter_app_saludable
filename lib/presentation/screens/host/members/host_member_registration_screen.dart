@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
-import '../../../../data/datasources/remote/club_remote_data_source.dart';
+import '../../../../domain/entities/club_membership.dart';
 import '../../../providers/user_provider.dart';
 import '../../../../core/utils/validators.dart';
 
@@ -23,10 +23,34 @@ class HostMemberRegistrationScreen extends StatefulWidget {
 
 class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _referidoCtrl = TextEditingController();
   final _conocioCtrl = TextEditingController();
   
   bool _isLoading = false;
+  bool _isLoadingMembers = true;
+  List<ClubMembership> _members = [];
+  ClubMembership? _selectedReferral;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMembers();
+  }
+
+  Future<void> _loadMembers() async {
+    try {
+      final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
+      final members = await clubDataSource.getClubMembers(widget.clubId);
+      if (mounted) {
+        setState(() {
+          _members = members;
+          _isLoadingMembers = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading members for referral search: $e');
+      if (mounted) setState(() => _isLoadingMembers = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,20 +99,51 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
               const Text('Información Adicional', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
 
-              TextFormField(
-                controller: _referidoCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'ID Membresía de Quien Refiere (Opcional)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.numbers),
+              const Text('Referido por (Opcional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 8),
+              if (_isLoadingMembers)
+                const LinearProgressIndicator(color: Color(0xFF7AC142))
+              else
+                Autocomplete<ClubMembership>(
+                  optionsBuilder: (TextEditingValue textEditingValue) {
+                    if (textEditingValue.text.isEmpty) {
+                      return const Iterable<ClubMembership>.empty();
+                    }
+                    return _members.where((ClubMembership member) {
+                      return member.usuarioNombre.toLowerCase().contains(textEditingValue.text.toLowerCase()) || 
+                             member.numeroSocio.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                    });
+                  },
+                  displayStringForOption: (ClubMembership option) => '${option.usuarioNombre} (${option.numeroSocio})',
+                  onSelected: (ClubMembership selection) {
+                    setState(() {
+                      _selectedReferral = selection;
+                    });
+                  },
+                  fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
+                    return TextFormField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      onEditingComplete: onEditingComplete,
+                      decoration: InputDecoration(
+                        hintText: 'Buscar socio por nombre o código...',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _selectedReferral != null || controller.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  controller.clear();
+                                  setState(() {
+                                    _selectedReferral = null;
+                                  });
+                                },
+                              )
+                            : null,
+                      ),
+                    );
+                  },
                 ),
-                validator: (value) {
-                   if (value == null || value.isEmpty) return null;
-                   if (int.tryParse(value) == null) return 'Debe ser un número válido';
-                   return null;
-                },
-              ),
               const SizedBox(height: 16),
 
               TextFormField(
@@ -136,7 +191,7 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
       await membresiaDataSource.activarSocio(
         clubId: widget.clubId,
         activationPayload: widget.qrPayload,
-        referidoPorMembresiaId: int.tryParse(_referidoCtrl.text),
+        referidoPorMembresiaId: _selectedReferral?.id,
         comoConocio: _conocioCtrl.text,
       ).timeout(const Duration(seconds: 15), onTimeout: () {
         throw Exception('Tiempo de espera agotado. Verifica tu conexión.');

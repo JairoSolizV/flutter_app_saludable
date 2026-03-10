@@ -340,8 +340,10 @@ class _HostScanScreenState extends State<HostScanScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Escanear QR de Socio'),
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF2C5E1A), // Dark Green for branding
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Color(0xFF2C5E1A)),
       ),
       body: Stack(
         children: [

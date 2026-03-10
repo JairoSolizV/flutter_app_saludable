@@ -56,17 +56,10 @@ class _EventsListScreenState extends State<EventsListScreen> {
       final eventoDataSource = Provider.of<EventoRemoteDataSource>(context, listen: false);
       final eventos = await eventoDataSource.getEventos();
       
-      // Filtrar eventos posteriores a la fecha actual
       final ahora = DateTime.now();
-      final fechaHoy = DateTime(ahora.year, ahora.month, ahora.day);
       
       final eventosFuturos = eventos.where((evento) {
-        final fechaEvento = DateTime(
-          evento.fechaEvento.year,
-          evento.fechaEvento.month,
-          evento.fechaEvento.day,
-        );
-        return fechaEvento.isAfter(fechaHoy) || fechaEvento.isAtSameMomentAs(fechaHoy);
+        return evento.fechaEvento.isAfter(ahora);
       }).toList();
       
       // Ordenar por fecha (más cercanos primero)

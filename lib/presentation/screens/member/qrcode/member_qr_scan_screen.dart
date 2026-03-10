@@ -229,7 +229,7 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text("Escanear Código QR"),
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color(0xFF7AC142),
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [

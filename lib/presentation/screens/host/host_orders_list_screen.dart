@@ -19,84 +19,6 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
   bool _isLoading = true;
   String? _error;
 
-  String _formatTipoConsumoLabel(dynamic tipoConsumo) {
-    final v = tipoConsumo?.toString().toUpperCase();
-    switch (v) {
-      case 'PARA_RECOGER':
-        return 'Para recoger';
-      case 'EN_LUGAR':
-        return 'En el lugar';
-      default:
-        // Fallback por si backend envía otro valor
-        return v ?? '';
-    }
-  }
-
-  IconData _formatTipoConsumoIcon(dynamic tipoConsumo) {
-    final v = tipoConsumo?.toString().toUpperCase();
-    switch (v) {
-      case 'PARA_RECOGER':
-        return LucideIcons.shoppingBag;
-      case 'EN_LUGAR':
-        return LucideIcons.store;
-      default:
-        return LucideIcons.info;
-    }
-  }
-
-  Future<int?> _selectTiempoEstimadoMinutos() async {
-    if (!mounted) return null;
-
-    return showModalBottomSheet<int>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: false,
-      builder: (ctx) {
-        final opciones = <int>[10, 15, 20, 30];
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Tiempo estimado',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Selecciona en cuántos minutos estará listo el pedido.',
-                  style: TextStyle(color: Colors.grey[700]),
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    for (final min in opciones)
-                      OutlinedButton(
-                        onPressed: () => Navigator.of(ctx).pop(min),
-                        child: Text('$min min'),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(null),
-                    child: const Text('Cancelar'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   @override
   void initState() {
     super.initState();
@@ -448,7 +370,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
     }
   }
 
-  Future<void> updateStatus(String id, String newStatus) async {
+  Future<void> updateStatus(String id, String newStatus, {int? estimatedTime}) async {
     try {
       // Encontrar el pedido para obtener el pedidoId numérico
       final order = orders.firstWhere((o) => o['id'] == id);
@@ -457,22 +379,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
       // Actualizar en el backend
       final orderDataSource = Provider.of<OrderRemoteDataSource>(context, listen: false);
       final backendStatus = _mapUIToBackendStatus(newStatus);
-
-      // Requisito backend: si estado=PREPARANDO, debemos enviar tiempoEstimadoMinutos
-      if (backendStatus.toUpperCase() == 'PREPARANDO') {
-        final tiempo = await _selectTiempoEstimadoMinutos();
-        if (tiempo == null) {
-          // Cancelado por el anfitrión -> no hacemos la petición
-          return;
-        }
-        await orderDataSource.updateOrderStatus(
-          pedidoId,
-          backendStatus,
-          tiempoEstimadoMinutos: tiempo,
-        );
-      } else {
-        await orderDataSource.updateOrderStatus(pedidoId, backendStatus);
-      }
+      await orderDataSource.updateOrderStatus(pedidoId, backendStatus, estimatedTime: estimatedTime);
       
       // Actualizar localmente
       if (mounted) {
@@ -494,6 +401,71 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _promptEstimatedTime(BuildContext context, String orderId) async {
+    final TextEditingController timeController = TextEditingController();
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+    final result = await showDialog<int?>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Tiempo Estimado'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Ingresa el tiempo estimado de preparación en minutos.'),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: timeController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Minutos',
+                    border: OutlineInputBorder(),
+                    suffixText: 'min',
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Este campo es obligatorio';
+                    }
+                    if (int.tryParse(value) == null) {
+                      return 'Debe ser un número válido';
+                    }
+                    if (int.parse(value) <= 0) {
+                      return 'Debe ser mayor a 0';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  final int minutes = int.parse(timeController.text.trim());
+                  Navigator.pop(context, minutes);
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7AC142)),
+              child: const Text('Confirmar', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result != null) {
+      await updateStatus(orderId, 'preparing', estimatedTime: result);
     }
   }
 
@@ -678,10 +650,10 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                             padding: const EdgeInsets.only(top: 8),
                             child: Row(
                               children: [
-                                Icon(_formatTipoConsumoIcon(order['tipoConsumo']), size: 14, color: Colors.grey[700]),
+                                Icon(LucideIcons.mapPin, size: 14, color: Colors.grey[700]),
                                 const SizedBox(width: 4),
                                 Text(
-                                  _formatTipoConsumoLabel(order['tipoConsumo']),
+                                  order['tipoConsumo'] == 'PARA_LLEVAR' ? 'Para llevar' : 'Consumir aquí',
                                   style: TextStyle(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w500),
                                 ),
                               ],
@@ -696,7 +668,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                                     children: [
                                         if (order['status'] == 'pending')
                                             ElevatedButton(
-                                                onPressed: () => updateStatus(order['id'], 'preparing'),
+                                                onPressed: () => _promptEstimatedTime(context, order['id']),
                                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
                                                 child: const Text('Preparar', style: TextStyle(color: Colors.white)),
                                             ),

@@ -68,139 +68,185 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mi Menú (Stock)'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-               if (_clubId != null && _hubId != null) {
-                 Provider.of<ProductProvider>(context, listen: false).loadProducts(hubId: _hubId!, clubId: _clubId!);
-               }
-            },
-          )
-        ],
-      ),
-      body: _isLoadingClub 
-          ? const Center(child: CircularProgressIndicator())
-          : _clubId == null 
-              ? const Center(child: Text('No se encontró tu Club.'))
-              : Consumer<ProductProvider>(
-                  builder: (context, provider, child) {
-                    if (provider.isLoading) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Mi Menú (Stock)'),
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          bottom: const TabBar(
+            labelColor: Color(0xFF7AC142),
+            unselectedLabelColor: Colors.grey,
+            indicatorColor: Color(0xFF7AC142),
+            tabs: [
+              Tab(text: 'Globales'),
+              Tab(text: 'Propios'),
+            ],
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () {
+                 if (_clubId != null && _hubId != null) {
+                   Provider.of<ProductProvider>(context, listen: false).loadProducts(hubId: _hubId!, clubId: _clubId!);
+                 }
+              },
+            )
+          ],
+        ),
+        body: _isLoadingClub 
+            ? const Center(child: CircularProgressIndicator())
+            : _clubId == null 
+                ? const Center(child: Text('No se encontró tu Club.'))
+                : Consumer<ProductProvider>(
+                    builder: (context, provider, child) {
+                      if (provider.isLoading) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                    if (provider.error != null) {
-                       return Center(child: Text('Error: ${provider.error}', style: const TextStyle(color: Colors.red)));
-                    }
+                      if (provider.error != null) {
+                         return Center(child: Text('Error: ${provider.error}', style: const TextStyle(color: Colors.red)));
+                      }
 
-                    if (provider.products.isEmpty) {
-                      return const Center(child: Text('El catálogo del Hub está vacío.'));
-                    }
+                      // Filtrar productos según la búsqueda
+                      final filteredProducts = provider.products.where((product) {
+                        if (_searchQuery.isEmpty) return true;
+                        return product.name.toLowerCase().contains(_searchQuery) ||
+                               product.description.toLowerCase().contains(_searchQuery);
+                      }).toList();
 
-                    // Filtrar productos según la búsqueda
-                    final filteredProducts = provider.products.where((product) {
-                      if (_searchQuery.isEmpty) return true;
-                      return product.name.toLowerCase().contains(_searchQuery) ||
-                             product.description.toLowerCase().contains(_searchQuery);
-                    }).toList();
+                      final globalProducts = filteredProducts.where((p) => p.clubCreadorId == null).toList();
+                      final ownProducts = filteredProducts.where((p) {
+                        debugPrint('[DEBUG FILTRO] Producto: ${p.name}, clubCreadorId: ${p.clubCreadorId}, _clubId local: $_clubId');
+                        return p.clubCreadorId == _clubId;
+                      }).toList();
 
-                    if (filteredProducts.isEmpty && _searchQuery.isNotEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.search_off, size: 64, color: Colors.grey),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No se encontraron productos\nque coincidan con "$_searchQuery"',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.grey),
+                      return Column(
+                        children: [
+                          // Barra de búsqueda
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: TextField(
+                              controller: _searchController,
+                              decoration: InputDecoration(
+                                hintText: 'Buscar productos...',
+                                prefixIcon: const Icon(Icons.search),
+                                suffixIcon: _searchQuery.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.clear),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                        },
+                                      )
+                                    : null,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                filled: true,
+                                fillColor: Colors.grey[100],
+                              ),
                             ),
-                          ],
-                        ),
+                          ),
+                          // Tabs content
+                          Expanded(
+                            child: TabBarView(
+                              children: [
+                                _buildProductList(globalProducts, provider, isGlobal: true),
+                                _buildProductList(ownProducts, provider, isGlobal: false),
+                              ],
+                            ),
+                          ),
+                        ],
                       );
-                    }
-
-                    return Column(
-                      children: [
-                        // Barra de búsqueda
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: TextField(
-                            controller: _searchController,
-                            decoration: InputDecoration(
-                              hintText: 'Buscar productos...',
-                              prefixIcon: const Icon(Icons.search),
-                              suffixIcon: _searchQuery.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear),
-                                      onPressed: () {
-                                        _searchController.clear();
-                                      },
-                                    )
-                                  : null,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              filled: true,
-                              fillColor: Colors.grey[100],
-                            ),
-                          ),
-                        ),
-                        // Lista de productos
-                        Expanded(
-                          child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            itemCount: filteredProducts.length,
-                            itemBuilder: (context, index) {
-                              final product = filteredProducts[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          child: SwitchListTile(
-                            activeColor: const Color(0xFF7AC142),
-                            title: Text(
-                              product.name, 
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: product.available ? Colors.black : Colors.grey,
-                              ),
-                            ),
-                            subtitle: Text(
-                              product.description,
-                              maxLines: 2, 
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            value: product.available,
-                            onChanged: (bool value) {
-                              provider.toggleAvailability(_clubId!, product.id, _hubId!);
-                            },
-                            secondary: _buildProductImage(product),
-                          ),
-                        );
-                            },
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // Propuesta de nuevo producto del club (no requiere clubId explícito)
-          context.push('/host/products/proposal');
-        },
-        icon: const Icon(LucideIcons.plus),
-        label: const Text('Proponer producto'),
-        backgroundColor: const Color(0xFF7AC142),
+                    },
+                  ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () {
+            // Propuesta de nuevo producto del club (no requiere clubId explícito)
+            context.push('/host/products/proposal');
+          },
+          icon: const Icon(LucideIcons.plus),
+          label: const Text('Proponer producto'),
+          backgroundColor: const Color(0xFF7AC142),
+        ),
       ),
+    );
+  }
+
+  Widget _buildProductList(List<Product> products, ProductProvider provider, {required bool isGlobal}) {
+    return Stack(
+      children: [
+        if (products.isEmpty)
+          Center(
+            child: Text(
+              _searchQuery.isNotEmpty 
+                  ? 'No se encontraron resultados para "$_searchQuery"'
+                  : (isGlobal ? 'No hay productos globales disponibles.' : 'Aún no has creado productos propios.'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey),
+            ),
+          )
+        else
+          ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: products.length,
+            itemBuilder: (context, index) {
+              final product = products[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: ListTile(
+                  leading: _buildProductImage(product),
+                  title: Text(
+                    product.name, 
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: product.available ? Colors.black : Colors.grey,
+                    ),
+                  ),
+                  subtitle: Text(
+                    product.description,
+                    maxLines: 2, 
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: Switch(
+                    activeColor: const Color(0xFF7AC142),
+                    value: product.available,
+                    onChanged: (bool value) {
+                      provider.toggleAvailability(_clubId!, product.id, _hubId!);
+                    },
+                  ),
+                  // Opcional: permitir editar productos propios con onLongPress o algo similar
+                  onLongPress: !isGlobal ? () {
+                    context.push('/host/products/edit', extra: {
+                      'clubId': _clubId!,
+                      'product': product,
+                    });
+                  } : null,
+                ),
+              );
+            },
+          ),
+          
+        if (!isGlobal)
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: FloatingActionButton(
+              heroTag: 'addProductFab',
+              backgroundColor: const Color(0xFF7AC142),
+              child: const Icon(Icons.add, color: Colors.white),
+              onPressed: () {
+                if (_clubId != null) {
+                  context.push('/host/products/new', extra: _clubId);
+                }
+              },
+            ),
+          ),
+      ],
     );
   }
 

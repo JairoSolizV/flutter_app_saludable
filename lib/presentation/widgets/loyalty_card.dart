@@ -91,28 +91,6 @@ class LoyaltyCard extends StatelessWidget {
             itemCount: maxStamps,
             itemBuilder: (context, index) {
               final isCompleted = index < stamps;
-              final isGift = index == maxStamps - 1;
-
-              if (isGift) {
-                return Container(
-                  decoration: BoxDecoration(
-                    color: Colors.yellow[100],
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.yellow[400]!, width: 2),
-                    boxShadow: [
-                         BoxShadow(
-                             color: Colors.yellow.withOpacity(0.5),
-                             blurRadius: 10,
-                             spreadRadius: 2
-                         )
-                    ]
-                  ),
-                  child: const Center(
-                    child: Icon(LucideIcons.gift, color: Colors.orange, size: 20),
-                  ),
-                );
-              }
-
               return Container(
                 decoration: BoxDecoration(
                   color: isCompleted ? const Color(0xFF7AC142) : Colors.grey[100],

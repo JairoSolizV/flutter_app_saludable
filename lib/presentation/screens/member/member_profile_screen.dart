@@ -22,6 +22,7 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
   String? _qrError;
 
   String? _membershipLevel;
+  String? _clubName;
   bool _isLoadingMembership = true;
 
   @override
@@ -49,8 +50,10 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                       if (membrs.isNotEmpty) {
                           // Tomamos la primera membresía o la más relevante
                           _membershipLevel = membrs.first.nivelNombre;
+                          _clubName = membrs.first.clubNombre;
                       } else {
                           _membershipLevel = 'Sin Membresía';
+                          _clubName = 'Sin Club Afiliado';
                       }
                       _isLoadingMembership = false;
                   });
@@ -252,7 +255,7 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                    _ProfileCard(
                        icon: LucideIcons.mapPin,
                        title: 'Club Principal',
-                       value: 'Club Vida Activa',
+                       value: _isLoadingMembership ? 'Cargando...' : (_clubName ?? 'Sin Club Afiliado'),
                    ),
                    const SizedBox(height: 24),
                    SizedBox(
@@ -327,7 +330,13 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                       children: [
                           TextField(
                               controller: nameCtrl,
-                              decoration: const InputDecoration(labelText: 'Nombre'),
+                              readOnly: true,
+                              decoration: InputDecoration(
+                                labelText: 'Nombre',
+                                helperText: 'El nombre no puede ser modificado.',
+                                filled: true,
+                                fillColor: Colors.grey[100],
+                              ),
                           ),
                           const SizedBox(height: 16),
                           TextField(

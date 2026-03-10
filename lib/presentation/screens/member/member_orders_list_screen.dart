@@ -75,7 +75,7 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen> with Si
         final String clubNombre = order['clubNombre']?.toString() ?? 'Club';
         final String tipoConsumo = order['tipoConsumo']?.toString() ?? 'EN_LUGAR';
         final String observaciones = order['observaciones']?.toString() ?? '';
-        final dynamic tiempoValue = order['tiempoEstimadoMinutos'];
+        final dynamic tiempoValue = order['tiempoEstimadoMinutos'] ?? order['tiempo_estimado_minutos'];
         final int? tiempoEstimadoMinutos = tiempoValue is int ? tiempoValue : (tiempoValue != null ? int.tryParse(tiempoValue.toString()) : null);
         
         // Obtener items del pedido

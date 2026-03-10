@@ -19,7 +19,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'nutrilife_club.db');
     return await openDatabase(
       path,
-      version: 7,
+      version: 9,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -53,6 +53,7 @@ class DatabaseHelper {
         category TEXT,
         image_url TEXT,
         hubId INTEGER,
+        clubCreadorId INTEGER,
         active INTEGER DEFAULT 1,
         disponible INTEGER DEFAULT 0
       )
@@ -156,6 +157,22 @@ class DatabaseHelper {
         await db.execute('ALTER TABLE orders ADD COLUMN tiempoEstimadoMinutos INTEGER');
       } catch (e) {
         print("Error migrando tabla orders (tiempoEstimadoMinutos): $e");
+      }
+    }
+    if (oldVersion < 8) {
+      // Agregar clubId original a products
+      try {
+        await db.execute('ALTER TABLE products ADD COLUMN clubId INTEGER');
+      } catch (e) {
+        print("Error migrando tabla products (clubId): $e");
+      }
+    }
+    if (oldVersion < 9) {
+      // Agregar verdadero clubCreadorId a products
+      try {
+        await db.execute('ALTER TABLE products ADD COLUMN clubCreadorId INTEGER');
+      } catch (e) {
+        print("Error migrando tabla products (clubCreadorId): $e");
       }
     }
   }

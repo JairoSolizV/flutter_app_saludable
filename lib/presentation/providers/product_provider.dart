@@ -37,7 +37,9 @@ class ProductProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _products = await _repository.getAvailableProductsByClub(clubId);
+      final fetchedProducts = await _repository.getAvailableProductsByClub(clubId);
+      // Filtrar los productos del menú propio que el anfitrión haya deshabilitado
+      _products = fetchedProducts.where((p) => p.active && p.available).toList();
     } catch (e) {
       print('Error loading available products: $e');
       _error = e.toString();

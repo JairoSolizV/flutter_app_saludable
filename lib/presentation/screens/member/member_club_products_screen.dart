@@ -359,7 +359,18 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
+                                        Container(
+                                          width: 64,
+                                          height: 64,
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[200],
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: const Icon(LucideIcons.image, color: Colors.grey),
+                                        ),
+                                        const SizedBox(width: 16),
                                         Expanded(
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,

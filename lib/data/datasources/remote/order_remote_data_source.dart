@@ -7,7 +7,7 @@ abstract class OrderRemoteDataSource {
   Future<void> sendOrder(OrderEntity order, List<OrderItem> items);
   Future<List<Map<String, dynamic>>> getOrdersByClub(int clubId);
   Future<List<Map<String, dynamic>>> getOrdersBySocio(int membresiaId);
-  Future<void> updateOrderStatus(int pedidoId, String newStatus, {int? tiempoEstimadoMinutos});
+  Future<void> updateOrderStatus(int pedidoId, String newStatus, {int? estimatedTime});
   Future<List<Map<String, dynamic>>> getAllOrders(); // Método temporal para debug
 }
 
@@ -321,27 +321,28 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
   }
 
   @override
-  Future<void> updateOrderStatus(int pedidoId, String newStatus, {int? tiempoEstimadoMinutos}) async {
+  Future<void> updateOrderStatus(int pedidoId, String newStatus, {int? estimatedTime}) async {
     try {
-      // Requisito backend: si estado=PREPARANDO, es obligatorio enviar tiempoEstimadoMinutos
-      final normalizedStatus = newStatus.toUpperCase();
-      if (normalizedStatus == 'PREPARANDO' && tiempoEstimadoMinutos == null) {
-        throw Exception('Debes seleccionar un tiempo estimado antes de pasar el pedido a PREPARANDO.');
-      }
-
       debugPrint('[DEBUG PATCH] Actualizando estado del pedido $pedidoId a $newStatus');
-      final qpLog = normalizedStatus == 'PREPARANDO'
-          ? 'estado=$newStatus&tiempoEstimadoMinutos=$tiempoEstimadoMinutos'
-          : 'estado=$newStatus';
-      debugPrint('[DEBUG PATCH] Endpoint: PATCH /api/pedidos/$pedidoId/estado?$qpLog');
-      debugPrint('[DEBUG PATCH] URL completa: ${_client.options.baseUrl}/pedidos/$pedidoId/estado?$qpLog');
+      
+      final Map<String, dynamic> queryParams = {'estado': newStatus};
+      final Map<String, dynamic> bodyData = {};
+      
+      if (estimatedTime != null) {
+        queryParams['tiempoEstimadoMinutos'] = estimatedTime;
+        bodyData['tiempoEstimadoMinutos'] = estimatedTime;
+        
+        // Also add the snake_case version just in case, since the error explicitly asked for it
+        queryParams['tiempo_estimado_minutos'] = estimatedTime;
+        bodyData['tiempo_estimado_minutos'] = estimatedTime;
+      }
+      
+      debugPrint('[DEBUG PATCH] Endpoint: PATCH /api/pedidos/$pedidoId/estado con params: $queryParams y body: $bodyData');
       
       final response = await _client.patch(
         '/pedidos/$pedidoId/estado',
-        queryParameters: {
-          'estado': newStatus,
-          if (tiempoEstimadoMinutos != null) 'tiempoEstimadoMinutos': tiempoEstimadoMinutos,
-        },
+        queryParameters: queryParams,
+        data: bodyData.isNotEmpty ? bodyData : null,
       );
       
       debugPrint('[DEBUG PATCH] Respuesta recibida - Status: ${response.statusCode}');
@@ -374,11 +375,7 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
         throw Exception('Error del servidor. Por favor intenta más tarde.');
       }
       
-      String errorMessage = e.message ?? 'Error desconocido';
-      final data = e.response?.data;
-      if (data is Map && data['message'] != null) {
-        errorMessage = data['message'].toString();
-      }
+      final errorMessage = e.response?.data?['message'] ?? e.message ?? 'Error desconocido';
       debugPrint('[DEBUG PATCH] Error actualizando estado - Status: $statusCode, Error: $errorMessage');
       throw Exception('Error actualizando estado: $errorMessage');
     }
