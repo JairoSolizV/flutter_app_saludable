@@ -261,6 +261,23 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                    SizedBox(
                        width: double.infinity,
                        child: ElevatedButton.icon(
+                           onPressed: () {
+                             context.push('/support');
+                           },
+                           icon: const Icon(LucideIcons.headphones),
+                           label: const Text('Centro de Soporte'),
+                           style: ElevatedButton.styleFrom(
+                               backgroundColor: Colors.white,
+                               foregroundColor: Colors.black87,
+                               side: BorderSide(color: Colors.grey.shade300),
+                               padding: const EdgeInsets.all(16)
+                           ),
+                       )
+                   ),
+                   const SizedBox(height: 16),
+                   SizedBox(
+                       width: double.infinity,
+                       child: ElevatedButton.icon(
                            onPressed: () async {
                               // Obtener Providers
                               final auth = Provider.of<AuthProvider>(context, listen: false); // Asumiendo que AuthProvider está disponible en el árbol

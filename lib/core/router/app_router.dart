@@ -44,6 +44,7 @@ import '../../presentation/screens/host/members/host_members_list_screen.dart';
 import '../../presentation/screens/host/members/host_member_registration_screen.dart';
 import '../../presentation/screens/host/host_profile_screen.dart';
 import '../../presentation/screens/events/events_list_screen.dart';
+import '../../presentation/screens/common/support_center_screen.dart'; // Nuevo
 
 
 
@@ -57,6 +58,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/screen-selector',
       builder: (context, state) => const ScreenSelector(),
+    ),
+    GoRoute(
+      path: '/support',
+      builder: (context, state) => const SupportCenterScreen(),
     ),
     // Rutas de Invitado con Shell (BottomNav)
     ShellRoute(

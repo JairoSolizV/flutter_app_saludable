@@ -383,19 +383,7 @@ class _HostMembersListScreenState extends State<HostMembersListScreen> {
               _buildDetailRow(LucideIcons.star, 'Puntos Acumulados', '${member.puntosAcumulados} pts'),
               const Divider(height: 24),
               _buildDetailRow(LucideIcons.info, 'Estado', member.estado),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7AC142),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Cerrar', style: TextStyle(fontSize: 16)),
-                ),
-              ),
+              const SizedBox(height: 16),
             ],
           ),
         );

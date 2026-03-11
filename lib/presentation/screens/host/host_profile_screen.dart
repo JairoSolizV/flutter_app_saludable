@@ -324,6 +324,13 @@ class _HostProfileScreenState extends State<HostProfileScreen> {
                     }
                   },
                 ),
+                _OptionTile(
+                  icon: LucideIcons.headphones,
+                  title: 'Centro de Soporte',
+                  onTap: () {
+                    context.push('/support');
+                  },
+                ),
                 
                 const SizedBox(height: 40),
 
