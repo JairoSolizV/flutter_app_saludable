@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../domain/entities/product.dart';
 import '../../../data/datasources/remote/product_remote_data_source.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
+import '../../widgets/product_image.dart';
 
 class MemberProductsScreen extends StatefulWidget {
   final String clubId;
@@ -136,19 +137,10 @@ class _MemberProductsScreenState extends State<MemberProductsScreen> {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            // Product Image Placeholder
-            Container(
+            ProductImage(
+              imageUrl: product.imageUrl.isEmpty ? null : product.imageUrl,
               width: 80,
               height: 80,
-              decoration: BoxDecoration(
-                color: const Color(0xFF7AC142).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                LucideIcons.package,
-                size: 40,
-                color: Color(0xFF7AC142),
-              ),
             ),
             const SizedBox(width: 16),
             

@@ -6,6 +6,7 @@ import '../../../providers/product_provider.dart';
 import '../../../providers/user_provider.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../../../widgets/product_image.dart';
 
 class HostProductListScreen extends StatefulWidget {
   const HostProductListScreen({super.key});
@@ -267,24 +268,10 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
   }
 
   Widget _buildProductImage(Product product) {
-    if (product.imageUrl.isNotEmpty) {
-      return Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          image: DecorationImage(image: NetworkImage(product.imageUrl), fit: BoxFit.cover),
-        ),
-      );
-    }
-    return Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Icon(LucideIcons.soup, color: Colors.grey),
+    return ProductImage(
+      imageUrl: product.imageUrl.isEmpty ? null : product.imageUrl,
+      width: 50,
+      height: 50,
     );
   }
 

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart'; // Import go_router
+import 'package:go_router/go_router.dart';
 import '../../providers/product_provider.dart';
+import '../../widgets/product_image.dart';
 
 class GuestFlavorCatalog extends StatelessWidget {
   const GuestFlavorCatalog({super.key});
@@ -50,16 +51,14 @@ class GuestFlavorCatalog extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Expanded(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.grey[200],
+                            child: ClipRRect(
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                              child: ProductImage(
+                                imageUrl: product.imageUrl.isEmpty ? null : product.imageUrl,
+                                width: double.infinity,
+                                height: double.infinity,
                                 borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                               ),
-                              child: const Center(
-                                child: Icon(Icons.local_drink, size: 48, color: Colors.grey),
-                              ),
-                              // TODO: Implementar Image.asset cuando los assets estén listos
-                              // child: Image.asset(product.imageUrl, fit: BoxFit.cover),
                             ),
                           ),
                           Padding(

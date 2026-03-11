@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../data/datasources/remote/product_remote_data_source.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
+import '../../../widgets/product_image.dart';
 
 class HostProductProposalScreen extends StatefulWidget {
   const HostProductProposalScreen({super.key});
@@ -19,6 +23,19 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
   final _puntosValorCtrl = TextEditingController();
 
   bool _isSubmitting = false;
+  File? _pickedImage;
+  String? _imagenUrl;
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (picked != null && mounted) {
+      setState(() {
+        _pickedImage = File(picked.path);
+        _imagenUrl = null;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -46,22 +63,27 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      // Obtener el club del anfitrión para extraer el hubId
       final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
       final club = await clubDataSource.getMyClub();
-      
+
       if (club == null) {
         throw Exception('No se encontró tu club. Verifica que tengas un club asignado como anfitrión.');
       }
 
       final dataSource = Provider.of<ProductRemoteDataSource>(context, listen: false);
 
+      String? imagenUrlToSend = _imagenUrl;
+      if (_pickedImage != null) {
+        imagenUrlToSend = await dataSource.uploadProductImage(_pickedImage!);
+      }
+
       await dataSource.createProductProposal(
-        hubId: club.hubId, // Incluir hubId del club del anfitrión
+        hubId: club.hubId,
         nombre: _nombreCtrl.text.trim(),
         descripcion: _descripcionCtrl.text.trim(),
         ingredientes: _ingredientesCtrl.text.trim(),
         puntosValor: puntos,
+        imagenUrl: imagenUrlToSend,
       );
 
       if (!mounted) return;
@@ -120,6 +142,57 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
                 'Completa los datos del batido/producto que quieres que el Administrador revise '
                 'para tu menú propio.',
                 style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              const Text('Foto del producto', style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onTap: _isSubmitting ? null : _pickImage,
+                    child: Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey),
+                      ),
+                      child: _pickedImage != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.file(_pickedImage!, fit: BoxFit.cover),
+                            )
+                          : _imagenUrl != null && _imagenUrl!.isNotEmpty
+                              ? ProductImage(imageUrl: _imagenUrl, width: 100, height: 100)
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(LucideIcons.imagePlus, size: 32, color: Colors.grey[600]),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Elegir de galería',
+                                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      decoration: const InputDecoration(
+                        labelText: 'O pega la URL de la imagen',
+                        hintText: 'https://...',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      onChanged: (v) => setState(() => _imagenUrl = v.trim().isEmpty ? null : v.trim()),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               TextFormField(

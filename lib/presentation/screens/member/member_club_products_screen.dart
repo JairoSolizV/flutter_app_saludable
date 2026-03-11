@@ -12,6 +12,7 @@ import '../../../domain/entities/order_entity.dart';
 import '../../../domain/entities/product.dart';
 import '../../../domain/entities/club_membership.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
+import '../../widgets/product_image.dart';
 
 class MemberClubProductsScreen extends StatefulWidget {
   final int clubId;
@@ -361,14 +362,10 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
                                     Row(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Container(
+                                        ProductImage(
+                                          imageUrl: product.imageUrl.isEmpty ? null : product.imageUrl,
                                           width: 64,
                                           height: 64,
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey[200],
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          child: const Icon(LucideIcons.image, color: Colors.grey),
                                         ),
                                         const SizedBox(width: 16),
                                         Expanded(
