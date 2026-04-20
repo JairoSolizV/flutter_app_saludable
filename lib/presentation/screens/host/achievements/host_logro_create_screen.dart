@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../data/datasources/remote/logro_remote_data_source.dart';
@@ -82,7 +81,7 @@ class _HostLogroCreateScreenState extends State<HostLogroCreateScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
-                    value: _tempTipoMetrica,
+                    initialValue: _tempTipoMetrica,
                     decoration: const InputDecoration(labelText: 'Métrica', border: OutlineInputBorder()),
                     items: const [
                        DropdownMenuItem(value: 'CONSUMO', child: Text('Consumo (pedidos)')),

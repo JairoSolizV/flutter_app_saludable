@@ -177,7 +177,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
           
           // Crear clave única para agrupar pedidos por pedidoId
           // Usar pedidoId como clave única ya que ahora un pedido puede tener múltiples items
-          final String groupKey = '${pedidoId}';
+          final String groupKey = '$pedidoId';
           
           // Obtener items del pedido (el backend ahora devuelve items como lista)
           List<Map<String, dynamic>> itemsDelPedido = [];
@@ -251,6 +251,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
               'estado': estado,
               'tipoConsumo': order['tipoConsumo']?.toString() ?? 'EN_LUGAR',
               'observaciones': order['observaciones']?.toString() ?? '',
+              'nota': item['nota']?.toString() ?? '', // NEW
               'customerName': customerName,
               'numeroSocio': numeroSocio,
               'isVip': isVip,
@@ -282,17 +283,17 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
         final String numeroSocio = firstItem['numeroSocio'] as String? ?? '';
         final bool isVip = firstItem['isVip'] as bool;
         
-        // Construir lista de items agrupando productos iguales y sumando cantidades
-        final Map<String, int> productosAgrupados = {};
-        for (var item in items) {
-          final int cantidad = item['cantidad'] as int;
-          final String productoNombre = item['productoNombre'] as String;
-          productosAgrupados[productoNombre] = (productosAgrupados[productoNombre] ?? 0) + cantidad;
-        }
+        final List<Map<String, dynamic>> itemsList = [];
         
-        final List<String> itemsList = productosAgrupados.entries.map<String>((entry) {
-          return '${entry.value} x ${entry.key}';
-        }).toList();
+        // Mantener items exactamente como vinieron, o agrupar solo si (nombre y nota) son idénticos.
+        // Lo más seguro es mantenerlos separados para que la cocina lea todo textual.
+        for (var item in items) {
+          itemsList.add({
+            'productoNombre': item['productoNombre'],
+            'cantidad': item['cantidad'],
+            'nota': item['nota'],
+          });
+        }
         
         return {
           'id': pedidoId.toString(),
@@ -626,24 +627,59 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                         ),
                         
                         const SizedBox(height: 12),
+                        
+                        if (order['observaciones'] != null && order['observaciones'].toString().trim().isNotEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                                color: Colors.yellow[100], 
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.orange.shade300, width: 2),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(LucideIcons.alertTriangle, size: 24, color: Colors.orange),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'PEDIDO GENERAL:\n${order['observaciones']}',
+                                    style: TextStyle(fontSize: 15, color: Colors.orange[900], fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
                         Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(8)),
                             child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: (order['items'] as List<String>).map((item) => Text('• $item')).toList(),
+                                children: (order['items'] as List<dynamic>).map((itemMap) {
+                                  final item = itemMap as Map<String, dynamic>;
+                                  final nombreItem = '${item['cantidad']} x ${item['productoNombre']}';
+                                  final notaItem = item['nota']?.toString().trim() ?? '';
+                                  
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 12.0),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start, 
+                                      children: [
+                                        Text('• $nombreItem', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
+                                        if (notaItem.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(left: 12.0, top: 4.0),
+                                            child: Text('Nota: $notaItem', style: TextStyle(color: Colors.red[700], fontStyle: FontStyle.italic, fontWeight: FontWeight.w600, fontSize: 14)),
+                                          )
+                                      ]
+                                    )
+                                  );
+                                }).toList(),
                             ),
                         ),
-
-                        if (order['observaciones'] != null && order['observaciones'].toString().isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                              'Nota: ${order['observaciones']}',
-                              style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic),
-                            ),
-                          ),
                         // Tipo de consumo
                         if (order['tipoConsumo'] != null)
                           Padding(

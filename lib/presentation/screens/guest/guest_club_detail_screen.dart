@@ -49,11 +49,13 @@ class _GuestClubDetailScreenState extends State<GuestClubDetailScreen> {
         photoUrl = cover.urlFoto;
       }
 
-      if (mounted) setState(() { 
+      if (mounted) {
+        setState(() { 
         _anfitrion = anfitrion; 
         _clubPhotoUrl = photoUrl;
         _loading = false; 
       });
+      }
     } catch (e) {
       if (mounted) setState(() => _loading = false);
     }

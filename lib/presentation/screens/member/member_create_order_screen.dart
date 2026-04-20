@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:uuid/uuid.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/order_provider.dart';
@@ -214,7 +212,7 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int>(
-                    value: _selectedClubId,
+                    initialValue: _selectedClubId,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.store),

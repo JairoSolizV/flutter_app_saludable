@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../domain/entities/logro.dart';
-import 'package:intl/intl.dart';
 
 class CompositeLoyaltyCard extends StatelessWidget {
   final LogroProgreso progreso;
@@ -89,7 +88,7 @@ class CompositeLoyaltyCard extends StatelessWidget {
           const Text("Requisitos del Reto", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
           const SizedBox(height: 12),
           
-          ...progreso.requisitos.map((req) => _buildRequirementRow(req)).toList(),
+          ...progreso.requisitos.map((req) => _buildRequirementRow(req)),
           
           const SizedBox(height: 20),
           if (progreso.puntosRecompensa > 0)

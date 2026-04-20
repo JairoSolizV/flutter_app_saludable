@@ -86,6 +86,7 @@ class LocalUserRepository implements UserRepository {
     print('[DEBUG LOCAL_REPO] logout() - Usuarios restantes en BD: ${remaining.length}');
   }
 
+  @override
   Future<User?> getCurrentUser() async {
     final db = await _dbHelper.database;
     final maps = await db.query('users', limit: 1);

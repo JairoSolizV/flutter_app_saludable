@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:go_router/go_router.dart';
 import '../../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../../domain/entities/attendance.dart';
 import '../../../../domain/entities/club_membership.dart';
@@ -147,7 +146,7 @@ class _MemberAchievementsScreenState extends State<MemberAchievementsScreen> {
                              clubName: _currentMembership?.clubNombre ?? "Mi Club",
                            ),
                          ))
-                         .toList(),
+                         ,
                    
                    const SizedBox(height: 30),
                    

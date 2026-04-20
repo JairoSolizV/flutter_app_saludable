@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:uuid/uuid.dart';
-import 'package:intl/intl.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/order_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../../domain/entities/order_entity.dart';
-import '../../../domain/entities/product.dart';
 import '../../../domain/entities/club_membership.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../widgets/product_image.dart';

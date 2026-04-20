@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:intl/intl.dart';
 import '../../../domain/entities/order_entity.dart';
 
 abstract class OrderRemoteDataSource {
@@ -42,7 +41,7 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
         itemsData.add({
           'productoId': productoId,
           'cantidad': item.quantity,
-          'nota': item.note.isNotEmpty ? item.note : null,
+          'nota': item.note, // Siempre enviar la nota aunque esté vacía ('')
         });
       }
       

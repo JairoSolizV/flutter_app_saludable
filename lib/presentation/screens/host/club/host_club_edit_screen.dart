@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';

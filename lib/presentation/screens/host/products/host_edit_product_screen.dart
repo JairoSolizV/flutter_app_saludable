@@ -134,7 +134,7 @@ class _HostEditProductScreenState extends State<HostEditProductScreen> {
                 title: const Text('Disponible / Activo'),
                 subtitle: const Text('Si se desactiva, no aparecerá en el menú'),
                 value: _isActive,
-                activeColor: const Color(0xFF7AC142),
+                activeThumbColor: const Color(0xFF7AC142),
                 onChanged: (val) {
                   setState(() => _isActive = val);
                 },

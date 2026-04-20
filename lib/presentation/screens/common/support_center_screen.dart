@@ -133,7 +133,7 @@ class _SupportCenterScreenState extends State<SupportCenterScreen> with SingleTi
             
             // Tipo de Solicitud
             DropdownButtonFormField<String>(
-              value: _tipoSolicitud,
+              initialValue: _tipoSolicitud,
               decoration: const InputDecoration(
                 labelText: 'Tipo de Solicitud',
                 border: OutlineInputBorder(),

@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:latlong2/latlong.dart';
 import '../../providers/user_provider.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
-import 'package:flutter_app_saludable/core/utils/validators.dart';
 import '../../widgets/schedule_selector.dart';
 import '../../widgets/location_picker_dialog.dart';
 

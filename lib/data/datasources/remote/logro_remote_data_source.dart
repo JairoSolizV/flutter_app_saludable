@@ -18,7 +18,7 @@ class LogroRemoteDataSourceImpl implements LogroRemoteDataSource {
     try {
       debugPrint('[DEBUG LOGROS] Creando logro en el host...');
       
-      String _formatDate(DateTime? d) {
+      String formatDate(DateTime? d) {
         if (d == null) return '';
         return '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
       }
@@ -28,8 +28,8 @@ class LogroRemoteDataSourceImpl implements LogroRemoteDataSource {
         'descripcion': logro.descripcion,
         'iconoUrl': logro.iconoUrl,
         'puntosRecompensa': logro.puntosRecompensa,
-        'fechaInicio': _formatDate(logro.fechaInicio),
-        'fechaFin': _formatDate(logro.fechaFin),
+        'fechaInicio': formatDate(logro.fechaInicio),
+        'fechaFin': formatDate(logro.fechaFin),
         'requisitos': logro.requisitos.map((r) => r.toJson()).toList(),
       };
 

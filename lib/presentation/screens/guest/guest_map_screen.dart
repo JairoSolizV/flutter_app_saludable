@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart'; // Add go_router
 import 'package:flutter_map/flutter_map.dart'; 
 import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:provider/provider.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart'; // Import DataSource
 import '../../../main.dart'; // Acceso a global clubRemoteDataSource (temporal, idealmente Provider)
 

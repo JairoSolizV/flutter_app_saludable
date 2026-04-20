@@ -5,7 +5,6 @@ import '../../../../domain/entities/product.dart';
 import '../../../providers/product_provider.dart';
 import '../../../providers/user_provider.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import '../../../widgets/product_image.dart';
 
 class HostProductListScreen extends StatefulWidget {
@@ -231,7 +230,7 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                     ],
                   ),
                   trailing: Switch(
-                    activeColor: const Color(0xFF7AC142),
+                    activeThumbColor: const Color(0xFF7AC142),
                     value: product.available && product.estadoAprobacion == 'APROBADO',
                     onChanged: product.estadoAprobacion == 'APROBADO' ? (bool value) {
                       provider.toggleAvailability(_clubId!, product.id, _hubId!);

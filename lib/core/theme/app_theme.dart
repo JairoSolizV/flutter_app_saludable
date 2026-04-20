@@ -16,11 +16,9 @@ class AppTheme {
       colorScheme: ColorScheme.light(
         primary: primaryColor,
         secondary: primaryDark,
-        background: background,
         surface: surface,
         onPrimary: Colors.white,
         onSecondary: Colors.white,
-        onBackground: textPrimary,
         onSurface: textPrimary,
       ),
       scaffoldBackgroundColor: background,

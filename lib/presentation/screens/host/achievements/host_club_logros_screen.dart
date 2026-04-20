@@ -230,7 +230,7 @@ class _HostClubLogrosScreenState extends State<HostClubLogrosScreen> {
                                             style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                                          ),
                                        );
-                                    }).toList(),
+                                    }),
                                   ],
                                   if (logro.puntosRecompensa != null) ...[
                                     const SizedBox(height: 4),
