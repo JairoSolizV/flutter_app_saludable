@@ -43,6 +43,7 @@ import '../../presentation/screens/host/achievements/host_logro_create_screen.da
 import '../../presentation/screens/host/members/host_members_list_screen.dart';
 import '../../presentation/screens/host/members/host_member_registration_screen.dart';
 import '../../presentation/screens/host/host_profile_screen.dart';
+import '../../presentation/screens/host/host_reports_screen.dart';
 import '../../presentation/screens/events/events_list_screen.dart';
 import '../../presentation/screens/common/support_center_screen.dart'; // Nuevo
 
@@ -229,6 +230,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/host-profile',
           builder: (context, state) => const HostProfileScreen(),
+        ),
+        GoRoute(
+          path: '/host/reports',
+          builder: (context, state) => const HostReportsScreen(),
         ),
         GoRoute(
           path: '/events',

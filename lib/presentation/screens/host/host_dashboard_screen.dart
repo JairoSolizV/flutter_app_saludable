@@ -345,6 +345,44 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
 
                    const SizedBox(height: 24),
 
+                   // Estadísticas y reportes
+                   InkWell(
+                     onTap: () => context.push('/host/reports'),
+                     child: Container(
+                       padding: const EdgeInsets.all(20),
+                       decoration: BoxDecoration(
+                         color: Colors.white,
+                         borderRadius: BorderRadius.circular(20),
+                         boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: const Offset(0, 5))],
+                       ),
+                       child: Row(
+                         children: [
+                           Container(
+                             padding: const EdgeInsets.all(12),
+                             decoration: BoxDecoration(
+                               color: const Color(0xFF2E7D32).withOpacity(0.12),
+                               borderRadius: BorderRadius.circular(12),
+                             ),
+                             child: const Icon(LucideIcons.barChart3, color: Color(0xFF2E7D32), size: 30),
+                           ),
+                           const SizedBox(width: 16),
+                           const Expanded(
+                             child: Column(
+                               crossAxisAlignment: CrossAxisAlignment.start,
+                               children: [
+                                 Text('Estadísticas y reportes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                 Text('Exporta PDF o Excel por rango de fechas', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                               ],
+                             ),
+                           ),
+                           const Icon(LucideIcons.chevronRight, color: Colors.grey),
+                         ],
+                       ),
+                     ),
+                   ),
+
+                   const SizedBox(height: 24),
+
                    // Eventos Card
                    InkWell(
                      onTap: () => context.push('/events'),

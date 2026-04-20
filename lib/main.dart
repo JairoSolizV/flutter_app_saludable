@@ -20,6 +20,7 @@ import 'data/datasources/remote/qr_remote_data_source.dart';
 import 'data/datasources/remote/evento_remote_data_source.dart';
 import 'data/datasources/remote/support_remote_data_source.dart'; // Nuevo
 import 'data/datasources/remote/logro_remote_data_source.dart'; // Nuevo
+import 'data/datasources/remote/report_remote_data_source.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/support_provider.dart'; // Nuevo
 import 'data/repositories/local_user_repository.dart';
@@ -37,6 +38,7 @@ late final QRRemoteDataSource qrRemoteDataSource;
 late final EventoRemoteDataSource eventoRemoteDataSource;
 late final SupportRemoteDataSource supportRemoteDataSource; // Nuevo
 late final LogroRemoteDataSource logroRemoteDataSource; // Nuevo
+late final ReportRemoteDataSource reportRemoteDataSource;
 late final LocalProductRepository productRepository;
 late final LocalOrderRepository orderRepository;
 late final ConnectivityService connectivityService;
@@ -61,6 +63,7 @@ void main() {
     eventoRemoteDataSource = EventoRemoteDataSourceImpl(apiClient.client);
     supportRemoteDataSource = SupportRemoteDataSourceImpl(apiClient.client); // Nuevo
     logroRemoteDataSource = LogroRemoteDataSourceImpl(apiClient.client); // Nuevo
+    reportRemoteDataSource = ReportRemoteDataSource(apiClient.client);
     
     // 4. Repositorios Híbridos
     productRepository = LocalProductRepository(dbHelper, remoteDataSource: productRemoteDataSource);
@@ -116,6 +119,9 @@ class AppState extends StatelessWidget {
         ),
         Provider<LogroRemoteDataSource>(
             create: (_) => logroRemoteDataSource,
+        ),
+        Provider<ReportRemoteDataSource>(
+            create: (_) => reportRemoteDataSource,
         ),
          ChangeNotifierProvider(
           create: (_) => AuthProvider(authRemoteDataSource, userRepository),
