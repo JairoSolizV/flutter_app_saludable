@@ -7,7 +7,9 @@ import '../../../../domain/entities/attendance.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../providers/user_provider.dart';
 import '../../../../domain/entities/user.dart';
-import '../../../widgets/loyalty_card.dart';
+import '../../../../domain/entities/logro.dart';
+import '../../../../data/datasources/remote/logro_remote_data_source.dart';
+import '../../../widgets/composite_loyalty_card.dart';
 
 class MemberAchievementsScreen extends StatefulWidget {
   const MemberAchievementsScreen({super.key});
@@ -20,6 +22,7 @@ class _MemberAchievementsScreenState extends State<MemberAchievementsScreen> {
   bool _isLoading = true;
   String? _error;
   List<Attendance> _asistencias = [];
+  List<LogroProgreso> _progresos = [];
   ClubMembership? _currentMembership;
   User? _currentUser;
 
@@ -55,10 +58,15 @@ class _MemberAchievementsScreenState extends State<MemberAchievementsScreen> {
       // 2. Obtener Asistencias de esa membresía
       final asistencias = await dataSource.getAsistencias(activeMembership.id);
 
+      // 3. Obtener el Progreso de Retos Compuestos del Socio
+      final logroDS = Provider.of<LogroRemoteDataSource>(context, listen: false);
+      final progresos = await logroDS.getProgresoSocio(activeMembership.id);
+
       if (mounted) {
         setState(() {
           _currentMembership = activeMembership;
           _asistencias = asistencias;
+          _progresos = progresos;
           _isLoading = false;
         });
       }
@@ -124,26 +132,22 @@ class _MemberAchievementsScreenState extends State<MemberAchievementsScreen> {
                 children: [
                    if (_currentMembership == null)
                      _buildNoMembershipCard()
-                   else ...[
-                     LoyaltyCard(
-                       stamps: _asistencias.length % 10,
-                       maxStamps: 10,
-                       clubName: _currentMembership?.clubNombre ?? "Club Nutrición",
-                       tipoMetrica: 'ASISTENCIA',
-                       puntosRecompensa: 50,
-                       fechaFin: '31/12/2026',
-                     ),
-                     const SizedBox(height: 20),
-                     // Ejemplo de otra métrica (Logro de Consumo)
-                     LoyaltyCard(
-                       stamps: 3,
-                       maxStamps: 5,
-                       clubName: _currentMembership?.clubNombre ?? "Club Nutrición",
-                       tipoMetrica: 'CONSUMO',
-                       puntosRecompensa: 100,
-                       fechaFin: '30/11/2026',
-                     ),
-                   ],
+                   else if (_progresos.isEmpty)
+                     const Padding(
+                       padding: EdgeInsets.symmetric(vertical: 40),
+                       child: Center(
+                         child: Text("No hay retos activos en este club aún.", style: TextStyle(color: Colors.grey)),
+                       ),
+                     )
+                   else
+                     ..._progresos.map((progreso) => Padding(
+                           padding: const EdgeInsets.only(bottom: 20),
+                           child: CompositeLoyaltyCard(
+                             progreso: progreso,
+                             clubName: _currentMembership?.clubNombre ?? "Mi Club",
+                           ),
+                         ))
+                         .toList(),
                    
                    const SizedBox(height: 30),
                    

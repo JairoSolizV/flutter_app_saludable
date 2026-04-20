@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../../../../data/datasources/remote/membresia_remote_data_source.dart';
+import '../../../../data/datasources/remote/logro_remote_data_source.dart';
 import '../../../../domain/entities/logro.dart';
 
 class HostClubLogrosScreen extends StatefulWidget {
@@ -30,7 +30,7 @@ class _HostClubLogrosScreenState extends State<HostClubLogrosScreen> {
     });
 
     try {
-      final dataSource = Provider.of<MembresiaRemoteDataSource>(context, listen: false);
+      final dataSource = Provider.of<LogroRemoteDataSource>(context, listen: false);
       final logros = await dataSource.getLogros();
 
       if (mounted) {
@@ -77,14 +77,10 @@ class _HostClubLogrosScreenState extends State<HostClubLogrosScreen> {
 
   String _tipoMetricaLabel(String? tipo) {
     switch ((tipo ?? '').toUpperCase()) {
-      case 'CONSUMO':
-        return 'Consumo';
-      case 'ASISTENCIA':
-        return 'Asistencia';
-      case 'REFERIDOS':
-        return 'Referidos';
-      default:
-        return 'General';
+      case 'CONSUMO': return 'Consumo';
+      case 'ASISTENCIA': return 'Asistencia';
+      case 'REFERIDOS': return 'Referidos';
+      default: return 'General';
     }
   }
 
@@ -214,30 +210,28 @@ class _HostClubLogrosScreenState extends State<HostClubLogrosScreen> {
                                       ),
                                     ),
                                   const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Icon(LucideIcons.activity, size: 16, color: Colors.grey[700]),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        _tipoMetricaLabel(logro.tipoMetrica),
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.grey[800],
-                                        ),
-                                      ),
-                                      if (logro.metaCantidad != null) ...[
-                                        const SizedBox(width: 12),
+                                  if (logro.requisitos.isNotEmpty) ...[
+                                    Row(
+                                      children: [
+                                        Icon(LucideIcons.activity, size: 16, color: Colors.grey[700]),
+                                        const SizedBox(width: 6),
                                         Text(
-                                          'Meta: ${logro.metaCantidad}',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[700],
-                                          ),
+                                          'Requisitos:',
+                                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[800]),
                                         ),
                                       ],
-                                    ],
-                                  ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    ...logro.requisitos.map((req) {
+                                       return Padding(
+                                         padding: const EdgeInsets.only(left: 22, bottom: 2),
+                                         child: Text(
+                                            '• ${req.cantidadEsperada} ${_tipoMetricaLabel(req.tipoMetrica)}',
+                                            style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                                         ),
+                                       );
+                                    }).toList(),
+                                  ],
                                   if (logro.puntosRecompensa != null) ...[
                                     const SizedBox(height: 4),
                                     Row(
