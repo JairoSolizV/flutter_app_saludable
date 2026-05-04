@@ -45,7 +45,6 @@ import '../../presentation/screens/events/events_list_screen.dart';
 import '../../presentation/screens/common/support_center_screen.dart'; // Nuevo
 import '../../presentation/screens/host/members/host_member_detail_screen.dart';
 import '../../presentation/screens/host/members/host_register_purchase_screen.dart';
-import '../../presentation/screens/host/prospectos/host_prospectos_list_screen.dart';
 import '../../presentation/screens/host/prospectos/host_prospecto_create_screen.dart';
 import '../../presentation/screens/host/prospectos/host_prospecto_detail_screen.dart';
 import '../../presentation/screens/host/prospectos/host_mision_create_screen.dart';
