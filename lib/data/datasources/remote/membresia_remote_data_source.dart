@@ -2,8 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../../domain/entities/club_membership.dart';
 import '../../../domain/entities/attendance.dart';
-import '../../../domain/entities/logro.dart';
-import '../../../domain/entities/membresia_logro.dart';
 
 abstract class MembresiaRemoteDataSource {
   Future<void> crearMembresia({required int usuarioId, required int clubId, int? nivelId, Map<String, dynamic>? extraData});
@@ -11,22 +9,12 @@ abstract class MembresiaRemoteDataSource {
   Future<List<ClubMembership>> getMembresiasPorUsuario(int usuarioId);
   Future<List<Attendance>> getAsistencias(int membresiaId);
   Future<AsistenciaResponse> registrarAsistencia({
-    required int membresiaId, 
+    required int membresiaId,
     required int clubId,
     required double latitud,
     required double longitud,
   });
-  Future<List<Logro>> getLogros();
-  Future<List<MembresiaLogro>> getLogrosByMembresia(int membresiaId);
-  Future<void> createClubLogro({
-    required String nombre,
-    required String descripcion,
-    required String fechaInicio, // Formato YYYY-MM-DD
-    required String fechaFin,    // Formato YYYY-MM-DD
-    required String tipoMetrica, // CONSUMO, ASISTENCIA, REFERIDOS
-    required int metaCantidad,
-    required int puntosRecompensa,
-  });
+  Future<Attendance> registrarAsistenciaManual({required int membresiaId, String? fecha, String? nota});
 }
 
 /// Modelo para la respuesta de registro de asistencia
@@ -271,76 +259,32 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
   }
 
   @override
-  Future<List<Logro>> getLogros() async {
-    try {
-      final response = await _client.get('/logros');
-      
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
-        return data.map((json) => Logro.fromJson(Map<String, dynamic>.from(json))).toList();
-      } else {
-        throw Exception('Error cargando logros: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Error al obtener logros: $e');
-    }
-  }
-
-  @override
-  Future<List<MembresiaLogro>> getLogrosByMembresia(int membresiaId) async {
-    try {
-      final response = await _client.get('/membresia-logros/membresia/$membresiaId');
-      
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
-        return data.map((json) => MembresiaLogro.fromJson(Map<String, dynamic>.from(json))).toList();
-      } else {
-        throw Exception('Error cargando logros de membresía: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Error al obtener logros de membresía: $e');
-    }
-  }
-
-  @override
-  Future<void> createClubLogro({
-    required String nombre,
-    required String descripcion,
-    required String fechaInicio,
-    required String fechaFin,
-    required String tipoMetrica,
-    required int metaCantidad,
-    required int puntosRecompensa,
+  Future<Attendance> registrarAsistenciaManual({
+    required int membresiaId,
+    String? fecha,
+    String? nota,
   }) async {
     try {
-      final body = {
-        'nombre': nombre,
-        'descripcion': descripcion,
-        'fechaInicio': fechaInicio,
-        'fechaFin': fechaFin,
-        'tipoMetrica': tipoMetrica,
-        'metaCantidad': metaCantidad,
-        'puntosRecompensa': puntosRecompensa,
-      };
-
-      debugPrint('[DEBUG LOGROS] Enviando reto/logro de club: $body');
-      final response = await _client.post('/logros', data: body);
-
-      debugPrint('[DEBUG LOGROS] Respuesta crear logro - Status: ${response.statusCode}');
-      debugPrint('[DEBUG LOGROS] Body: ${response.data}');
-
-      if (response.statusCode != 201 && response.statusCode != 200) {
-        throw Exception('Error al crear logro del club: ${response.statusCode}');
+      final response = await _client.post(
+        '/membresias/$membresiaId/asistencias',
+        data: {
+          if (fecha != null) 'fecha': fecha,
+          if (nota != null) 'nota': nota,
+        },
+      );
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Error al registrar asistencia: ${response.statusCode}');
       }
+      return Attendance.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
-      final statusCode = e.response?.statusCode;
       final data = e.response?.data;
-      String message = e.message ?? 'Error desconocido';
-      if (data is Map && data['message'] != null) {
-        message = data['message'].toString();
+      String msg = e.message ?? 'Error desconocido';
+      if (data is Map && data['message'] != null) msg = data['message'].toString();
+      if (e.response?.statusCode == 409) {
+        throw Exception('Ya existe una asistencia registrada para hoy.');
       }
-      debugPrint('[DEBUG LOGROS] Error creando logro - Status: $statusCode, Message: $message');
-      throw Exception('Error al crear logro del club: $message');
+      throw Exception('Error registrando asistencia manual: $msg');
     }
   }
+
 }

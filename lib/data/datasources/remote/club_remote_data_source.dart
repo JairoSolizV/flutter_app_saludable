@@ -508,6 +508,22 @@ class ClubRemoteDataSource {
   Future<void> eliminarFoto(int id) async {
     await _client.delete('/fotos-club/$id');
   }
+
+  Future<List<ClubMembership>> getReferidosPorMembresia(int membresiaId) async {
+    try {
+      final response = await _client.get('/membresias/$membresiaId/referidos');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data as List<dynamic>;
+        return data
+            .map((e) => ClubMembership.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return [];
+      throw Exception('Error obteniendo referidos: ${e.message}');
+    }
+  }
 }
 
 class Anfitrion {
