@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../providers/user_provider.dart';
+import '../prospectos/host_prospectos_list_screen.dart';
 
 class HostMembersListScreen extends StatefulWidget {
   const HostMembersListScreen({super.key});
@@ -12,7 +14,9 @@ class HostMembersListScreen extends StatefulWidget {
   State<HostMembersListScreen> createState() => _HostMembersListScreenState();
 }
 
-class _HostMembersListScreenState extends State<HostMembersListScreen> {
+class _HostMembersListScreenState extends State<HostMembersListScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   bool _isLoading = true;
   List<ClubMembership> _members = [];
   String? _error;
@@ -22,6 +26,7 @@ class _HostMembersListScreenState extends State<HostMembersListScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadMembers();
     _searchController.addListener(() {
       setState(() {
@@ -32,6 +37,7 @@ class _HostMembersListScreenState extends State<HostMembersListScreen> {
 
   @override
   void dispose() {
+    _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -73,14 +79,30 @@ class _HostMembersListScreenState extends State<HostMembersListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Fondo suave
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text('Socios del Club'),
+        title: const Text('Gestión de Socios'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0,
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: const Color(0xFF7AC142),
+          indicatorColor: const Color(0xFF7AC142),
+          unselectedLabelColor: Colors.grey,
+          tabs: const [
+            Tab(icon: Icon(Icons.people), text: 'Socios'),
+            Tab(icon: Icon(Icons.person_add), text: 'Prospectos'),
+          ],
+        ),
       ),
-      body: _buildBody(),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildBody(),
+          const HostProspectosListScreen(),
+        ],
+      ),
     );
   }
 
@@ -258,7 +280,10 @@ class _HostMembersListScreenState extends State<HostMembersListScreen> {
         ],
       ),
       child: InkWell(
-        onTap: () => _showMemberDetails(member),
+        onTap: () => context.push(
+          '/host/members/${member.id}',
+          extra: {'memberName': member.usuarioNombre},
+        ),
         borderRadius: BorderRadius.circular(16),
         child: ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -325,86 +350,5 @@ class _HostMembersListScreenState extends State<HostMembersListScreen> {
     );
   }
 
-  void _showMemberDetails(ClubMembership member) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 24),
-              CircleAvatar(
-                radius: 40,
-                backgroundColor: const Color(0xFF7AC142).withOpacity(0.1),
-                child: Text(
-                  member.usuarioNombre.isNotEmpty ? member.usuarioNombre[0].toUpperCase() : '?',
-                  style: const TextStyle(color: Color(0xFF7AC142), fontSize: 32, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                member.usuarioNombre,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green[50], 
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.green[200]!),
-                ),
-                child: Text(
-                  member.nivelNombre,
-                  style: TextStyle(fontSize: 14, color: Colors.green[800], fontWeight: FontWeight.w600),
-                ),
-              ),
-              const SizedBox(height: 24),
-              _buildDetailRow(LucideIcons.hash, 'Número de Socio', member.numeroSocio),
-              const Divider(height: 24),
-              _buildDetailRow(LucideIcons.calendar, 'Fecha de Registro', member.fechaRegistro),
-              const Divider(height: 24),
-              _buildDetailRow(LucideIcons.star, 'Puntos Acumulados', '${member.puntosAcumulados} pts'),
-              const Divider(height: 24),
-              _buildDetailRow(LucideIcons.info, 'Estado', member.estado),
-              const SizedBox(height: 16),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, color: Colors.grey[600], size: 20),
-        const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-          ],
-        ),
-      ],
-    );
-  }
 }
 
