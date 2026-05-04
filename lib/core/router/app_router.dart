@@ -24,7 +24,6 @@ import '../../presentation/screens/member/member_create_order_screen.dart';
 import '../../presentation/screens/member/member_select_club_screen.dart';
 import '../../presentation/screens/member/member_club_products_screen.dart';
 import '../../presentation/screens/member/member_profile_screen.dart';
-import '../../presentation/screens/member/achievements/member_achievements_screen.dart'; // Added
 import '../../presentation/screens/member/attendance/member_attendance_screen.dart';
 import '../../presentation/screens/member/qrcode/member_qr_scan_screen.dart'; // Added
 import '../../presentation/screens/member/request_club_screen.dart'; // Added
@@ -38,14 +37,18 @@ import '../../presentation/screens/host/host_scan_screen.dart';
 import '../../presentation/screens/host/products/host_product_list_screen.dart';
 import '../../presentation/screens/host/products/host_edit_product_screen.dart';
 import '../../presentation/screens/host/products/host_product_proposal_screen.dart';
-import '../../presentation/screens/host/achievements/host_club_logros_screen.dart';
-import '../../presentation/screens/host/achievements/host_logro_create_screen.dart';
 import '../../presentation/screens/host/members/host_members_list_screen.dart';
 import '../../presentation/screens/host/members/host_member_registration_screen.dart';
 import '../../presentation/screens/host/host_profile_screen.dart';
 import '../../presentation/screens/host/host_reports_screen.dart';
 import '../../presentation/screens/events/events_list_screen.dart';
 import '../../presentation/screens/common/support_center_screen.dart'; // Nuevo
+import '../../presentation/screens/host/members/host_member_detail_screen.dart';
+import '../../presentation/screens/host/members/host_register_purchase_screen.dart';
+import '../../presentation/screens/host/prospectos/host_prospectos_list_screen.dart';
+import '../../presentation/screens/host/prospectos/host_prospecto_create_screen.dart';
+import '../../presentation/screens/host/prospectos/host_prospecto_detail_screen.dart';
+import '../../presentation/screens/host/prospectos/host_mision_create_screen.dart';
 
 
 
@@ -160,10 +163,6 @@ final appRouter = GoRouter(
             builder: (context, state) => const MemberProfileScreen(),
         ),
         GoRoute(
-            path: '/member-achievements',
-            builder: (context, state) => const MemberAchievementsScreen(),
-        ),
-        GoRoute(
             path: '/member-attendance',
             builder: (context, state) => MemberAttendanceScreen(),
         ),
@@ -211,7 +210,13 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/host-scan',
-          builder: (context, state) => const HostScanScreen(),
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>?;
+            return HostScanScreen(
+              prospectoId: extra?['prospectoId'] as int?,
+              prefilledReferralId: extra?['prefilledReferralId'] as int?,
+            );
+          },
         ),
         GoRoute(
           path: '/host-members',
@@ -220,11 +225,13 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/host-register-member',
           builder: (context, state) {
-             final extras = state.extra as Map<String, dynamic>;
-             return HostMemberRegistrationScreen(
-               qrPayload: extras['qrPayload'] as String,
-               clubId: extras['clubId'] as int,
-             );
+            final extras = state.extra as Map<String, dynamic>;
+            return HostMemberRegistrationScreen(
+              qrPayload: extras['qrPayload'] as String,
+              clubId: extras['clubId'] as int,
+              prospectoId: extras['prospectoId'] as int?,
+              prefilledReferralId: extras['prefilledReferralId'] as int?,
+            );
           },
         ),
         GoRoute(
@@ -240,12 +247,53 @@ final appRouter = GoRouter(
           builder: (context, state) => const EventsListScreen(),
         ),
         GoRoute(
-          path: '/host/logros',
-          builder: (context, state) => const HostClubLogrosScreen(),
+          path: '/host/members/:membresiaId',
+          builder: (context, state) {
+            final membresiaId = int.parse(state.pathParameters['membresiaId']!);
+            final extra = state.extra as Map<String, dynamic>?;
+            return HostMemberDetailScreen(
+              membresiaId: membresiaId,
+              memberName: extra?['memberName'] as String? ?? '',
+            );
+          },
           routes: [
             GoRoute(
-              path: 'new',
-              builder: (context, state) => const HostLogroCreateScreen(),
+              path: 'purchases/new',
+              builder: (context, state) {
+                final membresiaId = int.parse(state.pathParameters['membresiaId']!);
+                final extra = state.extra as Map<String, dynamic>;
+                return HostRegisterPurchaseScreen(
+                  membresiaId: membresiaId,
+                  clubId: extra['clubId'] as int,
+                );
+              },
+            ),
+          ],
+        ),
+        GoRoute(
+          path: '/host/prospectos/new',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>;
+            return HostProspectoCreateScreen(clubId: extra['clubId'] as int);
+          },
+        ),
+        GoRoute(
+          path: '/host/prospectos/:prospectoId',
+          builder: (context, state) {
+            final prospectoId = int.parse(state.pathParameters['prospectoId']!);
+            final extra = state.extra as Map<String, dynamic>;
+            return HostProspectoDetailScreen(
+              prospectoId: prospectoId,
+              clubId: extra['clubId'] as int,
+            );
+          },
+          routes: [
+            GoRoute(
+              path: 'misiones/new',
+              builder: (context, state) {
+                final prospectoId = int.parse(state.pathParameters['prospectoId']!);
+                return HostMisionCreateScreen(prospectoId: prospectoId);
+              },
             ),
           ],
         ),
