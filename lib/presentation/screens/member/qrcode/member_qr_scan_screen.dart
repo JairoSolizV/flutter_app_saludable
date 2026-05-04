@@ -10,7 +10,6 @@ import 'package:latlong2/latlong.dart';
 import '../../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
-import '../../../../domain/entities/membresia_logro.dart';
 import '../../../providers/user_provider.dart';
 
 class MemberQrScanScreen extends StatefulWidget {
@@ -400,17 +399,7 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
       // Usar la primera membresía activa (asistencias globales - sin restricción de HUB/club)
       final membership = membresias.first;
 
-      // 7. Obtener logros ANTES de registrar asistencia (para comparar después)
-      List<MembresiaLogro> logrosAntes = [];
-      try {
-        logrosAntes = await membresiaDataSource.getLogrosByMembresia(membership.id);
-      } catch (e) {
-        // Si falla, continuar sin comparar logros
-        debugPrint('[DEBUG QR] Error obteniendo logros antes: $e');
-      }
-
-      // 8. Registrar Asistencia (asistencias globales - el backend valida que el club esté activo)
-      // El backend ahora otorga logros automáticamente al registrar asistencia
+      // 7. Registrar Asistencia
       final asistenciaResponse = await membresiaDataSource.registrarAsistencia(
         membresiaId: membership.id,
         clubId: clubId, // Club del QR escaneado (cualquier club activo)
@@ -420,24 +409,12 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
 
       if (!mounted) return;
 
-      // 9. Obtener logros DESPUÉS de registrar asistencia (para detectar nuevos logros)
-      List<MembresiaLogro> logrosDespues = [];
-      try {
-        logrosDespues = await membresiaDataSource.getLogrosByMembresia(membership.id);
-      } catch (e) {
-        debugPrint('[DEBUG QR] Error obteniendo logros después: $e');
-      }
-
-      // 10. Detectar nuevos logros
-      final logrosAntesIds = logrosAntes.map((ml) => ml.logro.id).toSet();
-      final nuevosLogros = logrosDespues.where((ml) => !logrosAntesIds.contains(ml.logro.id)).toList();
-
       // Detener la cámara
       await cameraController.stop();
       if (!mounted) return;
       setState(() => _isProcessing = false);
 
-      // Mostrar éxito con información de racha y nuevos logros
+      // Mostrar éxito con información de racha
       final shouldReload = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
@@ -492,58 +469,6 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
                         ],
                       ),
                     ),
-                ],
-                // Mostrar nuevos logros obtenidos
-                if (nuevosLogros.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.amber.shade300, width: 1),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(LucideIcons.award, color: Colors.amber, size: 20),
-                            const SizedBox(width: 8),
-                            const Text(
-                              '¡Nuevo Logro Obtenido!',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                color: Colors.amber,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        ...nuevosLogros.map((membresiaLogro) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              const Icon(LucideIcons.star, color: Colors.amber, size: 16),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  membresiaLogro.logro.nombre,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )),
-                      ],
-                    ),
-                  ),
                 ],
               ],
             ),

@@ -31,10 +31,6 @@ class MemberMainScreen extends StatelessWidget {
             label: 'Pedidos',
           ),
           BottomNavigationBarItem(
-            icon: Icon(LucideIcons.award),
-            label: 'Logros', // Achievements Placeholder
-          ),
-          BottomNavigationBarItem(
              icon: Icon(LucideIcons.user),
              label: 'Perfil', // Profile Placeholder
           ),
@@ -48,8 +44,7 @@ class MemberMainScreen extends StatelessWidget {
     if (location.startsWith('/member-home')) return 0;
     if (location.startsWith('/member-attendance')) return 1;
     if (location.startsWith('/member-orders')) return 2;
-    if (location.startsWith('/member-achievements')) return 3;
-    if (location.startsWith('/member-profile')) return 4;
+    if (location.startsWith('/member-profile')) return 3;
     return 0;
   }
 
@@ -59,17 +54,14 @@ class MemberMainScreen extends StatelessWidget {
         context.go('/member-home');
         break;
       case 1:
-        context.go('/member-attendance'); 
+        context.go('/member-attendance');
         break;
       case 2:
         context.go('/member-orders');
         break;
       case 3:
-        context.go('/member-achievements');
+        context.go('/member-profile');
         break;
-      case 4:
-         context.go('/member-profile');
-         break;
     }
   }
 }

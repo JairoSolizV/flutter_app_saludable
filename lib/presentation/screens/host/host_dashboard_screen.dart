@@ -457,43 +457,6 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                        ),
                    ),
 
-                   const SizedBox(height: 16),
-
-                   // Club Achievements / Challenges Card
-                   InkWell(
-                     onTap: () => context.push('/host/logros'),
-                     child: Container(
-                       padding: const EdgeInsets.all(20),
-                       decoration: BoxDecoration(
-                         color: Colors.white,
-                         borderRadius: BorderRadius.circular(20),
-                         boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: const Offset(0, 5))],
-                       ),
-                       child: Row(
-                         children: [
-                           Container(
-                             padding: const EdgeInsets.all(12),
-                             decoration: BoxDecoration(
-                               color: const Color(0xFF7AC142).withOpacity(0.1),
-                               borderRadius: BorderRadius.circular(12),
-                             ),
-                             child: const Icon(LucideIcons.award, color: Color(0xFF7AC142), size: 30),
-                           ),
-                           const SizedBox(width: 16),
-                           const Expanded(
-                             child: Column(
-                               crossAxisAlignment: CrossAxisAlignment.start,
-                               children: [
-                                 Text('Retos y Logros del Club', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                 Text('Crea retos y revisa su estado de aprobación', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                               ],
-                             ),
-                           ),
-                           const Icon(LucideIcons.chevronRight, color: Colors.grey),
-                         ],
-                       ),
-                     ),
-                   ),
                 ],
               ),
             ),
