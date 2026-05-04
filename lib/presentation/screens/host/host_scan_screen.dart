@@ -9,7 +9,14 @@ import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../data/datasources/remote/qr_remote_data_source.dart';
 
 class HostScanScreen extends StatefulWidget {
-  const HostScanScreen({super.key});
+  final int? prospectoId;
+  final int? prefilledReferralId;
+
+  const HostScanScreen({
+    super.key,
+    this.prospectoId,
+    this.prefilledReferralId,
+  });
 
   @override
   State<HostScanScreen> createState() => _HostScanScreenState();
@@ -273,8 +280,10 @@ class _HostScanScreenState extends State<HostScanScreen> {
       print('SCAN_DEBUG: Navegando a registro...');
       
       await context.push('/host-register-member', extra: {
-        'qrPayload': code, // Pass raw code
+        'qrPayload': code,
         'clubId': club.id,
+        'prospectoId': widget.prospectoId,
+        'prefilledReferralId': widget.prefilledReferralId,
       });
 
       // Al volver

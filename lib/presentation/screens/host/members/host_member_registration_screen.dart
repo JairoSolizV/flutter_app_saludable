@@ -3,17 +3,22 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
+import '../../../../data/datasources/remote/prospecto_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../../presentation/widgets/member_picker_field.dart';
 
 class HostMemberRegistrationScreen extends StatefulWidget {
-  final String qrPayload; // Changed from int userId
+  final String qrPayload;
   final int clubId;
+  final int? prospectoId;
+  final int? prefilledReferralId;
 
   const HostMemberRegistrationScreen({
     super.key,
     required this.qrPayload,
     required this.clubId,
+    this.prospectoId,
+    this.prefilledReferralId,
   });
 
   @override
@@ -43,6 +48,10 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
         setState(() {
           _members = members;
           _isLoadingMembers = false;
+          if (widget.prefilledReferralId != null) {
+            final match = members.where((m) => m.id == widget.prefilledReferralId).toList();
+            if (match.isNotEmpty) _selectedReferral = match.first;
+          }
         });
       }
     } catch (e) {
@@ -100,13 +109,25 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
 
               const Text('Referido por (Opcional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
+              if (widget.prefilledReferralId != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(children: [
+                    const Icon(Icons.lock_outline, size: 16, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    const Text('Referido pre-asignado desde la ficha del prospecto.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  ]),
+                ),
               if (_isLoadingMembers)
                 const LinearProgressIndicator(color: Color(0xFF7AC142))
               else
                 MemberPickerField(
                   members: _members,
                   selected: _selectedReferral,
-                  onChanged: (value) => setState(() => _selectedReferral = value),
+                  onChanged: widget.prefilledReferralId != null
+                      ? (_) {}
+                      : (value) => setState(() => _selectedReferral = value),
+                  enabled: widget.prefilledReferralId == null,
                 ),
               const SizedBox(height: 16),
 
@@ -163,11 +184,19 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
 
       if (!mounted) return;
 
+      if (widget.prospectoId != null) {
+        try {
+          final prospectoDs = Provider.of<ProspectoRemoteDataSource>(context, listen: false);
+          await prospectoDs.actualizarProspecto(widget.prospectoId!, 'CONVERTIDO');
+        } catch (_) {}
+      }
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Socio activado exitosamente'), backgroundColor: Colors.green),
       );
-      
-      context.pop(); 
+
+      context.pop();
 
     } catch (e) {
       print('Error al activar socio: $e');
