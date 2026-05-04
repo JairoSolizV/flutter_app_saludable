@@ -1,0 +1,142 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../../../data/datasources/remote/club_remote_data_source.dart';
+import '../../../../data/datasources/remote/prospecto_remote_data_source.dart';
+import '../../../../domain/entities/club_membership.dart';
+import '../../../../presentation/widgets/member_picker_field.dart';
+
+class HostProspectoCreateScreen extends StatefulWidget {
+  final int clubId;
+
+  const HostProspectoCreateScreen({super.key, required this.clubId});
+
+  @override
+  State<HostProspectoCreateScreen> createState() => _HostProspectoCreateScreenState();
+}
+
+class _HostProspectoCreateScreenState extends State<HostProspectoCreateScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nombreCtrl = TextEditingController();
+  final _telefonoCtrl = TextEditingController();
+  ClubMembership? _referente;
+  List<ClubMembership> _members = [];
+  bool _isLoadingMembers = true;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMembers();
+  }
+
+  @override
+  void dispose() {
+    _nombreCtrl.dispose();
+    _telefonoCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadMembers() async {
+    try {
+      final ds = Provider.of<ClubRemoteDataSource>(context, listen: false);
+      final members = await ds.getClubMembers(widget.clubId);
+      if (mounted) setState(() { _members = members; _isLoadingMembers = false; });
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingMembers = false);
+    }
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSubmitting = true);
+    try {
+      final ds = Provider.of<ProspectoRemoteDataSource>(context, listen: false);
+      await ds.crearProspecto(
+        clubId: widget.clubId,
+        nombre: _nombreCtrl.text.trim(),
+        telefono: _telefonoCtrl.text.trim(),
+        referidoPorMembresiaId: _referente?.id,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Prospecto creado'), backgroundColor: Colors.green),
+      );
+      context.pop();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Nuevo Prospecto'),
+        backgroundColor: const Color(0xFF7AC142),
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormField(
+                controller: _nombreCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre completo',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'El nombre es requerido' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _telefonoCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Teléfono',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.phone_outlined),
+                ),
+                keyboardType: TextInputType.phone,
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'El teléfono es requerido' : null,
+              ),
+              const SizedBox(height: 16),
+              const Text('Referido por (Opcional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 8),
+              _isLoadingMembers
+                  ? const LinearProgressIndicator(color: Color(0xFF7AC142))
+                  : MemberPickerField(
+                      members: _members,
+                      selected: _referente,
+                      onChanged: (v) => setState(() => _referente = v),
+                    ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isSubmitting ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF7AC142),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: _isSubmitting
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('CREAR FICHA', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
