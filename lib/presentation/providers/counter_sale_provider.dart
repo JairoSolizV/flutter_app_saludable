@@ -150,13 +150,17 @@ class CounterSaleProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final items = _cart.values
-          .map((item) => {
-                'productoId': int.parse(item.product.id),
-                'cantidad': item.quantity,
-                'nota': item.note.trim(),
-              })
-          .toList();
+      final items = _cart.values.map((item) {
+        final productoId = int.tryParse(item.product.id);
+        if (productoId == null) {
+          throw Exception('Producto inválido en ticket: id=${item.product.id}');
+        }
+        return {
+          'productoId': productoId,
+          'cantidad': item.quantity,
+          'nota': item.note.trim(),
+        };
+      }).toList();
 
       await _orderDataSource.createCounterSale(
         clubId: clubId!,
@@ -167,16 +171,17 @@ class CounterSaleProvider extends ChangeNotifier {
       );
 
       submitSuccess = true;
-      isSubmitting = false;
-      notifyListeners();
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[COUNTER SALE] submit error: $e');
+      debugPrint('[COUNTER SALE] stack: $st');
       submitError = e.toString().replaceAll('Exception: ', '');
-      isSubmitting = false;
       submitSuccess = false;
       // NO limpiamos ticket en error.
-      notifyListeners();
       return false;
+    } finally {
+      isSubmitting = false;
+      notifyListeners();
     }
   }
 

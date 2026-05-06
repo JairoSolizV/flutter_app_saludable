@@ -50,40 +50,56 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
   }
 
   Future<void> _finalizarVenta(BuildContext context) async {
-    final provider = Provider.of<CounterSaleProvider>(context, listen: false);
-    final ok = await provider.submitCounterSale();
-    if (!mounted) return;
+    try {
+      final provider = Provider.of<CounterSaleProvider>(context, listen: false);
+      final ok = await provider.submitCounterSale();
+      if (!mounted) return;
 
-    if (ok) {
-      await showDialog<void>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Venta registrada'),
-          content: const Text('Venta registrada correctamente'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                provider.resetSale();
-                _socioCtrl.clear();
-                _obsCtrl.clear();
-                Navigator.of(context).pop();
-              },
-              child: const Text('Nueva venta'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).pop(true);
-              },
-              child: const Text('Ver pedidos'),
-            ),
-          ],
-        ),
-      );
-    } else {
-      final message = provider.submitError ?? 'No se pudo registrar la venta';
+      if (ok) {
+        final action = await showDialog<String>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+                title: const Text('Venta registrada'),
+                content: const Text('Venta registrada correctamente'),
+                actions: [
+                  TextButton(
+                    onPressed: () =>
+                        Navigator.of(dialogContext).pop('nueva_venta'),
+                    child: const Text('Nueva venta'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () =>
+                        Navigator.of(dialogContext).pop('ver_pedidos'),
+                    child: const Text('Ver pedidos'),
+                  ),
+                ],
+              ),
+        );
+
+        if (!mounted) return;
+
+        if (action == 'nueva_venta') {
+          provider.resetSale();
+          _socioCtrl.clear();
+          _obsCtrl.clear();
+        } else if (action == 'ver_pedidos') {
+          Navigator.of(context).pop(true);
+        }
+      } else {
+        final message = provider.submitError ?? 'No se pudo registrar la venta';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e, st) {
+      debugPrint('[COUNTER SALE UI] finalizar error: $e');
+      debugPrint('[COUNTER SALE UI] stack: $st');
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Ocurrió un error inesperado al finalizar la venta.'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -155,6 +171,13 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
                                 ? 'Ocultar ticket'
                                 : 'Ticket (${provider.totalItems})',
                           ),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(52),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            side: BorderSide(color: Colors.grey.shade400),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -167,7 +190,10 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF7AC142),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          minimumSize: const Size.fromHeight(52),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         icon: provider.isSubmitting
                             ? const SizedBox(
