@@ -59,7 +59,7 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
     try {
       final body = {
         'activationPayload': activationPayload.trim(),
-        'referidoPorMembresiaId': referidoPorMembresiaId,
+        'referidoPor': referidoPorMembresiaId?.toString(),
         'comoConocio': comoConocio,
       };
 
