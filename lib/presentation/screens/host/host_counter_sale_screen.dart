@@ -40,6 +40,7 @@ class _HostCounterSaleView extends StatefulWidget {
 class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
   final TextEditingController _socioCtrl = TextEditingController();
   final TextEditingController _obsCtrl = TextEditingController();
+  bool _showMobileTicket = false;
 
   @override
   void dispose() {
@@ -87,20 +88,10 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
     }
   }
 
-  Future<void> _openTicketSheet(BuildContext context) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) {
-        final height = MediaQuery.of(context).size.height * 0.85;
-        return SafeArea(
-          child: SizedBox(
-            height: height,
-            child: _TicketPanel(obsCtrl: _obsCtrl, showLeftBorder: false),
-          ),
-        );
-      },
-    );
+  void _toggleMobileTicket() {
+    setState(() {
+      _showMobileTicket = !_showMobileTicket;
+    });
   }
 
   @override
@@ -157,9 +148,13 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
                     if (isMobile) ...[
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () => _openTicketSheet(context),
+                          onPressed: _toggleMobileTicket,
                           icon: const Icon(LucideIcons.receipt),
-                          label: Text('Ticket (${provider.totalItems})'),
+                          label: Text(
+                            _showMobileTicket
+                                ? 'Ocultar ticket'
+                                : 'Ticket (${provider.totalItems})',
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -217,58 +212,114 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
                         children: [
                           _buildClienteBlock(provider, isMobile: isMobile),
                           Expanded(
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  flex: 3,
-                                  child: TabBarView(
+                            child: isMobile
+                                ? Column(
                                     children: [
-                                      _ProductGrid(
-                                        products: provider.generalProducts,
-                                        crossAxisCount: isMobile ? 1 : 2,
-                                        childAspectRatio: isMobile ? 3.2 : 1.8,
-                                        onAdd: (p) {
-                                          provider.addProduct(p);
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                  '${p.name} agregado al ticket'),
-                                              duration:
-                                                  const Duration(milliseconds: 700),
+                                      Expanded(
+                                        child: TabBarView(
+                                          children: [
+                                            _ProductGrid(
+                                              products: provider.generalProducts,
+                                              crossAxisCount: 1,
+                                              childAspectRatio: 3.2,
+                                              onAdd: (p) {
+                                                provider.addProduct(p);
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                        '${p.name} agregado al ticket'),
+                                                    duration: const Duration(
+                                                        milliseconds: 700),
+                                                  ),
+                                                );
+                                              },
                                             ),
-                                          );
-                                        },
+                                            _ProductGrid(
+                                              products:
+                                                  provider.clubSpecialties,
+                                              crossAxisCount: 1,
+                                              childAspectRatio: 3.2,
+                                              onAdd: (p) {
+                                                provider.addProduct(p);
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                        '${p.name} agregado al ticket'),
+                                                    duration: const Duration(
+                                                        milliseconds: 700),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                      _ProductGrid(
-                                        products: provider.clubSpecialties,
-                                        crossAxisCount: isMobile ? 1 : 2,
-                                        childAspectRatio: isMobile ? 3.2 : 1.8,
-                                        onAdd: (p) {
-                                          provider.addProduct(p);
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                  '${p.name} agregado al ticket'),
-                                              duration:
-                                                  const Duration(milliseconds: 700),
+                                      if (_showMobileTicket)
+                                        SizedBox(
+                                          height:
+                                              MediaQuery.of(context).size.height *
+                                                  0.42,
+                                          child: _TicketPanel(
+                                            obsCtrl: _obsCtrl,
+                                            showLeftBorder: false,
+                                          ),
+                                        ),
+                                    ],
+                                  )
+                                : Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 3,
+                                        child: TabBarView(
+                                          children: [
+                                            _ProductGrid(
+                                              products: provider.generalProducts,
+                                              crossAxisCount: 2,
+                                              childAspectRatio: 1.8,
+                                              onAdd: (p) {
+                                                provider.addProduct(p);
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                        '${p.name} agregado al ticket'),
+                                                    duration: const Duration(
+                                                        milliseconds: 700),
+                                                  ),
+                                                );
+                                              },
                                             ),
-                                          );
-                                        },
+                                            _ProductGrid(
+                                              products:
+                                                  provider.clubSpecialties,
+                                              crossAxisCount: 2,
+                                              childAspectRatio: 1.8,
+                                              onAdd: (p) {
+                                                provider.addProduct(p);
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                        '${p.name} agregado al ticket'),
+                                                    duration: const Duration(
+                                                        milliseconds: 700),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 2,
+                                        child: _TicketPanel(
+                                          obsCtrl: _obsCtrl,
+                                        ),
                                       ),
                                     ],
                                   ),
-                                ),
-                                if (!isMobile)
-                                  Expanded(
-                                    flex: 2,
-                                    child: _TicketPanel(
-                                      obsCtrl: _obsCtrl,
-                                    ),
-                                  ),
-                              ],
-                            ),
                           ),
                         ],
                       ),
