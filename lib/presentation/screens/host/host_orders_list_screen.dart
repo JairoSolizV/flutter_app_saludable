@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../data/datasources/remote/order_remote_data_source.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../providers/user_provider.dart';
+import 'host_counter_sale_screen.dart';
 
 class HostOrdersListScreen extends StatefulWidget {
   const HostOrdersListScreen({super.key});
@@ -18,6 +19,8 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
   String filterStatus = 'all';
   bool _isLoading = true;
   String? _error;
+  int? _clubId;
+  int? _hubId;
 
   @override
   void initState() {
@@ -67,6 +70,8 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
       debugPrint('[DEBUG HOST] Club encontrado - ID: ${club.id}, Nombre: ${club.nombreClub}');
       debugPrint('[DEBUG HOST] ClubId anfitrión: ${club.id}');
       debugPrint('[DEBUG HOST] Buscando pedidos para clubId: ${club.id}');
+      _clubId = club.id;
+      _hubId = club.hubId;
 
       // Obtener pedidos del club
       final orderDataSource = Provider.of<OrderRemoteDataSource>(context, listen: false);
@@ -480,6 +485,25 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
       appBar: AppBar(
         title: const Text('Pedidos Recibidos'),
         actions: [
+          TextButton.icon(
+            onPressed: (_clubId != null && _hubId != null)
+                ? () async {
+                    final created = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => HostCounterSaleScreen(
+                          clubId: _clubId!,
+                          hubId: _hubId!,
+                        ),
+                      ),
+                    );
+                    if (created == true) {
+                      _loadOrders();
+                    }
+                  }
+                : null,
+            icon: const Icon(LucideIcons.receipt, size: 16),
+            label: const Text('Nueva venta'),
+          ),
           IconButton(
             icon: const Icon(LucideIcons.refreshCw),
             onPressed: _loadOrders,

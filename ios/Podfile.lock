@@ -68,6 +68,8 @@ PODS:
     - nanopb/encode (= 2.30910.0)
   - nanopb/decode (2.30910.0)
   - nanopb/encode (2.30910.0)
+  - open_file_ios (1.0.3):
+    - Flutter
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -87,6 +89,7 @@ DEPENDENCIES:
   - geolocator_apple (from `.symlinks/plugins/geolocator_apple/darwin`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - mobile_scanner (from `.symlinks/plugins/mobile_scanner/ios`)
+  - open_file_ios (from `.symlinks/plugins/open_file_ios/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
   - sqflite_darwin (from `.symlinks/plugins/sqflite_darwin/darwin`)
@@ -119,6 +122,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/image_picker_ios/ios"
   mobile_scanner:
     :path: ".symlinks/plugins/mobile_scanner/ios"
+  open_file_ios:
+    :path: ".symlinks/plugins/open_file_ios/ios"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
   permission_handler_apple:
@@ -145,6 +150,7 @@ SPEC CHECKSUMS:
   MLKitVision: 8baa5f46ee3352614169b85250574fde38c36f49
   mobile_scanner: b67191637a5ea7ba15652ca208069d2bae1900ab
   nanopb: 438bc412db1928dac798aa6fd75726007be04262
+  open_file_ios: 46184d802ee7959203f6392abcfa0dd49fdb5be0
   path_provider_foundation: bb55f6dbba17d0dccd6737fe6f7f34fbd0376880
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47

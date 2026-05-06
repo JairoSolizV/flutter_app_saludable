@@ -4,6 +4,13 @@ import '../../../domain/entities/order_entity.dart';
 
 abstract class OrderRemoteDataSource {
   Future<void> sendOrder(OrderEntity order, List<OrderItem> items);
+  Future<void> createCounterSale({
+    required int clubId,
+    String? socioCodigo,
+    String? tipoConsumo,
+    String? observaciones,
+    required List<Map<String, dynamic>> items,
+  });
   Future<List<Map<String, dynamic>>> getOrdersByClub(int clubId);
   Future<List<Map<String, dynamic>>> getOrdersBySocio(int membresiaId);
   Future<void> updateOrderStatus(int pedidoId, String newStatus, {int? estimatedTime});
@@ -14,6 +21,53 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
   final Dio _client;
 
   OrderRemoteDataSourceImpl(this._client);
+
+
+  String _extractBackendMessage(dynamic data, {String fallback = 'Error desconocido'}) {
+    if (data is Map<String, dynamic>) {
+      final message = data['message']?.toString();
+      if (message != null && message.trim().isNotEmpty) return message;
+      final error = data['error']?.toString();
+      if (error != null && error.trim().isNotEmpty) return error;
+    } else if (data is String && data.trim().isNotEmpty) {
+      return data;
+    }
+    return fallback;
+  }
+
+  @override
+  Future<void> createCounterSale({
+    required int clubId,
+    String? socioCodigo,
+    String? tipoConsumo,
+    String? observaciones,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    if (items.isEmpty) {
+      throw Exception('Debes agregar al menos un producto al ticket.');
+    }
+
+    final requestBody = <String, dynamic>{
+      'clubId': clubId,
+      'socioCodigo': (socioCodigo == null || socioCodigo.trim().isEmpty) ? null : socioCodigo.trim(),
+      'tipoConsumo': (tipoConsumo == null || tipoConsumo.trim().isEmpty) ? 'EN_LUGAR' : tipoConsumo,
+      'observaciones': observaciones?.trim(),
+      'items': items,
+    };
+
+    try {
+      debugPrint('[DEBUG COUNTER] POST /api/pedidos/mostrador body: $requestBody');
+      final response = await _client.post('/pedidos/mostrador', data: requestBody);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return;
+      }
+      final message = _extractBackendMessage(response.data, fallback: 'No se pudo registrar la venta');
+      throw Exception(message);
+    } on DioException catch (e) {
+      final message = _extractBackendMessage(e.response?.data, fallback: e.message ?? 'No se pudo registrar la venta');
+      throw Exception(message);
+    }
+  }
 
   @override
   Future<void> sendOrder(OrderEntity order, List<OrderItem> items) async {
