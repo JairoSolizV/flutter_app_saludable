@@ -4,7 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
-import '../../../../domain/entities/preSocio.dart';
+import '../../../../domain/entities/pre_socio.dart';
 
 class HostPreSociosListScreen extends StatefulWidget {
   const HostPreSociosListScreen({super.key});
@@ -110,7 +110,7 @@ class _HostPreSociosListScreenState extends State<HostPreSociosListScreen> {
       padding: const EdgeInsets.all(16),
       itemCount: _preSocios.length,
       itemBuilder: (_, i) => _PreSocioCard(
-        preSocio: _preSocios[i],
+        prospecto: _preSocios[i],
         clubId: _clubId!,
         onTap: () async {
           await context.push('/host/pre-socios/${_preSocios[i].id}', extra: {'clubId': _clubId!});
@@ -130,7 +130,7 @@ class _PreSocioCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isConvertido = preSocio.estado == 'CONVERTIDO';
+    final isConvertido = prospecto.estado == 'CONVERTIDO';
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -151,7 +151,7 @@ class _PreSocioCard extends StatelessWidget {
                   CircleAvatar(
                     backgroundColor: isConvertido ? Colors.grey.shade200 : const Color(0xFF7AC142).withOpacity(0.1),
                     child: Text(
-                      preSocio.nombre.isNotEmpty ? preSocio.nombre[0].toUpperCase() : '?',
+                      prospecto.nombre.isNotEmpty ? prospecto.nombre[0].toUpperCase() : '?',
                       style: TextStyle(color: isConvertido ? Colors.grey : const Color(0xFF7AC142), fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -160,41 +160,41 @@ class _PreSocioCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(preSocio.nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        Text(preSocio.telefono, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                        Text(prospecto.nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        Text(prospecto.telefono, style: const TextStyle(color: Colors.grey, fontSize: 13)),
                       ],
                     ),
                   ),
-                  _EstadoBadge(estado: preSocio.estado),
+                  _EstadoBadge(estado: prospecto.estado),
                 ],
               ),
-              if (preSocio.referidoPorNombre != null) ...[
+              if (prospecto.referidoPorNombre != null) ...[
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     const Icon(LucideIcons.userCheck, size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Text('Referido por: ${preSocio.referidoPorNombre}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text('Referido por: ${prospecto.referidoPorNombre}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                   ],
                 ),
               ],
-              if (preSocio.misiones.isNotEmpty && !isConvertido) ...[
+              if (prospecto.misiones.isNotEmpty && !isConvertido) ...[
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Misiones: ${preSocio.misiones.where((m) => m.completada).length}/${preSocio.misiones.length}',
+                      'Misiones: ${prospecto.misiones.where((m) => m.completada).length}/${prospecto.misiones.length}',
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
-                    Text('${(preSocio.progresoGlobal * 100).toInt()}%', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF7AC142))),
+                    Text('${(prospecto.progresoGlobal * 100).toInt()}%', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF7AC142))),
                   ],
                 ),
                 const SizedBox(height: 4),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
-                    value: preSocio.progresoGlobal,
+                    value: prospecto.progresoGlobal,
                     backgroundColor: Colors.grey.shade200,
                     valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF7AC142)),
                     minHeight: 6,

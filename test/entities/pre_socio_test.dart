@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_app_saludable/domain/entities/prospecto.dart';
-import 'package:flutter_app_saludable/domain/entities/mision_prospecto.dart';
+import 'package:flutter_app_saludable/domain/entities/pre_socio.dart';
+import 'package:flutter_app_saludable/domain/entities/mision_pre_socio.dart';
 
 void main() {
-  group('MisionProspecto', () {
+  group('MisionPreSocio', () {
     test('fromJson parsea campos correctamente', () {
       final json = {
         'id': 1,
-        'prospectoId': 2,
+        'preSocioId': 2,
         'nombre': 'Consumir 3 combos',
         'descripcion': 'Combo proteínas',
         'metaCantidad': 3,
@@ -15,7 +15,7 @@ void main() {
         'fechaLimite': '2026-05-10',
         'completada': false,
       };
-      final m = MisionProspecto.fromJson(json);
+      final m = MisionPreSocio.fromJson(json);
       expect(m.id, 1);
       expect(m.nombre, 'Consumir 3 combos');
       expect(m.metaCantidad, 3);
@@ -24,9 +24,9 @@ void main() {
     });
 
     test('porcentaje calcula correctamente', () {
-      final m = MisionProspecto(
+      final m = MisionPreSocio(
         id: 1,
-        prospectoId: 1,
+        preSocioId: 1,
         nombre: 'Test',
         metaCantidad: 4,
         progresoActual: 2,
@@ -36,9 +36,9 @@ void main() {
     });
 
     test('porcentaje no supera 1.0', () {
-      final m = MisionProspecto(
+      final m = MisionPreSocio(
         id: 1,
-        prospectoId: 1,
+        preSocioId: 1,
         nombre: 'Test',
         metaCantidad: 2,
         progresoActual: 5,
@@ -48,9 +48,9 @@ void main() {
     });
 
     test('porcentaje es 0 con metaCantidad 0', () {
-      final m = MisionProspecto(
+      final m = MisionPreSocio(
         id: 1,
-        prospectoId: 1,
+        preSocioId: 1,
         nombre: 'Test',
         metaCantidad: 0,
         progresoActual: 0,
@@ -60,7 +60,7 @@ void main() {
     });
   });
 
-  group('Prospecto', () {
+  group('PreSocio', () {
     test('fromJson parsea campos correctamente', () {
       final json = {
         'id': 10,
@@ -73,7 +73,7 @@ void main() {
         'estado': 'EN_SEGUIMIENTO',
         'misiones': [],
       };
-      final p = Prospecto.fromJson(json);
+      final p = PreSocio.fromJson(json);
       expect(p.id, 10);
       expect(p.nombre, 'Ana García');
       expect(p.estado, 'EN_SEGUIMIENTO');
@@ -92,7 +92,7 @@ void main() {
         'misiones': [
           {
             'id': 1,
-            'prospectoId': 1,
+            'preSocioId': 1,
             'nombre': 'M1',
             'metaCantidad': 3,
             'progresoActual': 3,
@@ -100,13 +100,13 @@ void main() {
           }
         ],
       };
-      final p = Prospecto.fromJson(json);
+      final p = PreSocio.fromJson(json);
       expect(p.misiones.length, 1);
       expect(p.misiones.first.nombre, 'M1');
     });
 
     test('todasMisionesCompletas es false cuando hay misiones incompletas', () {
-      final p = Prospecto(
+      final p = PreSocio(
         id: 1,
         clubId: 1,
         nombre: 'Test',
@@ -114,16 +114,16 @@ void main() {
         fechaCreacion: '2026-05-03',
         estado: 'EN_SEGUIMIENTO',
         misiones: [
-          MisionProspecto(
+          MisionPreSocio(
               id: 1,
-              prospectoId: 1,
+              preSocioId: 1,
               nombre: 'M1',
               metaCantidad: 3,
               progresoActual: 3,
               completada: true),
-          MisionProspecto(
+          MisionPreSocio(
               id: 2,
-              prospectoId: 1,
+              preSocioId: 1,
               nombre: 'M2',
               metaCantidad: 3,
               progresoActual: 1,
@@ -134,7 +134,7 @@ void main() {
     });
 
     test('todasMisionesCompletas es true cuando todas completas', () {
-      final p = Prospecto(
+      final p = PreSocio(
         id: 1,
         clubId: 1,
         nombre: 'Test',
@@ -142,9 +142,9 @@ void main() {
         fechaCreacion: '2026-05-03',
         estado: 'EN_SEGUIMIENTO',
         misiones: [
-          MisionProspecto(
+          MisionPreSocio(
               id: 1,
-              prospectoId: 1,
+              preSocioId: 1,
               nombre: 'M1',
               metaCantidad: 3,
               progresoActual: 3,
@@ -155,7 +155,7 @@ void main() {
     });
 
     test('progresoGlobal es 0 sin misiones', () {
-      final p = Prospecto(
+      final p = PreSocio(
         id: 1,
         clubId: 1,
         nombre: 'Test',
@@ -167,7 +167,7 @@ void main() {
     });
 
     test('progresoGlobal calcula porcentaje de misiones completas', () {
-      final p = Prospecto(
+      final p = PreSocio(
         id: 1,
         clubId: 1,
         nombre: 'Test',
@@ -175,16 +175,16 @@ void main() {
         fechaCreacion: '2026-05-03',
         estado: 'EN_SEGUIMIENTO',
         misiones: [
-          MisionProspecto(
+          MisionPreSocio(
               id: 1,
-              prospectoId: 1,
+              preSocioId: 1,
               nombre: 'M1',
               metaCantidad: 1,
               progresoActual: 1,
               completada: true),
-          MisionProspecto(
+          MisionPreSocio(
               id: 2,
-              prospectoId: 1,
+              preSocioId: 1,
               nombre: 'M2',
               metaCantidad: 1,
               progresoActual: 0,

@@ -5,7 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../providers/user_provider.dart';
-import '../preSocios/host_preSocios_list_screen.dart';
+import '../pre_socios/host_pre_socios_list_screen.dart';
 
 class HostMembersListScreen extends StatefulWidget {
   const HostMembersListScreen({super.key});

@@ -3,8 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
-import '../../../../domain/entities/prospecto.dart';
-import '../../../../domain/entities/mision_preSocio.dart';
+import '../../../../domain/entities/pre_socio.dart';
+import '../../../../domain/entities/mision_pre_socio.dart';
 
 class HostPreSocioDetailScreen extends StatefulWidget {
   final int preSocioId;
