@@ -1,6 +1,6 @@
-class MisionProspecto {
+class MisionPreSocio {
   final int id;
-  final int prospectoId;
+  final int preSocioId;
   final String nombre;
   final String? descripcion;
   final int metaCantidad;
@@ -8,9 +8,9 @@ class MisionProspecto {
   final String? fechaLimite;
   final bool completada;
 
-  MisionProspecto({
+  MisionPreSocio({
     required this.id,
-    required this.prospectoId,
+    required this.preSocioId,
     required this.nombre,
     this.descripcion,
     required this.metaCantidad,
@@ -22,10 +22,10 @@ class MisionProspecto {
   double get porcentaje =>
       metaCantidad == 0 ? 0.0 : (progresoActual / metaCantidad).clamp(0.0, 1.0);
 
-  factory MisionProspecto.fromJson(Map<String, dynamic> json) {
-    return MisionProspecto(
+  factory MisionPreSocio.fromJson(Map<String, dynamic> json) {
+    return MisionPreSocio(
       id: json['id'] as int,
-      prospectoId: json['prospectoId'] as int,
+      preSocioId: json['prospectoId'] as int, // Keeps prospectoId for backend mapping
       nombre: json['nombre']?.toString() ?? '',
       descripcion: json['descripcion']?.toString(),
       metaCantidad: json['metaCantidad'] as int? ?? 1,

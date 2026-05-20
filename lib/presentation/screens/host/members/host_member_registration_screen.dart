@@ -3,21 +3,21 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
-import '../../../../data/datasources/remote/prospecto_remote_data_source.dart';
+import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../../presentation/widgets/member_picker_field.dart';
 
 class HostMemberRegistrationScreen extends StatefulWidget {
   final String qrPayload;
   final int clubId;
-  final int? prospectoId;
+  final int? preSocioId;
   final int? prefilledReferralId;
 
   const HostMemberRegistrationScreen({
     super.key,
     required this.qrPayload,
     required this.clubId,
-    this.prospectoId,
+    this.preSocioId,
     this.prefilledReferralId,
   });
 
@@ -115,7 +115,7 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
                   child: Row(children: [
                     const Icon(Icons.lock_outline, size: 16, color: Colors.grey),
                     const SizedBox(width: 4),
-                    const Text('Referido pre-asignado desde la ficha del prospecto.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    const Text('Referido pre-asignado desde la ficha del preSocio.', style: TextStyle(fontSize: 12, color: Colors.grey)),
                   ]),
                 ),
               if (_isLoadingMembers)
@@ -184,10 +184,10 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
 
       if (!mounted) return;
 
-      if (widget.prospectoId != null) {
+      if (widget.preSocioId != null) {
         try {
-          final prospectoDs = Provider.of<ProspectoRemoteDataSource>(context, listen: false);
-          await prospectoDs.actualizarProspecto(widget.prospectoId!, 'CONVERTIDO');
+          final preSocioDs = Provider.of<PreSocioRemoteDataSource>(context, listen: false);
+          await preSocioDs.actualizarPreSocio(widget.preSocioId!, 'CONVERTIDO');
         } catch (_) {}
       }
 

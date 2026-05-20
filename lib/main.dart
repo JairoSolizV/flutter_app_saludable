@@ -20,7 +20,7 @@ import 'data/datasources/remote/qr_remote_data_source.dart';
 import 'data/datasources/remote/evento_remote_data_source.dart';
 import 'data/datasources/remote/support_remote_data_source.dart'; // Nuevo
 import 'data/datasources/remote/report_remote_data_source.dart';
-import 'data/datasources/remote/prospecto_remote_data_source.dart';
+import 'data/datasources/remote/pre_socio_remote_data_source.dart';
 import 'data/datasources/remote/compras_remote_data_source.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/support_provider.dart'; // Nuevo
@@ -39,7 +39,7 @@ late final QRRemoteDataSource qrRemoteDataSource;
 late final EventoRemoteDataSource eventoRemoteDataSource;
 late final SupportRemoteDataSource supportRemoteDataSource; // Nuevo
 late final ReportRemoteDataSource reportRemoteDataSource;
-late final ProspectoRemoteDataSource prospectoRemoteDataSource;
+late final PreSocioRemoteDataSource preSocioRemoteDataSource;
 late final ComprasRemoteDataSource comprasRemoteDataSource;
 late final LocalProductRepository productRepository;
 late final LocalOrderRepository orderRepository;
@@ -65,7 +65,7 @@ void main() {
     eventoRemoteDataSource = EventoRemoteDataSourceImpl(apiClient.client);
     supportRemoteDataSource = SupportRemoteDataSourceImpl(apiClient.client); // Nuevo
     reportRemoteDataSource = ReportRemoteDataSource(apiClient.client);
-    prospectoRemoteDataSource = ProspectoRemoteDataSourceImpl(apiClient.client);
+    preSocioRemoteDataSource = PreSocioRemoteDataSourceImpl(apiClient.client);
     comprasRemoteDataSource = ComprasRemoteDataSourceImpl(apiClient.client);
     
     // 4. Repositorios Híbridos
@@ -123,8 +123,8 @@ class AppState extends StatelessWidget {
         Provider<ReportRemoteDataSource>(
             create: (_) => reportRemoteDataSource,
         ),
-        Provider<ProspectoRemoteDataSource>(
-            create: (_) => prospectoRemoteDataSource,
+        Provider<PreSocioRemoteDataSource>(
+            create: (_) => preSocioRemoteDataSource,
         ),
         Provider<ComprasRemoteDataSource>(
             create: (_) => comprasRemoteDataSource,

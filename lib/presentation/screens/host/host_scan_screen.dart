@@ -9,12 +9,12 @@ import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../data/datasources/remote/qr_remote_data_source.dart';
 
 class HostScanScreen extends StatefulWidget {
-  final int? prospectoId;
+  final int? preSocioId;
   final int? prefilledReferralId;
 
   const HostScanScreen({
     super.key,
-    this.prospectoId,
+    this.preSocioId,
     this.prefilledReferralId,
   });
 
@@ -282,7 +282,7 @@ class _HostScanScreenState extends State<HostScanScreen> {
       await context.push('/host-register-member', extra: {
         'qrPayload': code,
         'clubId': club.id,
-        'prospectoId': widget.prospectoId,
+        'preSocioId': widget.preSocioId,
         'prefilledReferralId': widget.prefilledReferralId,
       });
 

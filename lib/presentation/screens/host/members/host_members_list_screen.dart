@@ -5,7 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../providers/user_provider.dart';
-import '../prospectos/host_prospectos_list_screen.dart';
+import '../preSocios/host_preSocios_list_screen.dart';
 
 class HostMembersListScreen extends StatefulWidget {
   const HostMembersListScreen({super.key});
@@ -92,7 +92,7 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
           unselectedLabelColor: Colors.grey,
           tabs: const [
             Tab(icon: Icon(Icons.people), text: 'Socios'),
-            Tab(icon: Icon(Icons.person_add), text: 'Prospectos'),
+            Tab(icon: Icon(Icons.person_add), text: 'PreSocios'),
           ],
         ),
       ),
@@ -100,7 +100,7 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
         controller: _tabController,
         children: [
           _buildBody(),
-          const HostProspectosListScreen(),
+          const HostPreSociosListScreen(),
         ],
       ),
     );

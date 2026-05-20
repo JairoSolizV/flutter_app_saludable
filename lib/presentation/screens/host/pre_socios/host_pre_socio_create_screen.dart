@@ -2,20 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
-import '../../../../data/datasources/remote/prospecto_remote_data_source.dart';
+import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../../presentation/widgets/member_picker_field.dart';
 
-class HostProspectoCreateScreen extends StatefulWidget {
+class HostPreSocioCreateScreen extends StatefulWidget {
   final int clubId;
 
-  const HostProspectoCreateScreen({super.key, required this.clubId});
+  const HostPreSocioCreateScreen({super.key, required this.clubId});
 
   @override
-  State<HostProspectoCreateScreen> createState() => _HostProspectoCreateScreenState();
+  State<HostPreSocioCreateScreen> createState() => _HostPreSocioCreateScreenState();
 }
 
-class _HostProspectoCreateScreenState extends State<HostProspectoCreateScreen> {
+class _HostPreSocioCreateScreenState extends State<HostPreSocioCreateScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nombreCtrl = TextEditingController();
   final _telefonoCtrl = TextEditingController();
@@ -51,8 +51,8 @@ class _HostProspectoCreateScreenState extends State<HostProspectoCreateScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
     try {
-      final ds = Provider.of<ProspectoRemoteDataSource>(context, listen: false);
-      await ds.crearProspecto(
+      final ds = Provider.of<PreSocioRemoteDataSource>(context, listen: false);
+      await ds.crearPreSocio(
         clubId: widget.clubId,
         nombre: _nombreCtrl.text.trim(),
         telefono: _telefonoCtrl.text.trim(),
@@ -60,7 +60,7 @@ class _HostProspectoCreateScreenState extends State<HostProspectoCreateScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Prospecto creado'), backgroundColor: Colors.green),
+        const SnackBar(content: Text('Pre-Socio creado'), backgroundColor: Colors.green),
       );
       context.pop();
     } catch (e) {
@@ -77,7 +77,7 @@ class _HostProspectoCreateScreenState extends State<HostProspectoCreateScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nuevo Prospecto'),
+        title: const Text('Nuevo Pre-Socio'),
         backgroundColor: const Color(0xFF7AC142),
         foregroundColor: Colors.white,
       ),

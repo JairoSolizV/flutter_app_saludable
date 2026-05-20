@@ -45,9 +45,9 @@ import '../../presentation/screens/events/events_list_screen.dart';
 import '../../presentation/screens/common/support_center_screen.dart'; // Nuevo
 import '../../presentation/screens/host/members/host_member_detail_screen.dart';
 import '../../presentation/screens/host/members/host_register_purchase_screen.dart';
-import '../../presentation/screens/host/prospectos/host_prospecto_create_screen.dart';
-import '../../presentation/screens/host/prospectos/host_prospecto_detail_screen.dart';
-import '../../presentation/screens/host/prospectos/host_mision_create_screen.dart';
+import '../../presentation/screens/host/pre_socios/host_pre_socio_create_screen.dart';
+import '../../presentation/screens/host/pre_socios/host_pre_socio_detail_screen.dart';
+import '../../presentation/screens/host/pre_socios/host_mision_create_screen.dart';
 
 
 
@@ -212,7 +212,7 @@ final appRouter = GoRouter(
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>?;
             return HostScanScreen(
-              prospectoId: extra?['prospectoId'] as int?,
+              preSocioId: extra?['preSocioId'] as int?,
               prefilledReferralId: extra?['prefilledReferralId'] as int?,
             );
           },
@@ -228,7 +228,7 @@ final appRouter = GoRouter(
             return HostMemberRegistrationScreen(
               qrPayload: extras['qrPayload'] as String,
               clubId: extras['clubId'] as int,
-              prospectoId: extras['prospectoId'] as int?,
+              preSocioId: extras['preSocioId'] as int?,
               prefilledReferralId: extras['prefilledReferralId'] as int?,
             );
           },
@@ -270,19 +270,19 @@ final appRouter = GoRouter(
           ],
         ),
         GoRoute(
-          path: '/host/prospectos/new',
+          path: '/host/pre-socios/new',
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>;
-            return HostProspectoCreateScreen(clubId: extra['clubId'] as int);
+            return HostPreSocioCreateScreen(clubId: extra['clubId'] as int);
           },
         ),
         GoRoute(
-          path: '/host/prospectos/:prospectoId',
+          path: '/host/pre-socios/:preSocioId',
           builder: (context, state) {
-            final prospectoId = int.parse(state.pathParameters['prospectoId']!);
+            final preSocioId = int.parse(state.pathParameters['preSocioId']!);
             final extra = state.extra as Map<String, dynamic>;
-            return HostProspectoDetailScreen(
-              prospectoId: prospectoId,
+            return HostPreSocioDetailScreen(
+              preSocioId: preSocioId,
               clubId: extra['clubId'] as int,
             );
           },
@@ -290,8 +290,8 @@ final appRouter = GoRouter(
             GoRoute(
               path: 'misiones/new',
               builder: (context, state) {
-                final prospectoId = int.parse(state.pathParameters['prospectoId']!);
-                return HostMisionCreateScreen(prospectoId: prospectoId);
+                final preSocioId = int.parse(state.pathParameters['preSocioId']!);
+                return HostMisionCreateScreen(preSocioId: preSocioId);
               },
             ),
           ],

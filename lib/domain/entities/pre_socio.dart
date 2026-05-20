@@ -1,6 +1,6 @@
-import 'mision_prospecto.dart';
+import 'mision_pre_socio.dart';
 
-class Prospecto {
+class PreSocio {
   final int id;
   final int clubId;
   final String nombre;
@@ -9,9 +9,9 @@ class Prospecto {
   final String? referidoPorNombre;
   final String fechaCreacion;
   final String estado;
-  final List<MisionProspecto> misiones;
+  final List<MisionPreSocio> misiones;
 
-  Prospecto({
+  PreSocio({
     required this.id,
     required this.clubId,
     required this.nombre,
@@ -32,9 +32,9 @@ class Prospecto {
     return completas / misiones.length;
   }
 
-  factory Prospecto.fromJson(Map<String, dynamic> json) {
+  factory PreSocio.fromJson(Map<String, dynamic> json) {
     final misionesJson = json['misiones'] as List<dynamic>? ?? [];
-    return Prospecto(
+    return PreSocio(
       id: json['id'] as int,
       clubId: json['clubId'] as int,
       nombre: json['nombre']?.toString() ?? '',
@@ -44,7 +44,7 @@ class Prospecto {
       fechaCreacion: json['fechaCreacion']?.toString() ?? '',
       estado: json['estado']?.toString() ?? 'EN_SEGUIMIENTO',
       misiones: misionesJson
-          .map((e) => MisionProspecto.fromJson(e as Map<String, dynamic>))
+          .map((e) => MisionPreSocio.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
   }

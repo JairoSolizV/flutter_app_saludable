@@ -3,19 +3,19 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
-import '../../../../data/datasources/remote/prospecto_remote_data_source.dart';
-import '../../../../domain/entities/prospecto.dart';
+import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
+import '../../../../domain/entities/preSocio.dart';
 
-class HostProspectosListScreen extends StatefulWidget {
-  const HostProspectosListScreen({super.key});
+class HostPreSociosListScreen extends StatefulWidget {
+  const HostPreSociosListScreen({super.key});
 
   @override
-  State<HostProspectosListScreen> createState() => _HostProspectosListScreenState();
+  State<HostPreSociosListScreen> createState() => _HostPreSociosListScreenState();
 }
 
-class _HostProspectosListScreenState extends State<HostProspectosListScreen> {
+class _HostPreSociosListScreenState extends State<HostPreSociosListScreen> {
   bool _isLoading = true;
-  List<Prospecto> _prospectos = [];
+  List<PreSocio> _preSocios = [];
   String? _error;
   int? _clubId;
 
@@ -29,12 +29,12 @@ class _HostProspectosListScreenState extends State<HostProspectosListScreen> {
     try {
       setState(() { _isLoading = true; _error = null; });
       final clubDs = Provider.of<ClubRemoteDataSource>(context, listen: false);
-      final prospectoDs = Provider.of<ProspectoRemoteDataSource>(context, listen: false);
+      final preSocioDs = Provider.of<PreSocioRemoteDataSource>(context, listen: false);
       final club = await clubDs.getMyClub();
       if (club == null) throw Exception('No se encontró el club del anfitrión.');
       _clubId = club.id;
-      final list = await prospectoDs.getProspectos(club.id);
-      if (mounted) setState(() { _prospectos = list; _isLoading = false; });
+      final list = await preSocioDs.getPreSocios(club.id);
+      if (mounted) setState(() { _preSocios = list; _isLoading = false; });
     } catch (e) {
       if (mounted) setState(() { _error = e.toString().replaceAll('Exception: ', ''); _isLoading = false; });
     }
@@ -51,17 +51,17 @@ class _HostProspectosListScreenState extends State<HostProspectosListScreen> {
               : RefreshIndicator(
                   onRefresh: _load,
                   color: const Color(0xFF7AC142),
-                  child: _prospectos.isEmpty ? _buildEmpty() : _buildList(),
+                  child: _preSocios.isEmpty ? _buildEmpty() : _buildList(),
                 ),
       floatingActionButton: _clubId != null
           ? FloatingActionButton.extended(
               onPressed: () async {
-                await context.push('/host/prospectos/new', extra: {'clubId': _clubId!});
+                await context.push('/host/pre-socios/new', extra: {'clubId': _clubId!});
                 _load();
               },
               backgroundColor: const Color(0xFF7AC142),
               icon: const Icon(Icons.person_add, color: Colors.white),
-              label: const Text('Nuevo Prospecto', style: TextStyle(color: Colors.white)),
+              label: const Text('Nuevo PreSocio', style: TextStyle(color: Colors.white)),
             )
           : null,
     );
@@ -95,9 +95,9 @@ class _HostProspectosListScreenState extends State<HostProspectosListScreen> {
             children: [
               Icon(Icons.person_search, size: 64, color: Colors.grey),
               SizedBox(height: 16),
-              Text('No hay prospectos aún.', style: TextStyle(color: Colors.grey, fontSize: 16)),
+              Text('No hay pre-socios aún.', style: TextStyle(color: Colors.grey, fontSize: 16)),
               SizedBox(height: 8),
-              Text('Pulsa "Nuevo Prospecto" para crear una ficha.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              Text('Pulsa "Nuevo PreSocio" para crear una ficha.', style: TextStyle(color: Colors.grey, fontSize: 13)),
             ],
           ),
         ),
@@ -108,12 +108,12 @@ class _HostProspectosListScreenState extends State<HostProspectosListScreen> {
   Widget _buildList() {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _prospectos.length,
-      itemBuilder: (_, i) => _ProspectoCard(
-        prospecto: _prospectos[i],
+      itemCount: _preSocios.length,
+      itemBuilder: (_, i) => _PreSocioCard(
+        preSocio: _preSocios[i],
         clubId: _clubId!,
         onTap: () async {
-          await context.push('/host/prospectos/${_prospectos[i].id}', extra: {'clubId': _clubId!});
+          await context.push('/host/pre-socios/${_preSocios[i].id}', extra: {'clubId': _clubId!});
           _load();
         },
       ),
@@ -121,16 +121,16 @@ class _HostProspectosListScreenState extends State<HostProspectosListScreen> {
   }
 }
 
-class _ProspectoCard extends StatelessWidget {
-  final Prospecto prospecto;
+class _PreSocioCard extends StatelessWidget {
+  final PreSocio prospecto;
   final int clubId;
   final VoidCallback onTap;
 
-  const _ProspectoCard({required this.prospecto, required this.clubId, required this.onTap});
+  const _PreSocioCard({required this.prospecto, required this.clubId, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final isConvertido = prospecto.estado == 'CONVERTIDO';
+    final isConvertido = preSocio.estado == 'CONVERTIDO';
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -151,7 +151,7 @@ class _ProspectoCard extends StatelessWidget {
                   CircleAvatar(
                     backgroundColor: isConvertido ? Colors.grey.shade200 : const Color(0xFF7AC142).withOpacity(0.1),
                     child: Text(
-                      prospecto.nombre.isNotEmpty ? prospecto.nombre[0].toUpperCase() : '?',
+                      preSocio.nombre.isNotEmpty ? preSocio.nombre[0].toUpperCase() : '?',
                       style: TextStyle(color: isConvertido ? Colors.grey : const Color(0xFF7AC142), fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -160,41 +160,41 @@ class _ProspectoCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(prospecto.nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        Text(prospecto.telefono, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                        Text(preSocio.nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        Text(preSocio.telefono, style: const TextStyle(color: Colors.grey, fontSize: 13)),
                       ],
                     ),
                   ),
-                  _EstadoBadge(estado: prospecto.estado),
+                  _EstadoBadge(estado: preSocio.estado),
                 ],
               ),
-              if (prospecto.referidoPorNombre != null) ...[
+              if (preSocio.referidoPorNombre != null) ...[
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     const Icon(LucideIcons.userCheck, size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Text('Referido por: ${prospecto.referidoPorNombre}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text('Referido por: ${preSocio.referidoPorNombre}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                   ],
                 ),
               ],
-              if (prospecto.misiones.isNotEmpty && !isConvertido) ...[
+              if (preSocio.misiones.isNotEmpty && !isConvertido) ...[
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Misiones: ${prospecto.misiones.where((m) => m.completada).length}/${prospecto.misiones.length}',
+                      'Misiones: ${preSocio.misiones.where((m) => m.completada).length}/${preSocio.misiones.length}',
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
-                    Text('${(prospecto.progresoGlobal * 100).toInt()}%', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF7AC142))),
+                    Text('${(preSocio.progresoGlobal * 100).toInt()}%', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF7AC142))),
                   ],
                 ),
                 const SizedBox(height: 4),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
-                    value: prospecto.progresoGlobal,
+                    value: preSocio.progresoGlobal,
                     backgroundColor: Colors.grey.shade200,
                     valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF7AC142)),
                     minHeight: 6,

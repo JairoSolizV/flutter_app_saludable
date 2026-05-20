@@ -2,27 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import '../../../../data/datasources/remote/prospecto_remote_data_source.dart';
+import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
 import '../../../../domain/entities/prospecto.dart';
-import '../../../../domain/entities/mision_prospecto.dart';
+import '../../../../domain/entities/mision_preSocio.dart';
 
-class HostProspectoDetailScreen extends StatefulWidget {
-  final int prospectoId;
+class HostPreSocioDetailScreen extends StatefulWidget {
+  final int preSocioId;
   final int clubId;
 
-  const HostProspectoDetailScreen({
+  const HostPreSocioDetailScreen({
     super.key,
-    required this.prospectoId,
+    required this.preSocioId,
     required this.clubId,
   });
 
   @override
-  State<HostProspectoDetailScreen> createState() => _HostProspectoDetailScreenState();
+  State<HostPreSocioDetailScreen> createState() => _HostPreSocioDetailScreenState();
 }
 
-class _HostProspectoDetailScreenState extends State<HostProspectoDetailScreen> {
+class _HostPreSocioDetailScreenState extends State<HostPreSocioDetailScreen> {
   bool _isLoading = true;
-  Prospecto? _prospecto;
+  PreSocio? _preSocio;
   String? _error;
   final Set<int> _loadingMisions = {};
 
@@ -35,31 +35,31 @@ class _HostProspectoDetailScreenState extends State<HostProspectoDetailScreen> {
   Future<void> _load() async {
     try {
       setState(() { _isLoading = true; _error = null; });
-      final ds = Provider.of<ProspectoRemoteDataSource>(context, listen: false);
-      final list = await ds.getProspectos(widget.clubId);
-      final found = list.where((p) => p.id == widget.prospectoId).toList();
-      if (found.isEmpty) throw Exception('Prospecto no encontrado.');
-      if (mounted) setState(() { _prospecto = found.first; _isLoading = false; });
+      final ds = Provider.of<PreSocioRemoteDataSource>(context, listen: false);
+      final list = await ds.getPreSocios(widget.clubId);
+      final found = list.where((p) => p.id == widget.preSocioId).toList();
+      if (found.isEmpty) throw Exception('PreSocio no encontrado.');
+      if (mounted) setState(() { _preSocio = found.first; _isLoading = false; });
     } catch (e) {
       if (mounted) setState(() { _error = e.toString().replaceAll('Exception: ', ''); _isLoading = false; });
     }
   }
 
-  Future<void> _incrementarProgreso(MisionProspecto mision) async {
+  Future<void> _incrementarProgreso(MisionPreSocio mision) async {
     if (_loadingMisions.contains(mision.id)) return;
     setState(() => _loadingMisions.add(mision.id));
     try {
-      final ds = Provider.of<ProspectoRemoteDataSource>(context, listen: false);
+      final ds = Provider.of<PreSocioRemoteDataSource>(context, listen: false);
       final updated = await ds.incrementarProgreso(mision.id);
       if (!mounted) return;
       setState(() {
-        final misiones = _prospecto!.misiones.map((m) => m.id == updated.id ? updated : m).toList();
-        _prospecto = Prospecto(
-          id: _prospecto!.id, clubId: _prospecto!.clubId,
-          nombre: _prospecto!.nombre, telefono: _prospecto!.telefono,
-          referidoPorMembresiaId: _prospecto!.referidoPorMembresiaId,
-          referidoPorNombre: _prospecto!.referidoPorNombre,
-          fechaCreacion: _prospecto!.fechaCreacion, estado: _prospecto!.estado,
+        final misiones = _preSocio!.misiones.map((m) => m.id == updated.id ? updated : m).toList();
+        _preSocio = PreSocio(
+          id: _preSocio!.id, clubId: _preSocio!.clubId,
+          nombre: _preSocio!.nombre, telefono: _preSocio!.telefono,
+          referidoPorMembresiaId: _preSocio!.referidoPorMembresiaId,
+          referidoPorNombre: _preSocio!.referidoPorNombre,
+          fechaCreacion: _preSocio!.fechaCreacion, estado: _preSocio!.estado,
           misiones: misiones,
         );
       });
@@ -79,7 +79,7 @@ class _HostProspectoDetailScreenState extends State<HostProspectoDetailScreen> {
     }
   }
 
-  Future<void> _eliminarMision(MisionProspecto mision) async {
+  Future<void> _eliminarMision(MisionPreSocio mision) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -96,17 +96,17 @@ class _HostProspectoDetailScreenState extends State<HostProspectoDetailScreen> {
     );
     if (confirmed != true) return;
     try {
-      final ds = Provider.of<ProspectoRemoteDataSource>(context, listen: false);
+      final ds = Provider.of<PreSocioRemoteDataSource>(context, listen: false);
       await ds.eliminarMision(mision.id);
       if (!mounted) return;
       setState(() {
-        final misiones = _prospecto!.misiones.where((m) => m.id != mision.id).toList();
-        _prospecto = Prospecto(
-          id: _prospecto!.id, clubId: _prospecto!.clubId,
-          nombre: _prospecto!.nombre, telefono: _prospecto!.telefono,
-          referidoPorMembresiaId: _prospecto!.referidoPorMembresiaId,
-          referidoPorNombre: _prospecto!.referidoPorNombre,
-          fechaCreacion: _prospecto!.fechaCreacion, estado: _prospecto!.estado,
+        final misiones = _preSocio!.misiones.where((m) => m.id != mision.id).toList();
+        _preSocio = PreSocio(
+          id: _preSocio!.id, clubId: _preSocio!.clubId,
+          nombre: _preSocio!.nombre, telefono: _preSocio!.telefono,
+          referidoPorMembresiaId: _preSocio!.referidoPorMembresiaId,
+          referidoPorNombre: _preSocio!.referidoPorNombre,
+          fechaCreacion: _preSocio!.fechaCreacion, estado: _preSocio!.estado,
           misiones: misiones,
         );
       });
@@ -119,10 +119,10 @@ class _HostProspectoDetailScreenState extends State<HostProspectoDetailScreen> {
   }
 
   Future<void> _iniciarConversion() async {
-    if (_prospecto == null) return;
+    if (_preSocio == null) return;
     await context.push('/host-scan', extra: {
-      'prospectoId': _prospecto!.id,
-      'prefilledReferralId': _prospecto!.referidoPorMembresiaId,
+      'preSocioId': _preSocio!.id,
+      'prefilledReferralId': _preSocio!.referidoPorMembresiaId,
     });
     _load();
   }
@@ -131,11 +131,11 @@ class _HostProspectoDetailScreenState extends State<HostProspectoDetailScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF7AC142))));
     if (_error != null) return Scaffold(
-      appBar: AppBar(title: const Text('Ficha de Prospecto'), backgroundColor: Colors.white, foregroundColor: Colors.black87),
+      appBar: AppBar(title: const Text('Ficha de PreSocio'), backgroundColor: Colors.white, foregroundColor: Colors.black87),
       body: Center(child: Text(_error!, style: const TextStyle(color: Colors.grey))),
     );
 
-    final p = _prospecto!;
+    final p = _preSocio!;
     final isConvertido = p.estado == 'CONVERTIDO';
 
     return Scaffold(
@@ -160,7 +160,7 @@ class _HostProspectoDetailScreenState extends State<HostProspectoDetailScreen> {
                 if (!isConvertido)
                   TextButton.icon(
                     onPressed: () async {
-                      await context.push('/host/prospectos/${p.id}/misiones/new');
+                      await context.push('/host/pre-socios/${p.id}/misiones/new');
                       _load();
                     },
                     icon: const Icon(Icons.add, color: Color(0xFF7AC142)),
@@ -202,7 +202,7 @@ class _HostProspectoDetailScreenState extends State<HostProspectoDetailScreen> {
                     const SizedBox(height: 8),
                     const Text('¡Todas las misiones completadas!', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2C5E1A))),
                     const SizedBox(height: 4),
-                    const Text('El prospecto está listo para ser socio oficial.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                    const Text('El pre-socio está listo para ser socio oficial.', style: TextStyle(color: Colors.grey, fontSize: 13)),
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
@@ -228,7 +228,7 @@ class _HostProspectoDetailScreenState extends State<HostProspectoDetailScreen> {
     );
   }
 
-  Widget _buildHeader(Prospecto p) {
+  Widget _buildHeader(PreSocio p) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -279,7 +279,7 @@ class _HostProspectoDetailScreenState extends State<HostProspectoDetailScreen> {
 }
 
 class _MisionCard extends StatelessWidget {
-  final MisionProspecto mision;
+  final MisionPreSocio mision;
   final bool isReadOnly;
   final bool isLoadingProgress;
   final VoidCallback onIncrement;

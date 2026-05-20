@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../../../../data/datasources/remote/prospecto_remote_data_source.dart';
+import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
 
 class HostMisionCreateScreen extends StatefulWidget {
-  final int prospectoId;
+  final int preSocioId;
 
-  const HostMisionCreateScreen({super.key, required this.prospectoId});
+  const HostMisionCreateScreen({super.key, required this.preSocioId});
 
   @override
   State<HostMisionCreateScreen> createState() => _HostMisionCreateScreenState();
@@ -43,9 +43,9 @@ class _HostMisionCreateScreenState extends State<HostMisionCreateScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
-      final ds = Provider.of<ProspectoRemoteDataSource>(context, listen: false);
+      final ds = Provider.of<PreSocioRemoteDataSource>(context, listen: false);
       await ds.crearMision(
-        prospectoId: widget.prospectoId,
+        preSocioId: widget.preSocioId,
         nombre: _nombreCtrl.text.trim(),
         descripcion: _descripcionCtrl.text.trim().isEmpty ? null : _descripcionCtrl.text.trim(),
         metaCantidad: int.parse(_metaCtrl.text.trim()),
