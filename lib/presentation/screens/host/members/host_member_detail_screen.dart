@@ -30,6 +30,8 @@ class _HostMemberDetailScreenState extends State<HostMemberDetailScreen>
   bool _loadingAttendances = true;
   bool _loadingPurchases = true;
   bool _loadingReferidos = true;
+  bool _loadingCombo = true;
+  bool _haConsumidoCombo = false;
   List<Attendance> _attendances = [];
   List<CompraManual> _purchases = [];
   List<ClubMembership> _referidos = [];
@@ -48,7 +50,7 @@ class _HostMemberDetailScreenState extends State<HostMemberDetailScreen>
   }
 
   Future<void> _loadAll() async {
-    await Future.wait([_loadAttendances(), _loadPurchases(), _loadReferidos()]);
+    await Future.wait([_loadAttendances(), _loadPurchases(), _loadReferidos(), _loadEstadoCombo()]);
   }
 
   Future<void> _loadAttendances() async {
@@ -78,6 +80,21 @@ class _HostMemberDetailScreenState extends State<HostMemberDetailScreen>
       if (mounted) setState(() { _referidos = list; _loadingReferidos = false; });
     } catch (e) {
       if (mounted) setState(() => _loadingReferidos = false);
+    }
+  }
+
+  Future<void> _loadEstadoCombo() async {
+    try {
+      final ds = Provider.of<MembresiaRemoteDataSource>(context, listen: false);
+      final estado = await ds.getEstadoCombo(widget.membresiaId);
+      if (mounted) {
+        setState(() {
+          _haConsumidoCombo = estado.containsKey('haConsumidoCombo') ? estado['haConsumidoCombo'] : false;
+          _loadingCombo = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loadingCombo = false);
     }
   }
 
@@ -136,9 +153,26 @@ class _HostMemberDetailScreenState extends State<HostMemberDetailScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
+          if (_loadingCombo)
+            const LinearProgressIndicator(color: Color(0xFF7AC142))
+          else
+            Card(
+              margin: const EdgeInsets.all(16),
+              child: ListTile(
+                leading: Icon(_haConsumidoCombo ? Icons.check_circle : Icons.warning,
+                              color: _haConsumidoCombo ? Colors.green : Colors.orange),
+                title: Text(_haConsumidoCombo ? 'Combo consumido' : 'Pendiente de combo'),
+                subtitle: Text(_haConsumidoCombo
+                    ? 'El socio ya ha consumido al menos 1 combo.'
+                    : 'El socio aún no ha consumido un combo. Las asistencias pueden estar restringidas.'),
+              ),
+            ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
           _AsistenciasTab(
             loading: _loadingAttendances,
             attendances: _attendances,
@@ -158,6 +192,9 @@ class _HostMemberDetailScreenState extends State<HostMemberDetailScreen>
             },
           ),
           _ReferidosTab(loading: _loadingReferidos, referidos: _referidos),
+              ],
+            ),
+          ),
         ],
       ),
     );

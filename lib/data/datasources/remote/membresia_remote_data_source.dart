@@ -15,6 +15,7 @@ abstract class MembresiaRemoteDataSource {
     required double longitud,
   });
   Future<Attendance> registrarAsistenciaManual({required int membresiaId, String? fecha, String? nota});
+  Future<Map<String, dynamic>> getEstadoCombo(int membresiaId);
 }
 
 /// Modelo para la respuesta de registro de asistencia
@@ -287,4 +288,14 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
     }
   }
 
+  @override
+  Future<Map<String, dynamic>> getEstadoCombo(int membresiaId) async {
+    try {
+      final response = await _client.get('/membresias/$membresiaId/estado-combo');
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return {'haConsumidoCombo': false, 'totalCombosConsumidos': 0};
+      throw Exception('Error obteniendo estado de combo: ${e.message}');
+    }
+  }
 }
