@@ -7,6 +7,7 @@ import '../../../data/datasources/remote/product_remote_data_source.dart';
 import '../../../domain/entities/product.dart';
 import '../../providers/counter_sale_provider.dart';
 import '../../widgets/product_image.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostCounterSaleScreen extends StatelessWidget {
   final int clubId;
@@ -155,7 +156,7 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
                           ),
                           Text(
                             'Total puntos: ${provider.totalPuntos}',
-                            style: const TextStyle(color: Color(0xFF7AC142)),
+                            style: const TextStyle(color: AppTheme.primaryColor),
                           ),
                         ],
                       ),
@@ -188,7 +189,7 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
                             ? () => _finalizarVenta(context)
                             : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF7AC142),
+                          backgroundColor: AppTheme.primaryColor,
                           foregroundColor: Colors.white,
                           minimumSize: const Size.fromHeight(52),
                           shape: RoundedRectangleBorder(
@@ -405,7 +406,7 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
               label: Text(isPublic ? 'Venta al público' : 'Código capturado'),
               backgroundColor: isPublic
                   ? Colors.grey.shade100
-                  : const Color(0xFF7AC142).withOpacity(0.15),
+                  : AppTheme.primaryColor.withOpacity(0.15),
             ),
           ),
           if (isMobile)
@@ -478,12 +479,12 @@ class _ProductGrid extends StatelessWidget {
                         ),
                         Text(
                           '${p.puntosValor} pts',
-                          style: const TextStyle(color: Color(0xFF7AC142)),
+                          style: const TextStyle(color: AppTheme.primaryColor),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(LucideIcons.plusCircle, color: Color(0xFF7AC142)),
+                  const Icon(LucideIcons.plusCircle, color: AppTheme.primaryColor),
                 ],
               ),
             ),
@@ -628,7 +629,7 @@ class _QtyButton extends StatelessWidget {
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
           padding: EdgeInsets.zero,
-          backgroundColor: const Color(0xFF7AC142),
+          backgroundColor: AppTheme.primaryColor,
           foregroundColor: Colors.white,
         ),
         child: Icon(icon, size: 18),

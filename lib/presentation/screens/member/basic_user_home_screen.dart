@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../providers/user_provider.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class BasicUserHomeScreen extends StatelessWidget {
   const BasicUserHomeScreen({super.key});
@@ -67,7 +68,7 @@ class BasicUserHomeScreen extends StatelessWidget {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7AC142),
+                  backgroundColor: AppTheme.primaryColor,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   elevation: 4,
                 ),
@@ -115,11 +116,11 @@ class BasicUserHomeScreen extends StatelessWidget {
             // Sección Tips de Nutrición (Placeholder como en la imagen)
             const Row(
               children: [
-                Icon(LucideIcons.apple, color: Color(0xFF7AC142), size: 20),
+                Icon(LucideIcons.apple, color: AppTheme.primaryColor, size: 20),
                 SizedBox(width: 8),
                 Text(
                   'Tips de Nutrición',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF7AC142)),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
                 ),
               ],
             ),

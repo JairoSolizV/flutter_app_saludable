@@ -8,6 +8,7 @@ import '../../../../domain/entities/attendance.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../providers/user_provider.dart';
 import '../../../../domain/entities/user.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class MemberAttendanceScreen extends StatefulWidget {
   const MemberAttendanceScreen({super.key});
@@ -83,7 +84,7 @@ class _MemberAttendanceScreenState extends State<MemberAttendanceScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF7AC142))));
+      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)));
     }
 
     if (_error != null) {
@@ -112,7 +113,7 @@ class _MemberAttendanceScreenState extends State<MemberAttendanceScreen> {
         ? _buildEmptyState()
         : RefreshIndicator(
             onRefresh: _loadData,
-            color: const Color(0xFF7AC142),
+            color: AppTheme.primaryColor,
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: _asistencias.length,
@@ -157,12 +158,12 @@ class _MemberAttendanceScreenState extends State<MemberAttendanceScreen> {
                       width: 50,
                       height: 50,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF7AC142).withOpacity(0.1),
+                        color: AppTheme.primaryColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
                         LucideIcons.calendarCheck,
-                        color: Color(0xFF7AC142),
+                        color: AppTheme.primaryColor,
                         size: 24,
                       ),
                     ),
@@ -259,7 +260,7 @@ class _MemberAttendanceScreenState extends State<MemberAttendanceScreen> {
             icon: const Icon(LucideIcons.qrCode),
             label: const Text('Escanear QR'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF7AC142),
+              backgroundColor: AppTheme.primaryColor,
               foregroundColor: Colors.white,
             ),
           ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -33,7 +34,7 @@ class _SplashScreenState extends State<SplashScreen> {
               width: 150,
               height: 150,
               decoration: BoxDecoration(
-                color: const Color(0xFF7AC142),
+                color: AppTheme.primaryColor,
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.eco, size: 80, color: Colors.white),

@@ -5,6 +5,7 @@ import '../../../domain/entities/product.dart';
 import '../../../data/datasources/remote/product_remote_data_source.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../widgets/product_image.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class MemberProductsScreen extends StatefulWidget {
   final String clubId;
@@ -69,11 +70,11 @@ class _MemberProductsScreenState extends State<MemberProductsScreen> {
               ),
           ],
         ),
-        backgroundColor: const Color(0xFF7AC142),
+        backgroundColor: AppTheme.primaryColor,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF7AC142)))
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
           : _error != null
               ? Center(
                   child: Column(
@@ -92,7 +93,7 @@ class _MemberProductsScreenState extends State<MemberProductsScreen> {
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _loadProducts,
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7AC142)),
+                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
                         child: const Text('Reintentar'),
                       ),
                     ],
@@ -174,14 +175,14 @@ class _MemberProductsScreenState extends State<MemberProductsScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF7AC142).withOpacity(0.1),
+                      color: AppTheme.primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Text(
                       'Disponible',
                       style: TextStyle(
                         fontSize: 10,
-                        color: Color(0xFF7AC142),
+                        color: AppTheme.primaryColor,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -197,7 +198,7 @@ class _MemberProductsScreenState extends State<MemberProductsScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('${product.name} añadido al carrito'),
-                    backgroundColor: const Color(0xFF7AC142),
+                    backgroundColor: AppTheme.primaryColor,
                     duration: const Duration(seconds: 2),
                   ),
                 );

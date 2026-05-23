@@ -6,6 +6,7 @@ import '../../../data/datasources/remote/order_remote_data_source.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../providers/user_provider.dart';
 import 'host_counter_sale_screen.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostOrdersListScreen extends StatefulWidget {
   const HostOrdersListScreen({super.key});
@@ -462,7 +463,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                   Navigator.pop(context, minutes);
                 }
               },
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7AC142)),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
               child: const Text('Confirmar', style: TextStyle(color: Colors.white)),
             ),
           ],
@@ -602,7 +603,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   child: Container(
                     decoration: BoxDecoration(
-                        border: Border(left: BorderSide(color: const Color(0xFF7AC142), width: 4)),
+                        border: Border(left: BorderSide(color: AppTheme.primaryColor, width: 4)),
                          borderRadius: BorderRadius.circular(16)
                     ),
                     padding: const EdgeInsets.all(16),

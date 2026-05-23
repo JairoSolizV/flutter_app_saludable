@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
 import '../../../../domain/entities/pre_socio.dart';
 import '../../../../domain/entities/mision_pre_socio.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostPreSocioDetailScreen extends StatefulWidget {
   final int preSocioId;
@@ -129,7 +130,7 @@ class _HostPreSocioDetailScreenState extends State<HostPreSocioDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF7AC142))));
+    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)));
     if (_error != null) return Scaffold(
       appBar: AppBar(title: const Text('Ficha de PreSocio'), backgroundColor: Colors.white, foregroundColor: Colors.black87),
       body: Center(child: Text(_error!, style: const TextStyle(color: Colors.grey))),
@@ -163,8 +164,8 @@ class _HostPreSocioDetailScreenState extends State<HostPreSocioDetailScreen> {
                       await context.push('/host/pre-socios/${p.id}/misiones/new');
                       _load();
                     },
-                    icon: const Icon(Icons.add, color: Color(0xFF7AC142)),
-                    label: const Text('Agregar', style: TextStyle(color: Color(0xFF7AC142))),
+                    icon: const Icon(Icons.add, color: AppTheme.primaryColor),
+                    label: const Text('Agregar', style: TextStyle(color: AppTheme.primaryColor)),
                   ),
               ],
             ),
@@ -198,7 +199,7 @@ class _HostPreSocioDetailScreenState extends State<HostPreSocioDetailScreen> {
                 ),
                 child: Column(
                   children: [
-                    const Icon(LucideIcons.trophy, color: Color(0xFF7AC142), size: 40),
+                    const Icon(LucideIcons.trophy, color: AppTheme.primaryColor, size: 40),
                     const SizedBox(height: 8),
                     const Text('¡Todas las misiones completadas!', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2C5E1A))),
                     const SizedBox(height: 4),
@@ -209,7 +210,7 @@ class _HostPreSocioDetailScreenState extends State<HostPreSocioDetailScreen> {
                       child: ElevatedButton.icon(
                         onPressed: _iniciarConversion,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF7AC142),
+                          backgroundColor: AppTheme.primaryColor,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -242,10 +243,10 @@ class _HostPreSocioDetailScreenState extends State<HostPreSocioDetailScreen> {
             children: [
               CircleAvatar(
                 radius: 28,
-                backgroundColor: const Color(0xFF7AC142).withOpacity(0.1),
+                backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
                 child: Text(
                   p.nombre.isNotEmpty ? p.nombre[0].toUpperCase() : '?',
-                  style: const TextStyle(color: Color(0xFF7AC142), fontSize: 22, fontWeight: FontWeight.bold),
+                  style: const TextStyle(color: AppTheme.primaryColor, fontSize: 22, fontWeight: FontWeight.bold),
                 ),
               ),
               const SizedBox(width: 12),
@@ -321,11 +322,11 @@ class _MisionCard extends StatelessWidget {
                 ),
               ),
               if (mision.completada)
-                const Icon(LucideIcons.checkCircle, color: Color(0xFF7AC142), size: 20)
+                const Icon(LucideIcons.checkCircle, color: AppTheme.primaryColor, size: 20)
               else
                 Text(
                   '${mision.progresoActual} / ${mision.metaCantidad}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF7AC142)),
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
                 ),
             ],
           ),
@@ -336,7 +337,7 @@ class _MisionCard extends StatelessWidget {
               value: mision.porcentaje,
               backgroundColor: Colors.grey.shade200,
               valueColor: AlwaysStoppedAnimation<Color>(
-                mision.completada ? const Color(0xFF7AC142) : const Color(0xFF7AC142).withOpacity(0.6),
+                mision.completada ? AppTheme.primaryColor : AppTheme.primaryColor.withOpacity(0.6),
               ),
               minHeight: 8,
             ),
@@ -364,11 +365,11 @@ class _MisionCard extends StatelessWidget {
               children: [
                 if (!mision.completada)
                   isLoadingProgress
-                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF7AC142)))
+                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryColor))
                       : ElevatedButton.icon(
                           onPressed: onIncrement,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF7AC142), foregroundColor: Colors.white,
+                            backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../domain/entities/product.dart';
 import '../../../providers/product_provider.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostEditProductScreen extends StatefulWidget {
   final int clubId;
@@ -134,7 +135,7 @@ class _HostEditProductScreenState extends State<HostEditProductScreen> {
                 title: const Text('Disponible / Activo'),
                 subtitle: const Text('Si se desactiva, no aparecerá en el menú'),
                 value: _isActive,
-                activeThumbColor: const Color(0xFF7AC142),
+                activeThumbColor: AppTheme.primaryColor,
                 onChanged: (val) {
                   setState(() => _isActive = val);
                 },
@@ -148,7 +149,7 @@ class _HostEditProductScreenState extends State<HostEditProductScreen> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _save,
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7AC142)),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
                   child: _isSaving 
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text('Guardar Producto', style: TextStyle(fontSize: 16)),

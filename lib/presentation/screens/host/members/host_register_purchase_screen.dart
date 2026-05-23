@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../../data/datasources/remote/compras_remote_data_source.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostRegisterPurchaseScreen extends StatefulWidget {
   final int membresiaId;
@@ -74,7 +75,7 @@ class _HostRegisterPurchaseScreenState extends State<HostRegisterPurchaseScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Registrar Compra'),
-        backgroundColor: const Color(0xFF7AC142),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -129,7 +130,7 @@ class _HostRegisterPurchaseScreenState extends State<HostRegisterPurchaseScreen>
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7AC142),
+                    backgroundColor: AppTheme.primaryColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: _isLoading

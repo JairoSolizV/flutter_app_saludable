@@ -6,6 +6,7 @@ import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../main.dart'; // acceso a clubRemoteDataSource global
 import '../../../widgets/schedule_selector.dart';
 import '../../../widgets/location_picker_dialog.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostClubEditScreen extends StatefulWidget {
   final Club club;
@@ -127,7 +128,7 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Editar Club"),
-        backgroundColor: const Color(0xFF7AC142),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -195,7 +196,7 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
                   side: BorderSide(
-                    color: _lat == null ? Colors.grey.shade400 : const Color(0xFF7AC142),
+                    color: _lat == null ? Colors.grey.shade400 : AppTheme.primaryColor,
                     width: 2,
                   ),
                 ),
@@ -211,7 +212,7 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle, color: Color(0xFF7AC142), size: 20),
+                      const Icon(Icons.check_circle, color: AppTheme.primaryColor, size: 20),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -283,7 +284,7 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _saveChanges,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7AC142),
+                    backgroundColor: AppTheme.primaryColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: _isLoading 

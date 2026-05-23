@@ -7,6 +7,7 @@ import '../../providers/user_provider.dart';
 import '../../../data/datasources/remote/order_remote_data_source.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../domain/entities/club_membership.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class MemberOrdersListScreen extends StatefulWidget {
   const MemberOrdersListScreen({super.key});
@@ -166,9 +167,9 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen> with Si
         title: const Text('Mis Pedidos'),
         bottom: TabBar(
           controller: _tabController,
-          labelColor: const Color(0xFF7AC142),
+          labelColor: AppTheme.primaryColor,
           unselectedLabelColor: Colors.grey,
-          indicatorColor: const Color(0xFF7AC142),
+          indicatorColor: AppTheme.primaryColor,
           tabs: const [
             Tab(text: 'Activos'),
             Tab(text: 'Historial'),
@@ -176,12 +177,12 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen> with Si
         ), 
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF7AC142)))
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
           : _error != null
               ? Center(child: Text('Error: $_error', style: const TextStyle(color: Colors.red)))
               : RefreshIndicator(
                   onRefresh: _loadOrdersFromBackend,
-                  color: const Color(0xFF7AC142),
+                  color: AppTheme.primaryColor,
                   child: TabBarView(
                     controller: _tabController,
                     children: [
@@ -205,7 +206,7 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen> with Si
             );
           }
         },
-        backgroundColor: const Color(0xFF7AC142),
+        backgroundColor: AppTheme.primaryColor,
         icon: const Icon(LucideIcons.plus, color: Colors.white),
         label: const Text('Nuevo Pedido', style: TextStyle(color: Colors.white)),
       ),

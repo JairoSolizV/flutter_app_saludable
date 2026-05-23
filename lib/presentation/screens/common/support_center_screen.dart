@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../../providers/support_provider.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class SupportCenterScreen extends StatefulWidget {
   const SupportCenterScreen({super.key});
@@ -88,9 +89,9 @@ class _SupportCenterScreenState extends State<SupportCenterScreen> with SingleTi
         elevation: 0,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: const Color(0xFF7AC142),
+          labelColor: AppTheme.primaryColor,
           unselectedLabelColor: Colors.grey,
-          indicatorColor: const Color(0xFF7AC142),
+          indicatorColor: AppTheme.primaryColor,
           tabs: const [
             Tab(text: 'Nuevo Reporte'),
             Tab(text: 'Mis Reportes'),
@@ -194,7 +195,7 @@ class _SupportCenterScreenState extends State<SupportCenterScreen> with SingleTi
             ElevatedButton(
               onPressed: isLoading ? null : _submitTicket,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7AC142),
+                backgroundColor: AppTheme.primaryColor,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -225,7 +226,7 @@ class _SupportCenterScreenState extends State<SupportCenterScreen> with SingleTi
     return Consumer<SupportProvider>(
       builder: (context, provider, child) {
         if (provider.isLoading && provider.tickets.isEmpty) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFF7AC142)));
+          return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
         }
 
         if (provider.error != null && provider.tickets.isEmpty) {
@@ -243,7 +244,7 @@ class _SupportCenterScreenState extends State<SupportCenterScreen> with SingleTi
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () => provider.fetchMyTickets(),
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7AC142)),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
                   child: const Text('Reintentar', style: TextStyle(color: Colors.white)),
                 ),
               ],
@@ -270,7 +271,7 @@ class _SupportCenterScreenState extends State<SupportCenterScreen> with SingleTi
         }
 
         return RefreshIndicator(
-          color: const Color(0xFF7AC142),
+          color: AppTheme.primaryColor,
           onRefresh: () => provider.fetchMyTickets(),
           child: ListView.separated(
             padding: const EdgeInsets.all(16),

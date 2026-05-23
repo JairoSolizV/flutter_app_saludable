@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class MemberSelectClubScreen extends StatefulWidget {
   const MemberSelectClubScreen({super.key});
@@ -73,7 +74,7 @@ class _MemberSelectClubScreenState extends State<MemberSelectClubScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Seleccionar Club'),
-        backgroundColor: const Color(0xFF7AC142),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
       body: Column(
@@ -139,7 +140,7 @@ class _MemberSelectClubScreenState extends State<MemberSelectClubScreen> {
               icon: const Icon(LucideIcons.refreshCw),
               label: const Text('Reintentar'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7AC142),
+                backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
@@ -216,12 +217,12 @@ class _MemberSelectClubScreenState extends State<MemberSelectClubScreen> {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF7AC142).withOpacity(0.1),
+                  color: AppTheme.primaryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   LucideIcons.store,
-                  color: Color(0xFF7AC142),
+                  color: AppTheme.primaryColor,
                   size: 28,
                 ),
               ),

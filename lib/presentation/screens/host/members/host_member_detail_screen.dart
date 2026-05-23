@@ -9,6 +9,7 @@ import '../../../../data/datasources/remote/compras_remote_data_source.dart';
 import '../../../../domain/entities/attendance.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../../domain/entities/compra_manual.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostMemberDetailScreen extends StatefulWidget {
   final int membresiaId;
@@ -107,7 +108,7 @@ class _HostMemberDetailScreenState extends State<HostMemberDetailScreen>
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7AC142), foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Confirmar'),
           ),
@@ -143,8 +144,8 @@ class _HostMemberDetailScreenState extends State<HostMemberDetailScreen>
         elevation: 0,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: const Color(0xFF7AC142),
-          indicatorColor: const Color(0xFF7AC142),
+          labelColor: AppTheme.primaryColor,
+          indicatorColor: AppTheme.primaryColor,
           unselectedLabelColor: Colors.grey,
           tabs: const [
             Tab(icon: Icon(LucideIcons.calendarCheck), text: 'Asistencias'),
@@ -156,7 +157,7 @@ class _HostMemberDetailScreenState extends State<HostMemberDetailScreen>
       body: Column(
         children: [
           if (_loadingCombo)
-            const LinearProgressIndicator(color: Color(0xFF7AC142))
+            const LinearProgressIndicator(color: AppTheme.primaryColor)
           else
             Card(
               margin: const EdgeInsets.all(16),
@@ -218,14 +219,14 @@ class _AsistenciasTab extends StatelessWidget {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: onRegister,
-              icon: const Icon(LucideIcons.plusCircle, color: Color(0xFF7AC142)),
-              label: const Text('Registrar Asistencia Manual', style: TextStyle(color: Color(0xFF7AC142))),
-              style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF7AC142))),
+              icon: const Icon(LucideIcons.plusCircle, color: AppTheme.primaryColor),
+              label: const Text('Registrar Asistencia Manual', style: TextStyle(color: AppTheme.primaryColor)),
+              style: OutlinedButton.styleFrom(side: const BorderSide(color: AppTheme.primaryColor)),
             ),
           ),
         ),
         Expanded(child: loading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF7AC142)))
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
           : attendances.isEmpty
               ? const Center(child: Text('Sin asistencias registradas', style: TextStyle(color: Colors.grey)))
               : ListView.builder(
@@ -235,7 +236,7 @@ class _AsistenciasTab extends StatelessWidget {
                     return ListTile(
                       leading: const CircleAvatar(
                         backgroundColor: Color(0xFFE8F5E9),
-                        child: Icon(LucideIcons.checkCircle, color: Color(0xFF7AC142), size: 20),
+                        child: Icon(LucideIcons.checkCircle, color: AppTheme.primaryColor, size: 20),
                       ),
                       title: Text(a.fechaDia, style: const TextStyle(fontWeight: FontWeight.w600)),
                       subtitle: Text(a.fechaHora),
@@ -274,14 +275,14 @@ class _ComprasTab extends StatelessWidget {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: onRegister,
-              icon: const Icon(LucideIcons.plusCircle, color: Color(0xFF7AC142)),
-              label: const Text('Registrar Compra', style: TextStyle(color: Color(0xFF7AC142))),
-              style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF7AC142))),
+              icon: const Icon(LucideIcons.plusCircle, color: AppTheme.primaryColor),
+              label: const Text('Registrar Compra', style: TextStyle(color: AppTheme.primaryColor)),
+              style: OutlinedButton.styleFrom(side: const BorderSide(color: AppTheme.primaryColor)),
             ),
           ),
         ),
         Expanded(child: loading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF7AC142)))
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
           : purchases.isEmpty
               ? const Center(child: Text('Sin compras registradas', style: TextStyle(color: Colors.grey)))
               : ListView.builder(
@@ -297,7 +298,7 @@ class _ComprasTab extends StatelessWidget {
                       subtitle: Text(p.fecha),
                       trailing: Text(
                         fmt.format(p.monto),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF7AC142)),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.primaryColor),
                       ),
                     );
                   },
@@ -316,7 +317,7 @@ class _ReferidosTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (loading) return const Center(child: CircularProgressIndicator(color: Color(0xFF7AC142)));
+    if (loading) return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
     if (referidos.isEmpty) {
       return const Center(child: Text('Este socio aún no ha referido a nadie', style: TextStyle(color: Colors.grey)));
     }
@@ -329,15 +330,15 @@ class _ReferidosTab extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 8),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: const Color(0xFF7AC142).withOpacity(0.1),
+              backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
               child: Text(
                 r.usuarioNombre.isNotEmpty ? r.usuarioNombre[0].toUpperCase() : '?',
-                style: const TextStyle(color: Color(0xFF7AC142), fontWeight: FontWeight.bold),
+                style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
               ),
             ),
             title: Text(r.usuarioNombre, style: const TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text('${r.numeroSocio} · ${r.nivelNombre}'),
-            trailing: Text('${r.puntosAcumulados} pts', style: const TextStyle(color: Color(0xFF7AC142), fontWeight: FontWeight.bold)),
+            trailing: Text('${r.puntosAcumulados} pts', style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
           ),
         );
       },

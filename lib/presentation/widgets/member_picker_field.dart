@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/club_membership.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class MemberPickerField extends StatelessWidget {
   final List<ClubMembership> members;
@@ -164,7 +165,7 @@ class _MemberPickerSheetState extends State<_MemberPickerSheet> {
                         final m = _filtered[index];
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: const Color(0xFF7AC142),
+                            backgroundColor: AppTheme.primaryColor,
                             child: Text(
                               m.usuarioNombre.isNotEmpty
                                   ? m.usuarioNombre[0].toUpperCase()
@@ -179,7 +180,7 @@ class _MemberPickerSheetState extends State<_MemberPickerSheet> {
                               Text('Socio: ${m.numeroSocio} · ${m.nivelNombre}'),
                           trailing: widget.initial?.id == m.id
                               ? const Icon(Icons.check_circle,
-                                  color: Color(0xFF7AC142))
+                                  color: AppTheme.primaryColor)
                               : null,
                           onTap: () => Navigator.of(context).pop(m),
                         );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 /// Muestra la foto del producto con [imageUrl] o un placeholder de batido genérico si es null/vacío.
 class ProductImage extends StatelessWidget {
@@ -85,13 +86,13 @@ class _PlaceholderBatido extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: const Color(0xFF7AC142).withOpacity(0.15),
+        color: AppTheme.primaryColor.withOpacity(0.15),
         borderRadius: borderRadius,
       ),
       child: Icon(
         LucideIcons.cupSoda,
         size: width * 0.45,
-        color: const Color(0xFF7AC142).withOpacity(0.7),
+        color: AppTheme.primaryColor.withOpacity(0.7),
       ),
     );
   }

@@ -8,6 +8,7 @@ import '../../../data/datasources/remote/club_remote_data_source.dart';
 import 'club/host_club_edit_screen.dart';
 
 import 'package:intl/intl.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostProfileScreen extends StatefulWidget {
   const HostProfileScreen({super.key});
@@ -104,7 +105,7 @@ class _HostProfileScreenState extends State<HostProfileScreen> {
                                   return Theme(
                                     data: Theme.of(context).copyWith(
                                       colorScheme: const ColorScheme.light(
-                                        primary: Color(0xFF7AC142),
+                                        primary: AppTheme.primaryColor,
                                       ),
                                     ),
                                     child: child!,
@@ -217,10 +218,10 @@ class _HostProfileScreenState extends State<HostProfileScreen> {
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF7AC142), 
+                    color: AppTheme.primaryColor, 
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
-                        BoxShadow(color: const Color(0xFF7AC142).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 5))
+                        BoxShadow(color: AppTheme.primaryColor.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 5))
                     ],
                   ),
                   child: Row(
@@ -230,7 +231,7 @@ class _HostProfileScreenState extends State<HostProfileScreen> {
                           backgroundColor: Colors.white,
                           child: Text(
                             user.name.isNotEmpty ? user.name.substring(0, 2).toUpperCase() : 'AN',
-                            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF7AC142)),
+                            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -377,7 +378,7 @@ class _OptionTile extends StatelessWidget {
          borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
-        leading: Icon(icon, color: const Color(0xFF7AC142)), // Icono verde
+        leading: Icon(icon, color: AppTheme.primaryColor), // Icono verde
         title: Text(title, style: const TextStyle(color: Color(0xFF333333), fontWeight: FontWeight.w500)),
         trailing: Icon(Icons.chevron_right, color: Colors.grey[300]),
         onTap: onTap,

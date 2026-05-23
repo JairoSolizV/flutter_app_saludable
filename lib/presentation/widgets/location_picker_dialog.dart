@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class LocationPickerDialog extends StatefulWidget {
   final LatLng? initialLocation;
@@ -83,7 +84,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Seleccionar Ubicación', style: TextStyle(color: Colors.white)),
-        backgroundColor: const Color(0xFF7AC142),
+        backgroundColor: AppTheme.primaryColor,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, _selectedLocation),
@@ -116,7 +117,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                     child: const Icon(
                       Icons.location_pin,
                       size: 40,
-                      color: Color(0xFF7AC142),
+                      color: AppTheme.primaryColor,
                     ),
                   ),
                 ],
@@ -128,7 +129,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
             right: 16,
             child: FloatingActionButton.extended(
               onPressed: _loading ? null : _getCurrentLocation,
-              backgroundColor: const Color(0xFF7AC142),
+              backgroundColor: AppTheme.primaryColor,
               icon: _loading
                   ? const SizedBox(
                       width: 20,

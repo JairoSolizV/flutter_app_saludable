@@ -6,6 +6,7 @@ import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../providers/user_provider.dart';
 import '../pre_socios/host_pre_socios_list_screen.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostMembersListScreen extends StatefulWidget {
   const HostMembersListScreen({super.key});
@@ -87,8 +88,8 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
         elevation: 0,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: const Color(0xFF7AC142),
-          indicatorColor: const Color(0xFF7AC142),
+          labelColor: AppTheme.primaryColor,
+          indicatorColor: AppTheme.primaryColor,
           unselectedLabelColor: Colors.grey,
           tabs: const [
             Tab(icon: Icon(Icons.people), text: 'Socios'),
@@ -108,7 +109,7 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF7AC142)));
+      return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
     }
 
     if (_error != null) {
@@ -135,7 +136,7 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
                   _loadMembers();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7AC142), 
+                  backgroundColor: AppTheme.primaryColor, 
                   foregroundColor: Colors.white
                 ),
                 child: const Text("Reintentar"),
@@ -168,7 +169,7 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
 
     return RefreshIndicator(
       onRefresh: _loadMembers,
-      color: const Color(0xFF7AC142),
+      color: AppTheme.primaryColor,
       child: Column(
         children: [
           // Encabezado con conteo
@@ -181,7 +182,7 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
               children: [
                 Row(
                   children: [
-                    const Icon(LucideIcons.users, color: Color(0xFF7AC142), size: 20),
+                    const Icon(LucideIcons.users, color: AppTheme.primaryColor, size: 20),
                     const SizedBox(width: 8),
                     Text(
                       'Total de Socios: ${_members.length}',
@@ -196,7 +197,7 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF7AC142).withOpacity(0.1),
+                    color: AppTheme.primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -204,7 +205,7 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF7AC142),
+                      color: AppTheme.primaryColor,
                     ),
                   ),
                 ),
@@ -288,10 +289,10 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
         child: ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           leading: CircleAvatar(
-            backgroundColor: const Color(0xFF7AC142).withOpacity(0.1),
+            backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
             child: Text(
               member.usuarioNombre.isNotEmpty ? member.usuarioNombre[0].toUpperCase() : '?',
-              style: const TextStyle(color: Color(0xFF7AC142), fontWeight: FontWeight.bold),
+              style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
             ),
           ),
           title: Text(
@@ -340,7 +341,7 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
-                  color: Color(0xFF7AC142),
+                  color: AppTheme.primaryColor,
                 ),
               ),
             ],

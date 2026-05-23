@@ -6,6 +6,7 @@ import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../../presentation/widgets/member_picker_field.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostMemberRegistrationScreen extends StatefulWidget {
   final String qrPayload;
@@ -71,7 +72,7 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
     return Scaffold(
       appBar: AppBar(
         title: const Text('Registrar Nuevo Socio'),
-        backgroundColor: const Color(0xFF7AC142),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -119,7 +120,7 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
                   ]),
                 ),
               if (_isLoadingMembers)
-                const LinearProgressIndicator(color: Color(0xFF7AC142))
+                const LinearProgressIndicator(color: AppTheme.primaryColor)
               else
                 MemberPickerField(
                   members: _members,
@@ -147,7 +148,7 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7AC142),
+                    backgroundColor: AppTheme.primaryColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: _isLoading 

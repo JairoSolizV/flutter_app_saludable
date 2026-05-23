@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../../providers/user_provider.dart';
 import 'package:flutter_app_saludable/core/utils/validators.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class BasicUserEditProfileScreen extends StatefulWidget {
   const BasicUserEditProfileScreen({super.key});
@@ -66,7 +67,7 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF7AC142), 
+              primary: AppTheme.primaryColor, 
             ),
           ),
           child: child!,
@@ -145,7 +146,7 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
                 children: [
                   CircleAvatar(
                     radius: 50,
-                    backgroundColor: const Color(0xFF7AC142),
+                    backgroundColor: AppTheme.primaryColor,
                     child: Text(
                       _nameController.text.isNotEmpty ? _nameController.text.substring(0, 1).toUpperCase() : 'U',
                       style: const TextStyle(fontSize: 40, color: Colors.white),
@@ -166,7 +167,7 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
                 ],
               ),
               const SizedBox(height: 10),
-              const Text("Cambiar foto de perfil", style: TextStyle(color: Color(0xFF7AC142), fontSize: 12)),
+              const Text("Cambiar foto de perfil", style: TextStyle(color: AppTheme.primaryColor, fontSize: 12)),
               
               const SizedBox(height: 30),
 
@@ -218,7 +219,7 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7AC142),
+                    backgroundColor: AppTheme.primaryColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
                 ),

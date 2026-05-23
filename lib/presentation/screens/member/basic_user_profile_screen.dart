@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class BasicUserProfileScreen extends StatefulWidget {
   const BasicUserProfileScreen({super.key});
@@ -71,7 +72,7 @@ class _BasicUserProfileScreenState extends State<BasicUserProfileScreen> {
               children: [
                 CircleAvatar(
                   radius: 35,
-                  backgroundColor: const Color(0xFF7AC142),
+                  backgroundColor: AppTheme.primaryColor,
                   child: Text(
                     user.name.substring(0, 2).toUpperCase(),
                     style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal, color: Colors.white),
@@ -121,11 +122,11 @@ class _BasicUserProfileScreenState extends State<BasicUserProfileScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: const Color(0xFF7AC142),
+                color: AppTheme.primaryColor,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF7AC142).withOpacity(0.3),
+                    color: AppTheme.primaryColor.withOpacity(0.3),
                     blurRadius: 15,
                     offset: const Offset(0, 5),
                   ),
@@ -162,7 +163,7 @@ class _BasicUserProfileScreenState extends State<BasicUserProfileScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                        foregroundColor: const Color(0xFF7AC142),
+                        foregroundColor: AppTheme.primaryColor,
                       ),
                       child: const Text("Solicitar Registro", style: TextStyle(fontWeight: FontWeight.bold)),
                     ),

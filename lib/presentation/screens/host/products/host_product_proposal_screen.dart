@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../data/datasources/remote/product_remote_data_source.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../widgets/product_image.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostProductProposalScreen extends StatefulWidget {
   const HostProductProposalScreen({super.key});
@@ -128,7 +129,7 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Proponer Producto del Club'),
-        backgroundColor: const Color(0xFF7AC142),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -263,7 +264,7 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
                     _isSubmitting ? 'Enviando...' : 'Enviar a Revisión',
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7AC142),
+                    backgroundColor: AppTheme.primaryColor,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -41,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF7AC142), Color(0xFF5A9E27)],
+            colors: AppTheme.primaryGradient,
           ),
         ),
         child: Center(
@@ -165,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 }
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF7AC142),
+                                backgroundColor: AppTheme.primaryColor,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                               ),
                               child: auth.isLoading 
@@ -178,7 +179,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 16),
                       TextButton(
                         onPressed: () => context.push('/register'),
-                        child: const Text('¿No tienes cuenta? Regístrate aquí', style: TextStyle(color: Color(0xFF7AC142))),
+                        child: const Text('¿No tienes cuenta? Regístrate aquí', style: TextStyle(color: AppTheme.primaryColor)),
                       )
                     ],
                   ),

@@ -9,6 +9,7 @@ import '../../../domain/entities/order_entity.dart';
 import '../../../domain/entities/club_membership.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class MemberCreateOrderScreen extends StatefulWidget {
   const MemberCreateOrderScreen({super.key});
@@ -315,7 +316,7 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                         if (qty > 0)
                           Text('$qty', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         IconButton(
-                          icon: const Icon(Icons.add_circle_outline, color: Color(0xFF7AC142)),
+                          icon: const Icon(Icons.add_circle_outline, color: AppTheme.primaryColor),
                           onPressed: () {
                             setState(() {
                               _cart[product.id] = qty + 1;
@@ -386,7 +387,7 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Total de items:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text('$totalItems', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF7AC142))),
+                      Text('$totalItems', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -481,7 +482,7 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                         }
                       } : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF7AC142),
+                        backgroundColor: AppTheme.primaryColor,
                         disabledBackgroundColor: Colors.grey[300],
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),

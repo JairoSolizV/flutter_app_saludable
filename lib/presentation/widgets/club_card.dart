@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../data/datasources/remote/club_remote_data_source.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class ClubCard extends StatelessWidget {
   final Club club;
@@ -32,12 +33,12 @@ class ClubCard extends StatelessWidget {
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF7AC142).withOpacity(0.1),
+                  color: AppTheme.primaryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: const Icon(
                   LucideIcons.store,
-                  color: Color(0xFF7AC142),
+                  color: AppTheme.primaryColor,
                   size: 30,
                 ),
               ),

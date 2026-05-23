@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'dart:convert';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostQrDisplayScreen extends StatelessWidget {
   final int clubId;
@@ -69,7 +70,7 @@ class HostQrDisplayScreen extends StatelessWidget {
                   data: qrString,
                   version: QrVersions.auto,
                   size: 250.0,
-                  foregroundColor: const Color(0xFF7AC142),
+                  foregroundColor: AppTheme.primaryColor,
                 ),
               ),
               
@@ -83,9 +84,9 @@ class HostQrDisplayScreen extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: const [
-                    Icon(LucideIcons.scanLine, color: Color(0xFF7AC142)),
+                    Icon(LucideIcons.scanLine, color: AppTheme.primaryColor),
                     SizedBox(width: 10),
-                    Text("Muestra este QR a tus socios", style: TextStyle(color: Color(0xFF7AC142), fontWeight: FontWeight.bold)),
+                    Text("Muestra este QR a tus socios", style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
                   ],
                 ),
               )

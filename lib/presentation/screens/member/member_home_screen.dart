@@ -7,6 +7,7 @@ import '../../widgets/loyalty_card.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../domain/entities/attendance.dart';
 import '../../../domain/entities/club_membership.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class MemberHomeScreen extends StatefulWidget {
   const MemberHomeScreen({super.key});
@@ -77,7 +78,7 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
             slivers: [
               // Header Flotante
               SliverAppBar(
-                backgroundColor: const Color(0xFF7AC142),
+                backgroundColor: AppTheme.primaryColor,
                 expandedHeight: 120.0,
                 floating: false,
                 pinned: true,
@@ -96,7 +97,7 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [Color(0xFF7AC142), Color(0xFF6BB032)],
+                        colors: AppTheme.primaryGradient,
                       ),
                     ),
                   ),
@@ -109,7 +110,7 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
                   const SizedBox(width: 8),
                   CircleAvatar(
                     backgroundColor: Colors.white,
-                    child: Text(initials, style: const TextStyle(color: Color(0xFF7AC142))),
+                    child: Text(initials, style: const TextStyle(color: AppTheme.primaryColor)),
                   ),
                   const SizedBox(width: 16),
                 ],
@@ -160,7 +161,7 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF7AC142),
+                              color: AppTheme.primaryColor,
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
@@ -219,7 +220,7 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFF7AC142), width: 2),
+                            border: Border.all(color: AppTheme.primaryColor, width: 2),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withOpacity(0.1),
@@ -233,10 +234,10 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF7AC142).withOpacity(0.1),
+                                  color: AppTheme.primaryColor.withOpacity(0.1),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(LucideIcons.calendar, color: Color(0xFF7AC142)),
+                                child: const Icon(LucideIcons.calendar, color: AppTheme.primaryColor),
                               ),
                               const SizedBox(width: 16),
                               const Expanded(
@@ -261,7 +262,7 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
                                   ],
                                 ),
                               ),
-                              const Icon(Icons.arrow_forward, color: Color(0xFF7AC142)),
+                              const Icon(Icons.arrow_forward, color: AppTheme.primaryColor),
                             ],
                           ),
                         ),
@@ -301,7 +302,7 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF7AC142),
+                                  color: AppTheme.primaryColor,
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(LucideIcons.shoppingBag, color: Colors.white),

@@ -7,6 +7,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../providers/user_provider.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../data/datasources/remote/qr_remote_data_source.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostScanScreen extends StatefulWidget {
   final int? preSocioId;
@@ -365,7 +366,7 @@ class _HostScanScreenState extends State<HostScanScreen> {
               width: 250,
               height: 250,
               decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFF7AC142), width: 3),
+                border: Border.all(color: AppTheme.primaryColor, width: 3),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Stack(

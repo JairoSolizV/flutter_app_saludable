@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import '../../../data/datasources/remote/evento_remote_data_source.dart';
 import '../../../domain/entities/evento.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class EventsListScreen extends StatefulWidget {
   const EventsListScreen({super.key});
@@ -91,7 +92,7 @@ class _EventsListScreenState extends State<EventsListScreen> {
           'Eventos Programados',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: const Color(0xFF7AC142),
+        backgroundColor: AppTheme.primaryColor,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
       ),
@@ -138,7 +139,7 @@ class _EventsListScreenState extends State<EventsListScreen> {
               icon: const Icon(LucideIcons.refreshCw),
               label: const Text('Reintentar'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7AC142),
+                backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -184,7 +185,7 @@ class _EventsListScreenState extends State<EventsListScreen> {
   Widget _buildEventosList() {
     return RefreshIndicator(
       onRefresh: _loadEventos,
-      color: const Color(0xFF7AC142),
+      color: AppTheme.primaryColor,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: _eventosFuturos.length,
@@ -233,12 +234,12 @@ class _EventsListScreenState extends State<EventsListScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF7AC142).withOpacity(0.1),
+                      color: AppTheme.primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
                       LucideIcons.calendar,
-                      color: Color(0xFF7AC142),
+                      color: AppTheme.primaryColor,
                       size: 24,
                     ),
                   ),
@@ -348,12 +349,12 @@ class _EventsListScreenState extends State<EventsListScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF7AC142).withOpacity(0.1),
+                color: AppTheme.primaryColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(
                 LucideIcons.calendar,
-                color: Color(0xFF7AC142),
+                color: AppTheme.primaryColor,
                 size: 24,
               ),
             ),
@@ -413,7 +414,7 @@ class _EventsListScreenState extends State<EventsListScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text(
               'Cerrar',
-              style: TextStyle(color: Color(0xFF7AC142)),
+              style: TextStyle(color: AppTheme.primaryColor),
             ),
           ),
         ],

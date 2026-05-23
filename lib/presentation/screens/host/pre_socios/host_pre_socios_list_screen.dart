@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
 import '../../../../domain/entities/pre_socio.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostPreSociosListScreen extends StatefulWidget {
   const HostPreSociosListScreen({super.key});
@@ -45,12 +46,12 @@ class _HostPreSociosListScreenState extends State<HostPreSociosListScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF7AC142)))
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
           : _error != null
               ? _buildError()
               : RefreshIndicator(
                   onRefresh: _load,
-                  color: const Color(0xFF7AC142),
+                  color: AppTheme.primaryColor,
                   child: _preSocios.isEmpty ? _buildEmpty() : _buildList(),
                 ),
       floatingActionButton: _clubId != null
@@ -59,7 +60,7 @@ class _HostPreSociosListScreenState extends State<HostPreSociosListScreen> {
                 await context.push('/host/pre-socios/new', extra: {'clubId': _clubId!});
                 _load();
               },
-              backgroundColor: const Color(0xFF7AC142),
+              backgroundColor: AppTheme.primaryColor,
               icon: const Icon(Icons.person_add, color: Colors.white),
               label: const Text('Nuevo PreSocio', style: TextStyle(color: Colors.white)),
             )
@@ -78,7 +79,7 @@ class _HostPreSociosListScreenState extends State<HostPreSociosListScreen> {
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: _load,
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7AC142), foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white),
             child: const Text('Reintentar'),
           ),
         ],
@@ -149,10 +150,10 @@ class _PreSocioCard extends StatelessWidget {
               Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: isConvertido ? Colors.grey.shade200 : const Color(0xFF7AC142).withOpacity(0.1),
+                    backgroundColor: isConvertido ? Colors.grey.shade200 : AppTheme.primaryColor.withOpacity(0.1),
                     child: Text(
                       prospecto.nombre.isNotEmpty ? prospecto.nombre[0].toUpperCase() : '?',
-                      style: TextStyle(color: isConvertido ? Colors.grey : const Color(0xFF7AC142), fontWeight: FontWeight.bold),
+                      style: TextStyle(color: isConvertido ? Colors.grey : AppTheme.primaryColor, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -187,7 +188,7 @@ class _PreSocioCard extends StatelessWidget {
                       'Misiones: ${prospecto.misiones.where((m) => m.completada).length}/${prospecto.misiones.length}',
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
-                    Text('${(prospecto.progresoGlobal * 100).toInt()}%', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF7AC142))),
+                    Text('${(prospecto.progresoGlobal * 100).toInt()}%', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -196,7 +197,7 @@ class _PreSocioCard extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: prospecto.progresoGlobal,
                     backgroundColor: Colors.grey.shade200,
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF7AC142)),
+                    valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                     minHeight: 6,
                   ),
                 ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class LoyaltyCard extends StatelessWidget {
   final int stamps;
@@ -63,13 +64,13 @@ class LoyaltyCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Color(0xFF7AC142).withOpacity(0.1),
+                  color: AppTheme.primaryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   '$stamps/$maxStamps Sellos',
                   style: TextStyle(
-                    color: Color(0xFF7AC142),
+                    color: AppTheme.primaryColor,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                   ),
@@ -93,12 +94,12 @@ class LoyaltyCard extends StatelessWidget {
               final isCompleted = index < stamps;
               return Container(
                 decoration: BoxDecoration(
-                  color: isCompleted ? const Color(0xFF7AC142) : Colors.grey[100],
+                  color: isCompleted ? AppTheme.primaryColor : Colors.grey[100],
                   shape: BoxShape.circle,
                   boxShadow: isCompleted
                       ? [
                           BoxShadow(
-                            color: const Color(0xFF7AC142).withOpacity(0.4),
+                            color: AppTheme.primaryColor.withOpacity(0.4),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           )

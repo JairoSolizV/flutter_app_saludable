@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 
 import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../data/datasources/remote/report_remote_data_source.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 /// Pantalla minimalista: filtros por rango y descarga PDF / Excel.
 class HostReportsScreen extends StatefulWidget {
@@ -21,7 +22,7 @@ class HostReportsScreen extends StatefulWidget {
 }
 
 class _HostReportsScreenState extends State<HostReportsScreen> {
-  static const Color _green = Color(0xFF7AC142);
+  static const Color _green = AppTheme.primaryColor;
   static const Color _greenDark = Color(0xFF5A9A32);
 
   DateTime? _inicio;
@@ -347,8 +348,8 @@ class _SelectorFecha extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: tieneValor ? const Color(0xFF7AC142).withValues(alpha: 0.5) : Colors.grey.shade300),
-            color: tieneValor ? const Color(0xFF7AC142).withValues(alpha: 0.06) : Colors.grey.shade50,
+            border: Border.all(color: tieneValor ? AppTheme.primaryColor.withValues(alpha: 0.5) : Colors.grey.shade300),
+            color: tieneValor ? AppTheme.primaryColor.withValues(alpha: 0.06) : Colors.grey.shade50,
           ),
           child: Row(
             children: [
@@ -404,7 +405,7 @@ class _BotonDescarga extends StatelessWidget {
           decoration: BoxDecoration(
             color: colorFondo,
             borderRadius: BorderRadius.circular(20),
-            border: bordeVerde ? Border.all(color: const Color(0xFF7AC142), width: 2) : null,
+            border: bordeVerde ? Border.all(color: AppTheme.primaryColor, width: 2) : null,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: bordeVerde ? 0.04 : 0.12),
@@ -418,7 +419,7 @@ class _BotonDescarga extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: bordeVerde ? const Color(0xFF7AC142).withValues(alpha: 0.12) : Colors.white24,
+                  color: bordeVerde ? AppTheme.primaryColor.withValues(alpha: 0.12) : Colors.white24,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(icono, size: 28, color: bordeVerde ? const Color(0xFF5A9A32) : Colors.white),

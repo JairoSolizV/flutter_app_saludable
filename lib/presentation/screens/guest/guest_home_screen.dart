@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class GuestHomeScreen extends StatelessWidget {
   const GuestHomeScreen({super.key});
@@ -70,7 +71,7 @@ class GuestHomeScreen extends StatelessWidget {
                       title: 'Crear Cuenta',
                       icon: LucideIcons.userPlus,
                       color: const Color(0xFFE8F5E9), // Light green
-                      iconColor: const Color(0xFF7AC142), // Primary green
+                      iconColor: AppTheme.primaryColor, // Primary green
                       onTap: () => context.go('/register'), 
                     ),
                   ),

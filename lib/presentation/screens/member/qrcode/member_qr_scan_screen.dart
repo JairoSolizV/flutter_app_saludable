@@ -11,6 +11,7 @@ import '../../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../providers/user_provider.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class MemberQrScanScreen extends StatefulWidget {
   const MemberQrScanScreen({super.key});
@@ -61,7 +62,7 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7AC142),
+                backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Abrir Configuración'),
@@ -101,7 +102,7 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7AC142),
+                backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Permitir'),
@@ -147,7 +148,7 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7AC142),
+                backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Abrir Configuración'),
@@ -190,7 +191,7 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7AC142),
+                backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Abrir Configuración'),
@@ -227,7 +228,7 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text("Escanear Código QR"),
-        backgroundColor: const Color(0xFF7AC142),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -274,7 +275,7 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
               width: 250,
               height: 250,
               decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFF7AC142), width: 3),
+                border: Border.all(color: AppTheme.primaryColor, width: 3),
                 borderRadius: BorderRadius.circular(20),
               ),
             ),
@@ -284,7 +285,7 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
             Container(
               color: Colors.black54,
               child: const Center(
-                 child: CircularProgressIndicator(color: Color(0xFF7AC142)),
+                 child: CircularProgressIndicator(color: AppTheme.primaryColor),
               ),
             )
         ],
@@ -371,7 +372,7 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
               ElevatedButton(
                 onPressed: () => Navigator.pop(context, true),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7AC142),
+                  backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
                 ),
                 child: const Text('Continuar'),

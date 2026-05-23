@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart'; // Para abrir links
 import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
 import '../../../main.dart'; // Acceso a clubRemoteDataSource
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class GuestClubDetailScreen extends StatefulWidget {
   final Club club;
@@ -77,7 +78,7 @@ class _GuestClubDetailScreenState extends State<GuestClubDetailScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(widget.club.nombreClub),
-        backgroundColor: const Color(0xFF7AC142),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -109,7 +110,7 @@ class _GuestClubDetailScreenState extends State<GuestClubDetailScreen> {
                      children: [
                        const CircleAvatar(
                          radius: 30,
-                         backgroundColor: Color(0xFF7AC142),
+                         backgroundColor: AppTheme.primaryColor,
                          child: Icon(Icons.person, color: Colors.white, size: 30),
                        ),
                        const SizedBox(width: 16),
@@ -131,7 +132,7 @@ class _GuestClubDetailScreenState extends State<GuestClubDetailScreen> {
                    
                    // Info Extra del Anfitrión (Cargada asíncronamente)
                    if (_loading) 
-                      const Center(child: LinearProgressIndicator(color: Color(0xFF7AC142)))
+                      const Center(child: LinearProgressIndicator(color: AppTheme.primaryColor))
                    else if (_anfitrion != null) ...[
                       if (_anfitrion!.telefono.isNotEmpty) ...[
                         _InfoRow(

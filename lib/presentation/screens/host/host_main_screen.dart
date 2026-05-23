@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostMainScreen extends StatelessWidget {
   final Widget child;
@@ -15,7 +16,7 @@ class HostMainScreen extends StatelessWidget {
         type: BottomNavigationBarType.fixed,
         currentIndex: _calculateSelectedIndex(context),
         onTap: (int index) => _onItemTapped(index, context),
-        selectedItemColor: const Color(0xFF7AC142),
+        selectedItemColor: AppTheme.primaryColor,
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(

@@ -7,6 +7,7 @@ import '../../providers/user_provider.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../widgets/schedule_selector.dart';
 import '../../widgets/location_picker_dialog.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class RequestClubScreen extends StatefulWidget {
   const RequestClubScreen({super.key});
@@ -126,7 +127,7 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text("Solicitar mi Club", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF7AC142),
+        backgroundColor: AppTheme.primaryColor,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
       ),
@@ -142,11 +143,11 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFF0F9E8),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF7AC142).withOpacity(0.3)),
+                  border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(LucideIcons.store, color: Color(0xFF7AC142), size: 32),
+                    const Icon(LucideIcons.store, color: AppTheme.primaryColor, size: 32),
                     const SizedBox(width: 16),
                     const Expanded(
                       child: Text(
@@ -232,7 +233,7 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
                   side: BorderSide(
-                    color: _lat == null ? Colors.grey.shade400 : const Color(0xFF7AC142),
+                    color: _lat == null ? Colors.grey.shade400 : AppTheme.primaryColor,
                     width: 2,
                   ),
                 ),
@@ -248,7 +249,7 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle, color: Color(0xFF7AC142), size: 20),
+                      const Icon(Icons.check_circle, color: AppTheme.primaryColor, size: 20),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -269,7 +270,7 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _submitRequest,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7AC142),
+                    backgroundColor: AppTheme.primaryColor,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 2,
@@ -307,7 +308,7 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF7AC142), width: 2),
+          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
         ),
         fillColor: Colors.white,
         filled: true,

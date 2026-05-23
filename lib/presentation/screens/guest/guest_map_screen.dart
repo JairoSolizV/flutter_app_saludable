@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart'; // Import DataSource
 import '../../../main.dart'; // Acceso a global clubRemoteDataSource (temporal, idealmente Provider)
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 
 class GuestMapScreen extends StatefulWidget {
@@ -55,7 +56,7 @@ class _GuestMapScreenState extends State<GuestMapScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Clubes Cercanos'),
-        backgroundColor: const Color(0xFF7AC142),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
       body: FlutterMap(
@@ -83,7 +84,7 @@ class _GuestMapScreenState extends State<GuestMapScreen> {
                   },
                   child: const Icon(
                     Icons.location_on,
-                    color: Color(0xFF7AC142), // Usar color de marca
+                    color: AppTheme.primaryColor, // Usar color de marca
                     size: 45,
                   ),
                 ),
@@ -120,7 +121,7 @@ class _GuestMapScreenState extends State<GuestMapScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                   const Icon(LucideIcons.mapPin, color: Color(0xFF7AC142), size: 18),
+                   const Icon(LucideIcons.mapPin, color: AppTheme.primaryColor, size: 18),
                    const SizedBox(width: 8),
                    Expanded(child: Text(club.direccion, style: const TextStyle(color: Colors.black87))),
                 ],
@@ -144,7 +145,7 @@ class _GuestMapScreenState extends State<GuestMapScreen> {
                     context.push('/club-detail', extra: club);
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7AC142),
+                    backgroundColor: AppTheme.primaryColor,
                     foregroundColor: Colors.white,
                   ),
                   child: const Text('Ver Detalles'),

@@ -8,6 +8,7 @@ import '../../providers/user_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../../data/datasources/remote/qr_remote_data_source.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class MemberProfileScreen extends StatefulWidget {
   const MemberProfileScreen({super.key});
@@ -111,12 +112,12 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
             expandedHeight: 200.0,
             floating: false,
             pinned: true,
-            backgroundColor: const Color(0xFF7AC142),
+            backgroundColor: AppTheme.primaryColor,
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xFF7AC142), Color(0xFF6BB032)],
+                    colors: AppTheme.primaryGradient,
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -131,7 +132,7 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                          backgroundColor: Colors.white,
                          child: Text(
                            user.name.substring(0, 1).toUpperCase(),
-                           style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF7AC142)),
+                           style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
                          ),
                        ),
                        const SizedBox(height: 8),
@@ -198,11 +199,11 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                          children: [
                            const Row(
                              children: [
-                               Icon(LucideIcons.qrCode, color: Color(0xFF7AC142)),
+                               Icon(LucideIcons.qrCode, color: AppTheme.primaryColor),
                                SizedBox(width: 8),
                                Text(
                                  'Código QR de Identificación',
-                                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF7AC142)),
+                                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
                                ),
                              ],
                            ),
@@ -218,7 +219,7 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                              decoration: BoxDecoration(
                                color: Colors.white,
                                borderRadius: BorderRadius.circular(12),
-                               border: Border.all(color: const Color(0xFF7AC142), width: 2),
+                               border: Border.all(color: AppTheme.primaryColor, width: 2),
                              ),
                              child: QrImageView(
                                data: _qrData!,
@@ -373,7 +374,7 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                                   return Theme(
                                     data: Theme.of(context).copyWith(
                                       colorScheme: const ColorScheme.light(
-                                        primary: Color(0xFF7AC142),
+                                        primary: AppTheme.primaryColor,
                                       ),
                                     ),
                                     child: child!,
@@ -478,7 +479,7 @@ class _ProfileCard extends StatelessWidget {
                     Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(color: const Color(0xFFF0F9E8), borderRadius: BorderRadius.circular(12)),
-                        child: Icon(icon, color: const Color(0xFF7AC142)),
+                        child: Icon(icon, color: AppTheme.primaryColor),
                     ),
                     const SizedBox(width: 16),
                     Expanded(

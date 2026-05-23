@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class ScheduleSelector extends StatefulWidget {
   final Function(String) onScheduleChanged;
@@ -144,7 +145,7 @@ class _ScheduleSelectorState extends State<ScheduleSelector> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: Color(0xFF7AC142)),
+            colorScheme: const ColorScheme.light(primary: AppTheme.primaryColor),
           ),
           child: child!,
         );
@@ -185,8 +186,8 @@ class _ScheduleSelectorState extends State<ScheduleSelector> {
                   _updateSchedule();
                 });
               },
-              selectedColor: const Color(0xFF7AC142).withOpacity(0.3),
-              checkmarkColor: const Color(0xFF7AC142),
+              selectedColor: AppTheme.primaryColor.withOpacity(0.3),
+              checkmarkColor: AppTheme.primaryColor,
             );
           }).toList(),
         ),
@@ -209,7 +210,7 @@ class _ScheduleSelectorState extends State<ScheduleSelector> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.access_time, size: 20, color: Color(0xFF7AC142)),
+                      const Icon(Icons.access_time, size: 20, color: AppTheme.primaryColor),
                       const SizedBox(width: 8),
                       Text(
                         '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}',
@@ -235,7 +236,7 @@ class _ScheduleSelectorState extends State<ScheduleSelector> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.access_time, size: 20, color: Color(0xFF7AC142)),
+                      const Icon(Icons.access_time, size: 20, color: AppTheme.primaryColor),
                       const SizedBox(width: 8),
                       Text(
                         '${_endTime.hour.toString().padLeft(2, '0')}:${_endTime.minute.toString().padLeft(2, '0')}',

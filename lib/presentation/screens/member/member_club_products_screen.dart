@@ -10,6 +10,7 @@ import '../../../domain/entities/order_entity.dart';
 import '../../../domain/entities/club_membership.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../widgets/product_image.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class MemberClubProductsScreen extends StatefulWidget {
   final int clubId;
@@ -260,7 +261,7 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
       return Scaffold(
         appBar: AppBar(
           title: Text(widget.clubNombre),
-          backgroundColor: const Color(0xFF7AC142),
+          backgroundColor: AppTheme.primaryColor,
           foregroundColor: Colors.white,
         ),
         body: const Center(child: CircularProgressIndicator()),
@@ -271,7 +272,7 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
       return Scaffold(
         appBar: AppBar(
           title: Text(widget.clubNombre),
-          backgroundColor: const Color(0xFF7AC142),
+          backgroundColor: AppTheme.primaryColor,
           foregroundColor: Colors.white,
         ),
         body: const Center(
@@ -299,7 +300,7 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF7AC142),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
       body: Column(
@@ -440,13 +441,13 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
                                           icon: Icon(
                                             hasNote ? LucideIcons.fileText : LucideIcons.fileText,
                                             size: 16,
-                                            color: hasNote ? const Color(0xFF7AC142) : Colors.grey,
+                                            color: hasNote ? AppTheme.primaryColor : Colors.grey,
                                           ),
                                           label: Text(
                                             hasNote ? 'Nota' : 'Agregar nota',
                                             style: TextStyle(
                                               fontSize: 12,
-                                              color: hasNote ? const Color(0xFF7AC142) : Colors.grey,
+                                              color: hasNote ? AppTheme.primaryColor : Colors.grey,
                                             ),
                                           ),
                                           style: OutlinedButton.styleFrom(
@@ -493,7 +494,7 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
                               setState(() => _tipoConsumo = 'EN_LUGAR');
                             }
                           },
-                          selectedColor: const Color(0xFF7AC142),
+                          selectedColor: AppTheme.primaryColor,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -506,7 +507,7 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
                               setState(() => _tipoConsumo = 'PARA_RECOGER');
                             }
                           },
-                          selectedColor: const Color(0xFF7AC142),
+                          selectedColor: AppTheme.primaryColor,
                         ),
                       ),
                     ],
@@ -550,7 +551,7 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _isCreatingOrder 
                             ? Colors.grey[400] 
-                            : const Color(0xFF7AC142),
+                            : AppTheme.primaryColor,
                         foregroundColor: Colors.white,
                         disabledBackgroundColor: Colors.grey[400],
                         disabledForegroundColor: Colors.white,

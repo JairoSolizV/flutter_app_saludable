@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostMisionCreateScreen extends StatefulWidget {
   final int preSocioId;
@@ -71,7 +72,7 @@ class _HostMisionCreateScreenState extends State<HostMisionCreateScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nueva Misión'),
-        backgroundColor: const Color(0xFF7AC142),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -148,7 +149,7 @@ class _HostMisionCreateScreenState extends State<HostMisionCreateScreen> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7AC142),
+                    backgroundColor: AppTheme.primaryColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: _isLoading

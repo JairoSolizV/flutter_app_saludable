@@ -8,6 +8,7 @@ import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../providers/user_provider.dart';
 import '../../widgets/club_card.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class ClubSelectorScreen extends StatefulWidget {
   const ClubSelectorScreen({super.key});
@@ -109,7 +110,7 @@ class _ClubSelectorScreenState extends State<ClubSelectorScreen> with SingleTick
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Seleccionar Club', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF7AC142),
+        backgroundColor: AppTheme.primaryColor,
         iconTheme: const IconThemeData(color: Colors.white),
         bottom: TabBar(
           controller: _tabController,
@@ -124,7 +125,7 @@ class _ClubSelectorScreenState extends State<ClubSelectorScreen> with SingleTick
         ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF7AC142)))
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
           : _error != null
               ? Center(
                   child: Column(
@@ -136,7 +137,7 @@ class _ClubSelectorScreenState extends State<ClubSelectorScreen> with SingleTick
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _loadClubs,
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7AC142)),
+                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
                         child: const Text('Reintentar'),
                       ),
                     ],

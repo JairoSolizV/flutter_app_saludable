@@ -5,6 +5,7 @@ import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../../presentation/widgets/member_picker_field.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostPreSocioCreateScreen extends StatefulWidget {
   final int clubId;
@@ -78,7 +79,7 @@ class _HostPreSocioCreateScreenState extends State<HostPreSocioCreateScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nuevo Pre-Socio'),
-        backgroundColor: const Color(0xFF7AC142),
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -112,7 +113,7 @@ class _HostPreSocioCreateScreenState extends State<HostPreSocioCreateScreen> {
               const Text('Referido por (Opcional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
               _isLoadingMembers
-                  ? const LinearProgressIndicator(color: Color(0xFF7AC142))
+                  ? const LinearProgressIndicator(color: AppTheme.primaryColor)
                   : MemberPickerField(
                       members: _members,
                       selected: _referente,
@@ -125,7 +126,7 @@ class _HostPreSocioCreateScreenState extends State<HostPreSocioCreateScreen> {
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7AC142),
+                    backgroundColor: AppTheme.primaryColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: _isSubmitting

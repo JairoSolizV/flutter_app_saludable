@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../data/datasources/remote/order_remote_data_source.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostDashboardScreen extends StatefulWidget {
   const HostDashboardScreen({super.key});
@@ -122,7 +123,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [Color(0xFF7AC142), Color(0xFF6BB032)],
+                      colors: AppTheme.primaryGradient,
                     ),
                   ),
                   child: SafeArea(
@@ -165,7 +166,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                                        crossAxisAlignment: CrossAxisAlignment.start,
                                        children: const [
                                            Text('Estado del Club', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                                           Text('Activo y Verificado', style: TextStyle(color: Color(0xFF7AC142), fontWeight: FontWeight.bold)),
+                                           Text('Activo y Verificado', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
                                        ],
                                    ),
                                    Container(
@@ -204,12 +205,12 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                          ),
                          child: Column(
                              children: [
-                                 const Text('ESCANEAR QR DE SOCIO', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF7AC142))),
+                                 const Text('ESCANEAR QR DE SOCIO', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
                                  const SizedBox(height: 16),
                                  Container(
                                      width: 100, height: 100,
                                      decoration: BoxDecoration(
-                                         border: Border.all(color: const Color(0xFF7AC142), width: 4),
+                                         border: Border.all(color: AppTheme.primaryColor, width: 4),
                                          borderRadius: BorderRadius.circular(16)
                                      ),
                                      child: const Center(child: Icon(LucideIcons.scanLine, size: 50, color: Color(0xFF333333))),
@@ -232,7 +233,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                      child: Container(
                          padding: const EdgeInsets.all(24),
                          decoration: BoxDecoration(
-                             color: const Color(0xFF7AC142),
+                             color: AppTheme.primaryColor,
                              borderRadius: BorderRadius.circular(24),
                              boxShadow: [
                                  BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 5))
@@ -243,7 +244,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                              Container(
                                padding: const EdgeInsets.all(12),
                                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-                               child: const Icon(LucideIcons.qrCode, color: Color(0xFF7AC142), size: 32),
+                               child: const Icon(LucideIcons.qrCode, color: AppTheme.primaryColor, size: 32),
                              ),
                              const SizedBox(width: 20),
                              Expanded(
@@ -398,10 +399,10 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                            Container(
                              padding: const EdgeInsets.all(12),
                              decoration: BoxDecoration(
-                               color: const Color(0xFF7AC142).withOpacity(0.1),
+                               color: AppTheme.primaryColor.withOpacity(0.1),
                                borderRadius: BorderRadius.circular(12),
                              ),
-                             child: const Icon(LucideIcons.calendar, color: Color(0xFF7AC142), size: 30),
+                             child: const Icon(LucideIcons.calendar, color: AppTheme.primaryColor, size: 30),
                            ),
                            const SizedBox(width: 16),
                            const Expanded(

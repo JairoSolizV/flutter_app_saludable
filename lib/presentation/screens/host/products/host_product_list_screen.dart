@@ -6,6 +6,7 @@ import '../../../providers/product_provider.dart';
 import '../../../providers/user_provider.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../widgets/product_image.dart';
+import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostProductListScreen extends StatefulWidget {
   const HostProductListScreen({super.key});
@@ -77,9 +78,9 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
           foregroundColor: Colors.black,
           elevation: 0,
           bottom: const TabBar(
-            labelColor: Color(0xFF7AC142),
+            labelColor: AppTheme.primaryColor,
             unselectedLabelColor: Colors.grey,
-            indicatorColor: Color(0xFF7AC142),
+            indicatorColor: AppTheme.primaryColor,
             tabs: [
               Tab(text: 'Globales'),
               Tab(text: 'Propios'),
@@ -208,7 +209,7 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                       const SizedBox(height: 4),
                       Text(
                         'Puntos Volumen: ${product.puntosValor}',
-                        style: const TextStyle(fontWeight: FontWeight.w500, color: Color(0xFF7AC142)),
+                        style: const TextStyle(fontWeight: FontWeight.w500, color: AppTheme.primaryColor),
                       ),
                       if (!isGlobal && product.estadoAprobacion != 'APROBADO') 
                         Container(
@@ -230,7 +231,7 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                     ],
                   ),
                   trailing: Switch(
-                    activeThumbColor: const Color(0xFF7AC142),
+                    activeThumbColor: AppTheme.primaryColor,
                     value: product.available && product.estadoAprobacion == 'APROBADO',
                     onChanged: product.estadoAprobacion == 'APROBADO' ? (bool value) {
                       provider.toggleAvailability(_clubId!, product.id, _hubId!);
@@ -254,7 +255,7 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
             right: 16,
             child: FloatingActionButton.extended(
               heroTag: 'addProductFab',
-              backgroundColor: const Color(0xFF7AC142),
+              backgroundColor: AppTheme.primaryColor,
               icon: const Icon(Icons.add, color: Colors.white),
               label: const Text('Nuevo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               onPressed: () {
