@@ -337,7 +337,10 @@ class _ReferidosTab extends StatelessWidget {
               ),
             ),
             title: Text(r.usuarioNombre, style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text('${r.numeroSocio} · ${r.nivelNombre}'),
+            subtitle: Text(
+              '${r.numeroSocio} · ${r.nivelNombre}' +
+              (r.clubNombre.isNotEmpty ? ' · ${r.clubNombre}' : ''),
+            ),
             trailing: Text('${r.puntosAcumulados} pts', style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
           ),
         );
