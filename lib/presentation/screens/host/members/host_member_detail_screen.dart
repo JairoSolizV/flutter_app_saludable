@@ -192,7 +192,12 @@ class _HostMemberDetailScreenState extends State<HostMemberDetailScreen>
               _loadPurchases();
             },
           ),
-          _ReferidosTab(loading: _loadingReferidos, referidos: _referidos),
+          _ReferidosTab(
+            loading: _loadingReferidos,
+            referidos: _referidos,
+            membresiaId: widget.membresiaId,
+            memberName: widget.memberName.isNotEmpty ? widget.memberName : 'Socio',
+          ),
               ],
             ),
           ),
@@ -312,39 +317,92 @@ class _ComprasTab extends StatelessWidget {
 class _ReferidosTab extends StatelessWidget {
   final bool loading;
   final List<ClubMembership> referidos;
+  final int membresiaId;
+  final String memberName;
 
-  const _ReferidosTab({required this.loading, required this.referidos});
+  const _ReferidosTab({
+    required this.loading,
+    required this.referidos,
+    required this.membresiaId,
+    required this.memberName,
+  });
 
   @override
   Widget build(BuildContext context) {
     if (loading) return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
-    if (referidos.isEmpty) {
-      return const Center(child: Text('Este socio aún no ha referido a nadie', style: TextStyle(color: Colors.grey)));
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: referidos.length,
-      itemBuilder: (_, i) {
-        final r = referidos[i];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-              child: Text(
-                r.usuarioNombre.isNotEmpty ? r.usuarioNombre[0].toUpperCase() : '?',
-                style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
+    
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                context.push(
+                  '/host/members/$membresiaId/referral-tree',
+                  extra: {'memberName': memberName},
+                );
+              },
+              icon: const Icon(LucideIcons.users, size: 18),
+              label: const Text('Ver árbol genealógico'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                elevation: 0,
               ),
             ),
-            title: Text(r.usuarioNombre, style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text(
-              '${r.numeroSocio} · ${r.nivelNombre}' +
-              (r.clubNombre.isNotEmpty ? ' · ${r.clubNombre}' : ''),
-            ),
-            trailing: Text('${r.puntosAcumulados} pts', style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
           ),
-        );
-      },
+        ),
+        Expanded(
+          child: referidos.isEmpty
+              ? const Center(child: Text('Este socio aún no ha referido a nadie', style: TextStyle(color: Colors.grey)))
+              : ListView.builder(
+                  padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+                  itemCount: referidos.length,
+                  itemBuilder: (_, i) {
+                    final r = referidos[i];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      child: ListTile(
+                        onTap: () {
+                          context.push(
+                            '/host/members/${r.id}/referral-tree',
+                            extra: {'memberName': r.usuarioNombre},
+                          );
+                        },
+                        leading: CircleAvatar(
+                          backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                          child: Text(
+                            r.usuarioNombre.isNotEmpty ? r.usuarioNombre[0].toUpperCase() : '?',
+                            style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        title: Text(r.usuarioNombre, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: Text(
+                          '${r.numeroSocio} · ${r.nivelNombre}' +
+                          (r.clubNombre.isNotEmpty ? ' · ${r.clubNombre}' : ''),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${r.puntosAcumulados} pts',
+                              style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 }
