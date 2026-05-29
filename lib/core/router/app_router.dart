@@ -45,6 +45,7 @@ import '../../presentation/screens/events/events_list_screen.dart';
 import '../../presentation/screens/common/support_center_screen.dart'; // Nuevo
 import '../../presentation/screens/host/members/host_member_detail_screen.dart';
 import '../../presentation/screens/host/members/host_register_purchase_screen.dart';
+import '../../presentation/screens/host/members/host_referral_tree_screen.dart';
 import '../../presentation/screens/host/pre_socios/host_pre_socio_create_screen.dart';
 import '../../presentation/screens/host/pre_socios/host_pre_socio_detail_screen.dart';
 import '../../presentation/screens/host/pre_socios/host_mision_create_screen.dart';
@@ -264,6 +265,17 @@ final appRouter = GoRouter(
                 return HostRegisterPurchaseScreen(
                   membresiaId: membresiaId,
                   clubId: extra['clubId'] as int,
+                );
+              },
+            ),
+            GoRoute(
+              path: 'referral-tree',
+              builder: (context, state) {
+                final membresiaId = int.parse(state.pathParameters['membresiaId']!);
+                final extra = state.extra as Map<String, dynamic>?;
+                return HostReferralTreeScreen(
+                  membresiaId: membresiaId,
+                  memberName: extra?['memberName'] as String? ?? '',
                 );
               },
             ),

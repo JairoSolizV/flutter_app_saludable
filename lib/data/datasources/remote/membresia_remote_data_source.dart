@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../../domain/entities/club_membership.dart';
 import '../../../domain/entities/attendance.dart';
+import '../../../domain/entities/arbol_referidos.dart';
 
 abstract class MembresiaRemoteDataSource {
   Future<void> crearMembresia({required int usuarioId, required int clubId, int? nivelId, Map<String, dynamic>? extraData});
@@ -17,6 +18,7 @@ abstract class MembresiaRemoteDataSource {
   Future<Attendance> registrarAsistenciaManual({required int membresiaId, String? fecha, String? nota});
   Future<Map<String, dynamic>> getEstadoCombo(int membresiaId);
   Future<List<ClubMembership>> buscarMiembrosGlobal({String? query});
+  Future<ArbolReferidos> getArbolReferidos(int membresiaId);
 }
 
 /// Modelo para la respuesta de registro de asistencia
@@ -322,6 +324,22 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
       throw Exception(e.response?.data?['message'] ?? 'Error al buscar miembros');
     } catch (e) {
       throw Exception('Error al buscar miembros: $e');
+    }
+  }
+
+  @override
+  Future<ArbolReferidos> getArbolReferidos(int membresiaId) async {
+    try {
+      final response = await _client.get('/membresias/$membresiaId/arbol-referidos');
+      if (response.statusCode == 200) {
+        return ArbolReferidos.fromJson(response.data as Map<String, dynamic>);
+      } else {
+        throw Exception('Error al obtener el árbol de referidos: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['message'] ?? 'Error al obtener el árbol de referidos');
+    } catch (e) {
+      throw Exception('Error al obtener el árbol de referidos: $e');
     }
   }
 }
