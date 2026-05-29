@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
+import '../../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../../presentation/widgets/member_picker_field.dart';
@@ -118,6 +119,11 @@ class _HostPreSocioCreateScreenState extends State<HostPreSocioCreateScreen> {
                       members: _members,
                       selected: _referente,
                       onChanged: (v) => setState(() => _referente = v),
+                      enableGlobalSearch: true,
+                      onGlobalSearch: (query) {
+                        final ds = Provider.of<MembresiaRemoteDataSource>(context, listen: false);
+                        return ds.buscarMiembrosGlobal(query: query);
+                      },
                     ),
               const SizedBox(height: 32),
               SizedBox(

@@ -16,6 +16,7 @@ abstract class MembresiaRemoteDataSource {
   });
   Future<Attendance> registrarAsistenciaManual({required int membresiaId, String? fecha, String? nota});
   Future<Map<String, dynamic>> getEstadoCombo(int membresiaId);
+  Future<List<ClubMembership>> buscarMiembrosGlobal({String? query});
 }
 
 /// Modelo para la respuesta de registro de asistencia
@@ -298,4 +299,30 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
       throw Exception('Error obteniendo estado de combo: ${e.message}');
     }
   }
+
+  @override
+  Future<List<ClubMembership>> buscarMiembrosGlobal({String? query}) async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (query != null && query.isNotEmpty) {
+        queryParams['q'] = query;
+      }
+
+      final response = await _client.get(
+        '/membresias/buscar',
+        queryParameters: queryParams,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+        return data.map((json) => ClubMembership.fromJson(json)).toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['message'] ?? 'Error al buscar miembros');
+    } catch (e) {
+      throw Exception('Error al buscar miembros: $e');
+    }
+  }
 }
+

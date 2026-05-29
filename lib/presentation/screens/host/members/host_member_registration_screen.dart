@@ -129,6 +129,11 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
                       ? (_) {}
                       : (value) => setState(() => _selectedReferral = value),
                   enabled: widget.prefilledReferralId == null,
+                  enableGlobalSearch: true,
+                  onGlobalSearch: (query) {
+                    final ds = Provider.of<MembresiaRemoteDataSource>(context, listen: false);
+                    return ds.buscarMiembrosGlobal(query: query);
+                  },
                 ),
               const SizedBox(height: 16),
 
