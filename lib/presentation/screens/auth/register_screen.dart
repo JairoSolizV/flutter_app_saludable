@@ -21,7 +21,68 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _lastNameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   
+  final _emailFocusNode = FocusNode();
   final _formKey = GlobalKey<FormState>();
+
+  bool _acceptTerms = false;
+  bool _acceptPrivacy = false;
+  bool _checkingEmail = false;
+  String? _emailValidationError;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailFocusNode.addListener(_onEmailFocusChange);
+  }
+
+  @override
+  void dispose() {
+    _emailFocusNode.removeListener(_onEmailFocusChange);
+    _emailFocusNode.dispose();
+    _emailCtrl.dispose();
+    _passCtrl.dispose();
+    _firstNameCtrl.dispose();
+    _lastNameCtrl.dispose();
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onEmailFocusChange() {
+    if (!_emailFocusNode.hasFocus) {
+      _checkEmailAvailability();
+    }
+  }
+
+  Future<void> _checkEmailAvailability() async {
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty) return;
+    
+    final formatError = Validators.validateEmail(email);
+    if (formatError != null) {
+      setState(() {
+        _emailValidationError = formatError;
+      });
+      return;
+    }
+
+    setState(() {
+      _checkingEmail = true;
+      _emailValidationError = null;
+    });
+
+    final exists = await Provider.of<AuthProvider>(context, listen: false).checkEmailExists(email);
+
+    if (mounted) {
+      setState(() {
+        _checkingEmail = false;
+        if (exists) {
+          _emailValidationError = 'Este correo ya está registrado';
+        } else {
+          _emailValidationError = null;
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,8 +150,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       TextFormField(
                         controller: _emailCtrl,
-                        decoration: const InputDecoration(labelText: 'Correo Electrónico', prefixIcon: Icon(Icons.email), border: OutlineInputBorder()),
-                        validator: Validators.validateEmail,
+                        focusNode: _emailFocusNode,
+                        decoration: InputDecoration(
+                          labelText: 'Correo Electrónico',
+                          prefixIcon: const Icon(Icons.email),
+                          border: const OutlineInputBorder(),
+                          suffixIcon: _checkingEmail
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: Padding(
+                                    padding: EdgeInsets.all(12.0),
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                )
+                              : null,
+                        ),
+                        validator: (value) {
+                          final formatError = Validators.validateEmail(value);
+                          if (formatError != null) return formatError;
+                          return _emailValidationError;
+                        },
                       ),
                       const SizedBox(height: 16),
 
@@ -109,7 +189,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         validator: Validators.validatePassword,
                       ),
                       
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
+
+                      CheckboxListTile(
+                        value: _acceptTerms,
+                        onChanged: (val) {
+                          setState(() {
+                            _acceptTerms = val ?? false;
+                          });
+                        },
+                        title: const Text(
+                          'Acepto los Términos y Condiciones',
+                          style: TextStyle(fontSize: 13, color: Color(0xFF333333)),
+                        ),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                        activeColor: AppTheme.primaryColor,
+                      ),
+
+                      CheckboxListTile(
+                        value: _acceptPrivacy,
+                        onChanged: (val) {
+                          setState(() {
+                            _acceptPrivacy = val ?? false;
+                          });
+                        },
+                        title: const Text(
+                          'Consiento el tratamiento de mis datos personales de salud',
+                          style: TextStyle(fontSize: 13, color: Color(0xFF333333)),
+                        ),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                        activeColor: AppTheme.primaryColor,
+                      ),
+
+                      const SizedBox(height: 16),
 
                       Consumer<AuthProvider>(
                         builder: (context, auth, _) {
@@ -125,18 +239,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       Consumer<AuthProvider>(
                         builder: (context, auth, _) {
+                          final canRegister = _acceptTerms && _acceptPrivacy && !_checkingEmail && _emailValidationError == null;
+
                           return SizedBox(
                             width: double.infinity,
                             height: 50,
                             child: ElevatedButton(
-                              onPressed: auth.isLoading ? null : () async {
+                              onPressed: (auth.isLoading || !canRegister) ? null : () async {
                                 if (_formKey.currentState!.validate()) {
+                                  // Preprocesar el teléfono al formato E.164 requerido por el backend (+591...)
+                                  String phoneToSend = _phoneCtrl.text.trim();
+                                  if (!phoneToSend.startsWith('+')) {
+                                    if (phoneToSend.length == 8) {
+                                      phoneToSend = '+591$phoneToSend';
+                                    }
+                                  }
+
                                   final success = await auth.register(
                                       _firstNameCtrl.text,
                                       _lastNameCtrl.text,
-                                      _emailCtrl.text,
+                                      _emailCtrl.text.trim(),
                                       _passCtrl.text,
-                                      _phoneCtrl.text,
+                                      phoneToSend,
                                       rolId: 4 // 4 = USUARIO_BASICO
                                   );
 
@@ -144,7 +268,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     final user = auth.currentUser;
                                     if (user != null) {
                                       Provider.of<UserProvider>(context, listen: false).setUser(user);
-                                      // Navegar a basic home (pues rol es 4 por defecto ahora)
                                       context.go('/basic-home');
                                     }
                                   }
@@ -153,6 +276,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppTheme.primaryColor,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                disabledBackgroundColor: Colors.grey.shade300,
                               ),
                               child: auth.isLoading 
                                 ? const CircularProgressIndicator(color: Colors.white)

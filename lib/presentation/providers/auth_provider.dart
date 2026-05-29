@@ -32,6 +32,15 @@ class AuthProvider extends ChangeNotifier {
     return _authenticate(() => _remoteDataSource.register(nombre, apellido, email, password, telefono, rolId: rolId));
   }
 
+  Future<bool> checkEmailExists(String email) async {
+    try {
+      return await _remoteDataSource.checkEmailExists(email);
+    } catch (e) {
+      print('[DEBUG AUTH_PROVIDER] Error checking email existence: $e');
+      return false;
+    }
+  }
+
   Future<bool> _authenticate(Future<User> Function() authMethod) async {
     _isLoading = true;
     _errorMessage = null;

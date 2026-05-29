@@ -3,6 +3,9 @@ class Validators {
     if (value == null || value.trim().isEmpty) {
       return 'Este campo es obligatorio';
     }
+    if (value.trim().length < 2) {
+      return 'Debe tener al menos 2 caracteres';
+    }
     // Permite letras, espacios y acentos, pero NO números.
     final nameExp = RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$');
     if (!nameExp.hasMatch(value)) {
