@@ -95,9 +95,17 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
         if (_facebookController.text.isNotEmpty) socialMedia['facebook'] = _facebookController.text;
         if (_tiktokController.text.isNotEmpty) socialMedia['tiktok'] = _tiktokController.text;
 
+        // Preprocesar el teléfono al formato E.164 requerido por el backend (+591...)
+        String phoneToSend = _phoneController.text.trim();
+        if (!phoneToSend.startsWith('+')) {
+          if (phoneToSend.length == 8) {
+            phoneToSend = '+591$phoneToSend';
+          }
+        }
+
         await provider.updateUserProfile(
           name: _nameController.text,
-          phone: _phoneController.text,
+          phone: phoneToSend,
           birthDate: _birthDateController.text.isEmpty ? null : _birthDateController.text,
           socialMedia: socialMedia.isEmpty ? null : socialMedia,
         );

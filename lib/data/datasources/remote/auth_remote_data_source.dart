@@ -6,12 +6,26 @@ abstract class AuthRemoteDataSource {
   Future<User> register(String nombre, String apellido, String email, String password, String telefono, {int? rolId});
   Future<User> updateUser(User user);
   Future<User> getMe();
+  Future<bool> checkEmailExists(String email);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final Dio _client;
 
   AuthRemoteDataSourceImpl(this._client);
+
+  @override
+  Future<bool> checkEmailExists(String email) async {
+    try {
+      final response = await _client.get('/auth/check-email', queryParameters: {'email': email});
+      if (response.statusCode == 200) {
+        return response.data['exists'] == true;
+      }
+      return false;
+    } on DioException catch (e) {
+      throw Exception(_parseErrorMessage(e, 'Error al verificar disponibilidad del correo'));
+    }
+  }
 
   @override
   Future<User> login(String email, String password) async {
