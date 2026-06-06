@@ -64,6 +64,7 @@ class OrderItem {
   final int quantity;
   final String note; // Nota específica del producto
   final String productName; // Desnormalizado para facil visualización offline
+  final int? comboId; // ID del combo origen (null si es producto suelto)
 
   OrderItem({
     this.id,
@@ -72,6 +73,7 @@ class OrderItem {
     required this.quantity,
     this.note = '',
     this.productName = '',
+    this.comboId,
   });
 
   Map<String, dynamic> toMap() {

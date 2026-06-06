@@ -2,25 +2,32 @@ import 'package:flutter/foundation.dart';
 
 import '../../data/datasources/remote/order_remote_data_source.dart';
 import '../../data/datasources/remote/product_remote_data_source.dart';
+import '../../data/datasources/remote/combo_remote_data_source.dart';
 import '../../domain/entities/product.dart';
+import '../../domain/entities/combo.dart';
 
 class CounterSaleItem {
   final Product product;
   int quantity;
   String note;
+  int? comboId;
+  String? comboNombre;
 
   CounterSaleItem({
     required this.product,
     this.quantity = 1,
     this.note = '',
+    this.comboId,
+    this.comboNombre,
   });
 }
 
 class CounterSaleProvider extends ChangeNotifier {
   final ProductRemoteDataSource _productDataSource;
   final OrderRemoteDataSource _orderDataSource;
+  final ComboRemoteDataSource? _comboDataSource;
 
-  CounterSaleProvider(this._productDataSource, this._orderDataSource);
+  CounterSaleProvider(this._productDataSource, this._orderDataSource, [this._comboDataSource]);
 
   bool isCatalogLoading = false;
   bool isSubmitting = false;
@@ -35,16 +42,22 @@ class CounterSaleProvider extends ChangeNotifier {
   String observaciones = '';
 
   List<Product> _products = [];
+  List<Combo> _combos = [];
   final Map<String, CounterSaleItem> _cart = {};
 
   List<Product> get generalProducts =>
       _products.where((p) => p.tipo == 'GLOBAL').toList();
   List<Product> get clubSpecialties =>
       _products.where((p) => p.tipo == 'LOCAL').toList();
+  List<Combo> get activeCombos =>
+      _combos.where((c) => c.activo).toList();
   List<CounterSaleItem> get cartItems => _cart.values.toList();
   int get totalItems =>
       _cart.values.fold(0, (sum, item) => sum + item.quantity);
   bool get canSubmit => _cart.isNotEmpty && !isSubmitting;
+  static const int maxSabores = 3;
+  int get distinctProducts => _cart.length;
+  bool get isMaxSaboresReached => _cart.length >= maxSabores;
   int get totalPuntos =>
       _cart.values.fold(0, (sum, item) => sum + (item.product.puntosValor * item.quantity));
 
@@ -69,6 +82,15 @@ class CounterSaleProvider extends ChangeNotifier {
         hubId: hubId!,
         clubId: clubId!,
       );
+      // Cargar combos del club
+      if (_comboDataSource != null) {
+        try {
+          _combos = await _comboDataSource!.getCombosByClub(clubId!);
+        } catch (e) {
+          debugPrint('[COUNTER SALE] Error cargando combos: $e');
+          _combos = [];
+        }
+      }
     } catch (e) {
       catalogError = e.toString().replaceAll('Exception: ', '');
     } finally {
@@ -92,14 +114,58 @@ class CounterSaleProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addProduct(Product product) {
+  bool addProduct(Product product) {
     final existing = _cart[product.id];
     if (existing == null) {
+      if (_cart.length >= maxSabores) return false;
       _cart[product.id] = CounterSaleItem(product: product, quantity: 1);
     } else {
       existing.quantity += 1;
     }
     notifyListeners();
+    return true;
+  }
+
+  /// Agrega un combo completo al carrito.
+  /// Expande los items del combo como productos individuales con referencia al combo.
+  /// Retorna true si se pudo agregar, false si no hay espacio.
+  bool addCombo(Combo combo) {
+    // Verificar que hay espacio para los productos del combo que aún no están en el carrito
+    final newProductIds = combo.items
+        .map((item) => item.productoId.toString())
+        .where((id) => !_cart.containsKey(id))
+        .toSet();
+
+    if (_cart.length + newProductIds.length > maxSabores) {
+      return false;
+    }
+
+    // Agregar cada item del combo
+    for (final comboItem in combo.items) {
+      final productId = comboItem.productoId.toString();
+      final existing = _cart[productId];
+
+      // Buscar el producto en el catálogo cargado
+      final product = _products.where((p) => p.id == productId).firstOrNull;
+      if (product == null) continue;
+
+      if (existing != null) {
+        existing.quantity += comboItem.cantidad;
+        // Actualizar referencia de combo si no tenía
+        existing.comboId ??= combo.id;
+        existing.comboNombre ??= combo.nombre;
+      } else {
+        _cart[productId] = CounterSaleItem(
+          product: product,
+          quantity: comboItem.cantidad,
+          comboId: combo.id,
+          comboNombre: combo.nombre,
+          note: comboItem.saborNombre != null ? 'Sabor: ${comboItem.saborNombre}' : '',
+        );
+      }
+    }
+    notifyListeners();
+    return true;
   }
 
   void increaseQty(String productId) {
@@ -155,11 +221,15 @@ class CounterSaleProvider extends ChangeNotifier {
         if (productoId == null) {
           throw Exception('Producto inválido en ticket: id=${item.product.id}');
         }
-        return {
+        final map = <String, dynamic>{
           'productoId': productoId,
           'cantidad': item.quantity,
           'nota': item.note.trim(),
         };
+        if (item.comboId != null) {
+          map['comboId'] = item.comboId;
+        }
+        return map;
       }).toList();
 
       await _orderDataSource.createCounterSale(

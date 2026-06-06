@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../domain/entities/product.dart';
+import '../../../../domain/entities/combo.dart';
 import '../../../providers/product_provider.dart';
 import '../../../providers/user_provider.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
+import '../../../../data/datasources/remote/combo_remote_data_source.dart';
 import '../../../widgets/product_image.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'host_product_sabores_screen.dart';
+import 'host_combo_create_screen.dart';
 
 class HostProductListScreen extends StatefulWidget {
   const HostProductListScreen({super.key});
@@ -21,6 +25,11 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
   bool _isLoadingClub = true;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+
+  // Combos state
+  List<Combo> _combos = [];
+  bool _isLoadingCombos = false;
+  String? _combosError;
 
   @override
   void initState() {
@@ -53,6 +62,7 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
           if (mounted) {
             // New Logic: Load all Hub products
              Provider.of<ProductProvider>(context, listen: false).loadProducts(hubId: _hubId!, clubId: _clubId!);
+            _loadCombos();
           }
         }
       } catch (e) {
@@ -67,10 +77,73 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
     }
   }
 
+  Future<void> _loadCombos() async {
+    if (_clubId == null) return;
+    setState(() { _isLoadingCombos = true; _combosError = null; });
+    try {
+      final comboDs = Provider.of<ComboRemoteDataSource>(context, listen: false);
+      final result = await comboDs.getCombosByClub(_clubId!);
+      if (mounted) setState(() { _combos = result; _isLoadingCombos = false; });
+    } catch (e) {
+      if (mounted) setState(() { _combosError = e.toString(); _isLoadingCombos = false; });
+    }
+  }
+
+  Future<void> _toggleCombo(Combo combo) async {
+    try {
+      final comboDs = Provider.of<ComboRemoteDataSource>(context, listen: false);
+      final updated = await comboDs.toggleCombo(_clubId!, combo.id!);
+      setState(() {
+        final idx = _combos.indexWhere((c) => c.id == combo.id);
+        if (idx >= 0) _combos[idx] = updated;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cambiar estado: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteCombo(Combo combo) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar combo'),
+        content: Text('¿Seguro que deseas eliminar "${combo.nombre}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      final comboDs = Provider.of<ComboRemoteDataSource>(context, listen: false);
+      await comboDs.deleteCombo(_clubId!, combo.id!);
+      setState(() { _combos.removeWhere((c) => c.id == combo.id); });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Combo eliminado'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al eliminar: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Mi Menú (Stock)'),
@@ -84,6 +157,7 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
             tabs: [
               Tab(text: 'Globales'),
               Tab(text: 'Propios'),
+              Tab(text: 'Combos'),
             ],
           ),
           actions: [
@@ -92,6 +166,7 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
               onPressed: () {
                  if (_clubId != null && _hubId != null) {
                    Provider.of<ProductProvider>(context, listen: false).loadProducts(hubId: _hubId!, clubId: _clubId!);
+                   _loadCombos();
                  }
               },
             )
@@ -153,6 +228,7 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                               children: [
                                 _buildProductList(globalProducts, provider, isGlobal: true),
                                 _buildProductList(ownProducts, provider, isGlobal: false),
+                                _buildComboList(),
                               ],
                             ),
                           ),
@@ -237,7 +313,17 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                       provider.toggleAvailability(_clubId!, product.id, _hubId!);
                     } : null,
                   ),
-                  // Opcional: permitir editar productos propios con onLongPress o algo similar
+                  onTap: _clubId != null ? () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => HostProductSaboresScreen(
+                          clubId: _clubId!,
+                          product: product,
+                        ),
+                      ),
+                    );
+                  } : null,
+                  // Opcional: permitir editar productos propios con onLongPress
                   onLongPress: !isGlobal ? () {
                     context.push('/host/products/edit', extra: {
                       'clubId': _clubId!,
@@ -275,4 +361,134 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
     );
   }
 
+  // ===================== Combos Tab =====================
+
+  Widget _buildComboList() {
+    return Stack(
+      children: [
+        if (_isLoadingCombos)
+          const Center(child: CircularProgressIndicator())
+        else if (_combosError != null)
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                const SizedBox(height: 8),
+                Text('Error: $_combosError', style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: _loadCombos,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Reintentar'),
+                ),
+              ],
+            ),
+          )
+        else if (_combos.isEmpty)
+          const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.fastfood_outlined, size: 64, color: Colors.grey),
+                SizedBox(height: 12),
+                Text(
+                  'Aún no has creado combos.\nPresiona + para crear tu primer combo.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey, fontSize: 16),
+                ),
+              ],
+            ),
+          )
+        else
+          ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: _combos.length,
+            itemBuilder: (context, index) {
+              final combo = _combos[index];
+              final itemsText = combo.items.map((i) {
+                String label = '${i.cantidad}x ${i.productoNombre}';
+                if (i.saborNombre != null) label += ' (${i.saborNombre})';
+                return label;
+              }).join(', ');
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: combo.activo ? AppTheme.primaryColor : Colors.grey,
+                    child: const Icon(Icons.fastfood, color: Colors.white),
+                  ),
+                  title: Text(
+                    combo.nombre,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: combo.activo ? Colors.black : Colors.grey,
+                    ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (combo.descripcion != null && combo.descripcion!.isNotEmpty)
+                        Text(combo.descripcion!, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 2),
+                      Text(
+                        itemsText,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Puntos: ${combo.puntosValor}',
+                        style: const TextStyle(fontWeight: FontWeight.w500, color: AppTheme.primaryColor),
+                      ),
+                    ],
+                  ),
+                  trailing: Switch(
+                    activeThumbColor: AppTheme.primaryColor,
+                    value: combo.activo,
+                    onChanged: (_) => _toggleCombo(combo),
+                  ),
+                  onTap: () async {
+                    final result = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => HostComboCreateScreen(
+                          clubId: _clubId!,
+                          existingCombo: combo,
+                        ),
+                      ),
+                    );
+                    if (result == true) _loadCombos();
+                  },
+                  onLongPress: () => _deleteCombo(combo),
+                ),
+              );
+            },
+          ),
+
+        // FAB para crear combo
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: FloatingActionButton.extended(
+            heroTag: 'addComboFab',
+            backgroundColor: AppTheme.primaryColor,
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: const Text('Nuevo Combo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            onPressed: () async {
+              final result = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => HostComboCreateScreen(clubId: _clubId!),
+                ),
+              );
+              if (result == true) _loadCombos();
+            },
+          ),
+        ),
+      ],
+    );
+  }
 }

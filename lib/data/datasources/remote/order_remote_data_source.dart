@@ -92,11 +92,15 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
       final List<Map<String, dynamic>> itemsData = [];
       for (var item in items) {
         final int productoId = int.parse(item.productId);
-        itemsData.add({
+        final itemMap = <String, dynamic>{
           'productoId': productoId,
           'cantidad': item.quantity,
           'nota': item.note, // Siempre enviar la nota aunque esté vacía ('')
-        });
+        };
+        if (item.comboId != null) {
+          itemMap['comboId'] = item.comboId;
+        }
+        itemsData.add(itemMap);
       }
       
       // Preparar body del request

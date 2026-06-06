@@ -22,6 +22,8 @@ import 'data/datasources/remote/support_remote_data_source.dart'; // Nuevo
 import 'data/datasources/remote/report_remote_data_source.dart';
 import 'data/datasources/remote/pre_socio_remote_data_source.dart';
 import 'data/datasources/remote/compras_remote_data_source.dart';
+import 'data/datasources/remote/sabor_remote_data_source.dart';
+import 'data/datasources/remote/combo_remote_data_source.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/support_provider.dart'; // Nuevo
 import 'data/repositories/local_user_repository.dart';
@@ -41,6 +43,8 @@ late final SupportRemoteDataSource supportRemoteDataSource; // Nuevo
 late final ReportRemoteDataSource reportRemoteDataSource;
 late final PreSocioRemoteDataSource preSocioRemoteDataSource;
 late final ComprasRemoteDataSource comprasRemoteDataSource;
+late final SaborRemoteDataSource saborRemoteDataSource;
+late final ComboRemoteDataSource comboRemoteDataSource;
 late final LocalProductRepository productRepository;
 late final LocalOrderRepository orderRepository;
 late final ConnectivityService connectivityService;
@@ -67,6 +71,8 @@ void main() {
     reportRemoteDataSource = ReportRemoteDataSource(apiClient.client);
     preSocioRemoteDataSource = PreSocioRemoteDataSourceImpl(apiClient.client);
     comprasRemoteDataSource = ComprasRemoteDataSourceImpl(apiClient.client);
+    saborRemoteDataSource = SaborRemoteDataSource(apiClient.client);
+    comboRemoteDataSource = ComboRemoteDataSource(apiClient.client);
     
     // 4. Repositorios Híbridos
     productRepository = LocalProductRepository(dbHelper, remoteDataSource: productRemoteDataSource);
@@ -128,6 +134,12 @@ class AppState extends StatelessWidget {
         ),
         Provider<ComprasRemoteDataSource>(
             create: (_) => comprasRemoteDataSource,
+        ),
+        Provider<SaborRemoteDataSource>(
+            create: (_) => saborRemoteDataSource,
+        ),
+        Provider<ComboRemoteDataSource>(
+            create: (_) => comboRemoteDataSource,
         ),
          ChangeNotifierProvider(
           create: (_) => AuthProvider(authRemoteDataSource, userRepository),

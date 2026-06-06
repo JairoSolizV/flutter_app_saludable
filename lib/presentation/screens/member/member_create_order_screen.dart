@@ -7,8 +7,10 @@ import '../../providers/order_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../../domain/entities/order_entity.dart';
 import '../../../domain/entities/club_membership.dart';
+import '../../../domain/entities/combo.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
+import '../../../data/datasources/remote/combo_remote_data_source.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class MemberCreateOrderScreen extends StatefulWidget {
@@ -19,6 +21,7 @@ class MemberCreateOrderScreen extends StatefulWidget {
 }
 
 class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
+  static const int _maxSabores = 3;
   // Mapa de ProductoID -> Cantidad
   final Map<String, int> _cart = {};
   // Mapa de ProductoID -> Nota
@@ -28,6 +31,12 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
   String _tipoConsumo = 'EN_LUGAR'; // 'EN_LUGAR' o 'PARA_RECOGER'
   final TextEditingController _notaController = TextEditingController();
   
+  // Combos state
+  List<Combo> _combos = [];
+  bool _isLoadingCombos = false;
+  // Mapa de ProductoID -> comboId (para trazabilidad)
+  final Map<String, int> _productComboIds = {};
+
   // Nuevos campos para selector de club
   List<Club> _availableClubes = []; // Lista de clubes del HUB
   int? _selectedClubId; // Club seleccionado para el pedido
@@ -83,6 +92,7 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
           if (mounted && _selectedClubId != null) {
             await Provider.of<ProductProvider>(context, listen: false)
                 .loadAvailableProducts(_selectedClubId!);
+            _loadCombos(_selectedClubId!);
           }
         }
       } else {
@@ -121,13 +131,71 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
       _selectedClubId = newClubId;
       _cart.clear(); // Limpiar carrito al cambiar de club
       _productNotes.clear();
+      _productComboIds.clear();
+      _combos = [];
     });
-    
+
     // Cargar productos del nuevo club seleccionado
     if (mounted) {
       await Provider.of<ProductProvider>(context, listen: false)
           .loadAvailableProducts(newClubId);
+      _loadCombos(newClubId);
     }
+  }
+
+  Future<void> _loadCombos(int clubId) async {
+    setState(() => _isLoadingCombos = true);
+    try {
+      final comboDs = Provider.of<ComboRemoteDataSource>(context, listen: false);
+      final result = await comboDs.getCombosByClub(clubId);
+      if (mounted) {
+        setState(() {
+          _combos = result.where((c) => c.activo).toList();
+          _isLoadingCombos = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[MEMBER ORDER] Error cargando combos: $e');
+      if (mounted) setState(() => _isLoadingCombos = false);
+    }
+  }
+
+  void _addCombo(Combo combo, List<dynamic> products) {
+    // Check space: count new distinct products from this combo
+    final newIds = combo.items
+        .map((item) => item.productoId.toString())
+        .where((id) => !_cart.containsKey(id))
+        .toSet();
+
+    if (_cart.length + newIds.length > _maxSabores) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No hay espacio para este combo (máx. $_maxSabores sabores).'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      for (final comboItem in combo.items) {
+        final productId = comboItem.productoId.toString();
+        final existingQty = _cart[productId] ?? 0;
+        _cart[productId] = existingQty + comboItem.cantidad;
+        _productComboIds[productId] = combo.id!;
+        if (comboItem.saborNombre != null) {
+          _productNotes[productId] = 'Sabor: ${comboItem.saborNombre}';
+        }
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Combo "${combo.nombre}" agregado'),
+        backgroundColor: Colors.green,
+        duration: const Duration(milliseconds: 1200),
+      ),
+    );
   }
 
   @override
@@ -279,9 +347,65 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: products.length,
+                // Combos section + products
+                itemCount: products.length + (_combos.isNotEmpty ? _combos.length + 1 : 0),
               itemBuilder: (context, index) {
-                final product = products[index];
+                // Section header for combos
+                if (_combos.isNotEmpty && index == 0) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.fastfood, color: AppTheme.primaryColor, size: 20),
+                            const SizedBox(width: 8),
+                            const Text('Combos disponibles', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        const Divider(),
+                      ],
+                    ),
+                  );
+                }
+
+                // Combo cards
+                if (_combos.isNotEmpty && index > 0 && index <= _combos.length) {
+                  final combo = _combos[index - 1];
+                  final itemsText = combo.items.map((item) {
+                    String label = '${item.cantidad}x ${item.productoNombre}';
+                    if (item.saborNombre != null) label += ' (${item.saborNombre})';
+                    return label;
+                  }).join(' + ');
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    color: AppTheme.primaryColor.withOpacity(0.05),
+                    child: ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: AppTheme.primaryColor,
+                        child: Icon(Icons.fastfood, color: Colors.white, size: 18),
+                      ),
+                      title: Text(combo.nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(itemsText, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                          Text('${combo.puntosValor} pts', style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.add_circle, color: AppTheme.primaryColor),
+                        onPressed: () => _addCombo(combo, products),
+                      ),
+                    ),
+                  );
+                }
+
+                // Adjust index for products
+                final productIndex = _combos.isNotEmpty ? index - _combos.length - 1 : index;
+                final product = products[productIndex];
                 final qty = _cart[product.id] ?? 0;
 
                 return Card(
@@ -316,12 +440,27 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                         if (qty > 0)
                           Text('$qty', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         IconButton(
-                          icon: const Icon(Icons.add_circle_outline, color: AppTheme.primaryColor),
-                          onPressed: () {
-                            setState(() {
-                              _cart[product.id] = qty + 1;
-                            });
-                          },
+                          icon: Icon(
+                            Icons.add_circle_outline,
+                            color: (qty == 0 && _cart.length >= _maxSabores)
+                                ? Colors.grey
+                                : AppTheme.primaryColor,
+                          ),
+                          onPressed: (qty == 0 && _cart.length >= _maxSabores)
+                              ? () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Solo puedes seleccionar hasta 3 sabores por combo.'),
+                                      backgroundColor: Colors.orange,
+                                      duration: Duration(seconds: 3),
+                                    ),
+                                  );
+                                }
+                              : () {
+                                  setState(() {
+                                    _cart[product.id] = qty + 1;
+                                  });
+                                },
                         ),
                       ],
                     ),
@@ -390,6 +529,29 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                       Text('$totalItems', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
                     ],
                   ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Text('Sabores seleccionados: ', style: TextStyle(fontSize: 14)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _cart.length >= _maxSabores ? Colors.orange.shade50 : Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: _cart.length >= _maxSabores ? Colors.orange : Colors.green,
+                          ),
+                        ),
+                        child: Text(
+                          '${_cart.length}/$_maxSabores',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: _cart.length >= _maxSabores ? Colors.orange.shade800 : Colors.green.shade800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
@@ -406,7 +568,8 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                              productId: product.id,
                              quantity: entry.value,
                              note: _productNotes[entry.key] ?? '', // Nota específica del producto
-                             productName: product.name
+                             productName: product.name,
+                             comboId: _productComboIds[entry.key],
                            );
                         }).toList();
 
@@ -471,10 +634,15 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                         } catch (e) {
                           debugPrint('[DEBUG CREATE] ERROR al crear pedido: $e');
                           if (context.mounted) {
+                            final errorMsg = e.toString();
+                            final isMaxSabores = errorMsg.contains('MAX_SABORES_EXCEDIDO') ||
+                                errorMsg.contains('3 sabores');
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Error al crear pedido: $e'),
-                                backgroundColor: Colors.red,
+                                content: Text(isMaxSabores
+                                    ? 'Máximo 3 sabores por combo. Reduce los productos seleccionados.'
+                                    : 'Error al crear pedido: $e'),
+                                backgroundColor: isMaxSabores ? Colors.orange : Colors.red,
                                 duration: const Duration(seconds: 4),
                               ),
                             );
