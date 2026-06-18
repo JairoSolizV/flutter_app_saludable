@@ -111,8 +111,12 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
+      body: RefreshIndicator(
+        onRefresh: _loadOrdersSummary,
+        color: AppTheme.primaryColor,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
           children: [
             // Header
             Stack(
@@ -463,6 +467,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

@@ -74,7 +74,11 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
            final displayName = user?.name.split(' ').first ?? 'Invitado';
            final initials = user?.name.isNotEmpty == true ? user!.name.substring(0, 2).toUpperCase() : '?';
 
-           return CustomScrollView(
+           return RefreshIndicator(
+            onRefresh: _loadLoyaltyData,
+            color: AppTheme.primaryColor,
+            child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               // Header Flotante
               SliverAppBar(
@@ -340,6 +344,7 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
                 ),
               ),
             ],
+          ),
           );
         }
       ),

@@ -10,6 +10,7 @@ import '../../../../domain/entities/attendance.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../../domain/entities/compra_manual.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 class HostMemberDetailScreen extends StatefulWidget {
   final int membresiaId;
@@ -178,10 +179,12 @@ class _HostMemberDetailScreenState extends State<HostMemberDetailScreen>
             loading: _loadingAttendances,
             attendances: _attendances,
             onRegister: _registrarAsistenciaManual,
+            onRefresh: _loadAttendances,
           ),
           _ComprasTab(
             loading: _loadingPurchases,
             purchases: _purchases,
+            onRefresh: _loadPurchases,
             onRegister: () async {
               final club = await Provider.of<ClubRemoteDataSource>(context, listen: false).getMyClub();
               if (!mounted || club == null) return;
@@ -197,6 +200,7 @@ class _HostMemberDetailScreenState extends State<HostMemberDetailScreen>
             referidos: _referidos,
             membresiaId: widget.membresiaId,
             memberName: widget.memberName.isNotEmpty ? widget.memberName : 'Socio',
+            onRefresh: _loadReferidos,
           ),
               ],
             ),
@@ -211,8 +215,9 @@ class _AsistenciasTab extends StatelessWidget {
   final bool loading;
   final List<Attendance> attendances;
   final VoidCallback onRegister;
+  final Future<void> Function() onRefresh;
 
-  const _AsistenciasTab({required this.loading, required this.attendances, required this.onRegister});
+  const _AsistenciasTab({required this.loading, required this.attendances, required this.onRegister, required this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
@@ -233,8 +238,15 @@ class _AsistenciasTab extends StatelessWidget {
         Expanded(child: loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
           : attendances.isEmpty
-              ? const Center(child: Text('Sin asistencias registradas', style: TextStyle(color: Colors.grey)))
-              : ListView.builder(
+              ? RefreshableScrollView(
+                  onRefresh: onRefresh,
+                  child: const Text('Sin asistencias registradas', style: TextStyle(color: Colors.grey)),
+                )
+              : RefreshIndicator(
+                  onRefresh: onRefresh,
+                  color: AppTheme.primaryColor,
+                  child: ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   itemCount: attendances.length,
                   itemBuilder: (_, i) {
                     final a = attendances[i];
@@ -256,6 +268,7 @@ class _AsistenciasTab extends StatelessWidget {
                     );
                   },
                 ),
+                ),
         ),
       ],
     );
@@ -266,8 +279,9 @@ class _ComprasTab extends StatelessWidget {
   final bool loading;
   final List<CompraManual> purchases;
   final VoidCallback onRegister;
+  final Future<void> Function() onRefresh;
 
-  const _ComprasTab({required this.loading, required this.purchases, required this.onRegister});
+  const _ComprasTab({required this.loading, required this.purchases, required this.onRegister, required this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
@@ -289,8 +303,15 @@ class _ComprasTab extends StatelessWidget {
         Expanded(child: loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
           : purchases.isEmpty
-              ? const Center(child: Text('Sin compras registradas', style: TextStyle(color: Colors.grey)))
-              : ListView.builder(
+              ? RefreshableScrollView(
+                  onRefresh: onRefresh,
+                  child: const Text('Sin compras registradas', style: TextStyle(color: Colors.grey)),
+                )
+              : RefreshIndicator(
+                  onRefresh: onRefresh,
+                  color: AppTheme.primaryColor,
+                  child: ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   itemCount: purchases.length,
                   itemBuilder: (_, i) {
                     final p = purchases[i];
@@ -308,6 +329,7 @@ class _ComprasTab extends StatelessWidget {
                     );
                   },
                 ),
+                ),
         ),
       ],
     );
@@ -319,12 +341,14 @@ class _ReferidosTab extends StatelessWidget {
   final List<ClubMembership> referidos;
   final int membresiaId;
   final String memberName;
+  final Future<void> Function() onRefresh;
 
   const _ReferidosTab({
     required this.loading,
     required this.referidos,
     required this.membresiaId,
     required this.memberName,
+    required this.onRefresh,
   });
 
   @override
@@ -358,8 +382,15 @@ class _ReferidosTab extends StatelessWidget {
         ),
         Expanded(
           child: referidos.isEmpty
-              ? const Center(child: Text('Este socio aún no ha referido a nadie', style: TextStyle(color: Colors.grey)))
-              : ListView.builder(
+              ? RefreshableScrollView(
+                  onRefresh: onRefresh,
+                  child: const Text('Este socio aún no ha referido a nadie', style: TextStyle(color: Colors.grey)),
+                )
+              : RefreshIndicator(
+                  onRefresh: onRefresh,
+                  color: AppTheme.primaryColor,
+                  child: ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
                   itemCount: referidos.length,
                   itemBuilder: (_, i) {
@@ -400,6 +431,7 @@ class _ReferidosTab extends StatelessWidget {
                       ),
                     );
                   },
+                ),
                 ),
         ),
       ],
