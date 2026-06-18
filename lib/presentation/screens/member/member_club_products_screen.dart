@@ -16,6 +16,7 @@ import '../../../data/datasources/remote/combo_remote_data_source.dart';
 import '../../../data/datasources/remote/sabor_remote_data_source.dart';
 import '../../widgets/product_image.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 class MemberClubProductsScreen extends StatefulWidget {
   final int clubId;
@@ -108,6 +109,14 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
       debugPrint('Error loading membership: $e');
       if (mounted) setState(() => _isLoadingMembership = false);
     }
+  }
+
+  /// Recarga productos, combos y sabores del club. Usado por pull-to-refresh.
+  Future<void> _refreshProducts() async {
+    await Provider.of<ProductProvider>(context, listen: false)
+        .loadAvailableProducts(widget.clubId);
+    await _loadCombos();
+    await _loadAllSabores();
   }
 
   Future<void> _loadCombos() async {
@@ -473,7 +482,8 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
     if (_membership == null) {
       return Scaffold(
         appBar: _appBar(),
-        body: Center(
+        body: RefreshableScrollView(
+          onRefresh: _loadMembershipAndProducts,
           child: Padding(
             padding: const EdgeInsets.all(32),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -501,13 +511,10 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
                 : products.isEmpty && _combos.isEmpty
                     ? _emptyState()
                     : RefreshIndicator(
-                        onRefresh: () async {
-                          await provProducts
-                              .loadAvailableProducts(widget.clubId);
-                          _loadCombos();
-                          _loadAllSabores();
-                        },
+                        onRefresh: _refreshProducts,
+                        color: AppTheme.primaryColor,
                         child: ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                           children: [
                             // ── COMBOS ──
@@ -1230,11 +1237,13 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
   // ─────────── Empty state ───────────
 
   Widget _emptyState() {
-    return Center(
+    return RefreshableScrollView(
+      onRefresh: _refreshProducts,
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(LucideIcons.package, size: 64, color: Colors.grey[300]),
             const SizedBox(height: 16),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 import '../../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../../domain/entities/arbol_referidos.dart';
 
@@ -73,11 +74,13 @@ class _HostReferralTreeScreenState extends State<HostReferralTreeScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
           : _error != null
-              ? Center(
+              ? RefreshableScrollView(
+                  onRefresh: () => _cargarArbol(widget.membresiaId),
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Icons.error_outline, size: 48, color: Colors.red),
                         const SizedBox(height: 16),
@@ -100,7 +103,10 @@ class _HostReferralTreeScreenState extends State<HostReferralTreeScreen> {
                   ),
                 )
               : _arbol == null
-                  ? const Center(child: Text('Sin datos de red', style: TextStyle(color: Colors.grey)))
+                  ? RefreshableScrollView(
+                      onRefresh: () => _cargarArbol(widget.membresiaId),
+                      child: const Text('Sin datos de red', style: TextStyle(color: Colors.grey)),
+                    )
                   : RefreshIndicator(
                       onRefresh: () => _cargarArbol(widget.membresiaId),
                       color: AppTheme.primaryColor,
@@ -125,6 +131,7 @@ class _ReferralTreeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       children: [
         _NodoWidget(nodo: arbol, nivel: 0, onTap: onNodoTap),

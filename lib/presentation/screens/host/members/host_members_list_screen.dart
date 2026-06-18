@@ -7,6 +7,7 @@ import '../../../../domain/entities/club_membership.dart';
 import '../../../providers/user_provider.dart';
 import '../pre_socios/host_pre_socios_list_screen.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 class HostMembersListScreen extends StatefulWidget {
   const HostMembersListScreen({super.key});
@@ -45,6 +46,7 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
 
   Future<void> _loadMembers() async {
     try {
+      if (mounted) setState(() => _error = null);
       final user = Provider.of<UserProvider>(context, listen: false).currentUser;
       if (user == null) {
         throw Exception("Usuario no autenticado");
@@ -113,11 +115,11 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
     }
 
     if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
+      return RefreshableScrollView(
+        onRefresh: _loadMembers,
+        child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(LucideIcons.alertCircle, size: 48, color: Colors.orange),
               const SizedBox(height: 16),
@@ -143,15 +145,16 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
               )
             ],
           ),
-        ),
       );
     }
 
     if (_members.isEmpty) {
-      return const Center(
+      return RefreshableScrollView(
+        onRefresh: _loadMembers,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+          mainAxisSize: MainAxisSize.min,
+          children: const [
             Icon(Icons.people_outline, size: 64, color: Colors.grey),
             SizedBox(height: 16),
             Text('No hay socios registrados aún.', style: TextStyle(color: Colors.grey, fontSize: 16)),
@@ -246,13 +249,22 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
           // Lista de socios
           Expanded(
             child: filteredMembers.isEmpty
-                ? Center(
-                    child: Text(
-                      'No se encontraron socios',
-                      style: TextStyle(color: Colors.grey[600]),
+                ? LayoutBuilder(
+                    builder: (context, constraints) => SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                        child: Center(
+                          child: Text(
+                            'No se encontraron socios',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        ),
+                      ),
                     ),
                   )
                 : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(16),
                     itemCount: filteredMembers.length,
                     itemBuilder: (context, index) {
