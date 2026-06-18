@@ -9,6 +9,7 @@ import '../../../../domain/entities/club_membership.dart';
 import '../../../providers/user_provider.dart';
 import '../../../../domain/entities/user.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 class MemberAttendanceScreen extends StatefulWidget {
   const MemberAttendanceScreen({super.key});
@@ -34,6 +35,7 @@ class _MemberAttendanceScreenState extends State<MemberAttendanceScreen> {
 
   Future<void> _loadData() async {
     try {
+      if (mounted) setState(() => _error = null);
       final user = Provider.of<UserProvider>(context, listen: false).currentUser;
       if (user == null) throw Exception("Usuario no autenticado");
       
@@ -89,7 +91,10 @@ class _MemberAttendanceScreenState extends State<MemberAttendanceScreen> {
 
     if (_error != null) {
       return Scaffold(
-        body: Center(child: Text("Error: $_error", style: const TextStyle(color: Colors.red))),
+        body: RefreshableScrollView(
+          onRefresh: _loadData,
+          child: Text("Error: $_error", style: const TextStyle(color: Colors.red)),
+        ),
       );
     }
 
@@ -115,6 +120,7 @@ class _MemberAttendanceScreenState extends State<MemberAttendanceScreen> {
             onRefresh: _loadData,
             color: AppTheme.primaryColor,
             child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
               itemCount: _asistencias.length,
               separatorBuilder: (context, index) => const Divider(),
@@ -247,9 +253,11 @@ class _MemberAttendanceScreenState extends State<MemberAttendanceScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
+    return RefreshableScrollView(
+      onRefresh: _loadData,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(LucideIcons.calendarX, size: 64, color: Colors.grey),
           const SizedBox(height: 16),

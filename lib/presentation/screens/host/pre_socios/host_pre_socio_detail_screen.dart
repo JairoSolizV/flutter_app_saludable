@@ -6,6 +6,7 @@ import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
 import '../../../../domain/entities/pre_socio.dart';
 import '../../../../domain/entities/mision_pre_socio.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 class HostPreSocioDetailScreen extends StatefulWidget {
   final int preSocioId;
@@ -133,7 +134,10 @@ class _HostPreSocioDetailScreenState extends State<HostPreSocioDetailScreen> {
     if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)));
     if (_error != null) return Scaffold(
       appBar: AppBar(title: const Text('Ficha de PreSocio'), backgroundColor: Colors.white, foregroundColor: Colors.black87),
-      body: Center(child: Text(_error!, style: const TextStyle(color: Colors.grey))),
+      body: RefreshableScrollView(
+        onRefresh: _load,
+        child: Text(_error!, style: const TextStyle(color: Colors.grey)),
+      ),
     );
 
     final p = _preSocio!;
@@ -147,7 +151,11 @@ class _HostPreSocioDetailScreenState extends State<HostPreSocioDetailScreen> {
         foregroundColor: Colors.black87,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
+      body: RefreshIndicator(
+        onRefresh: _load,
+        color: AppTheme.primaryColor,
+        child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,6 +233,7 @@ class _HostPreSocioDetailScreenState extends State<HostPreSocioDetailScreen> {
             ],
           ],
         ),
+      ),
       ),
     );
   }

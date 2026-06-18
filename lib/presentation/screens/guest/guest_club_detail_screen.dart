@@ -81,8 +81,12 @@ class _GuestClubDetailScreenState extends State<GuestClubDetailScreen> {
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        child: Column(
+      body: RefreshIndicator(
+        onRefresh: _loadDetails,
+        color: AppTheme.primaryColor,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
           children: [
             // Banner del Club (Placeholder o imagen del club si tuvieras)
             // Banner del Club
@@ -210,6 +214,7 @@ class _GuestClubDetailScreenState extends State<GuestClubDetailScreen> {
             )
           ],
         ),
+      ),
       ),
     );
   }

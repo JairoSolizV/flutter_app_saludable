@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 class MemberSelectClubScreen extends StatefulWidget {
   const MemberSelectClubScreen({super.key});
@@ -116,11 +117,13 @@ class _MemberSelectClubScreenState extends State<MemberSelectClubScreen> {
   }
 
   Widget _buildErrorView() {
-    return Center(
+    return RefreshableScrollView(
+      onRefresh: _loadClubes,
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(LucideIcons.alertCircle, size: 64, color: Colors.red[300]),
             const SizedBox(height: 16),
@@ -152,11 +155,13 @@ class _MemberSelectClubScreenState extends State<MemberSelectClubScreen> {
   }
 
   Widget _buildEmptyView() {
-    return Center(
+    return RefreshableScrollView(
+      onRefresh: _loadClubes,
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(LucideIcons.store, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
@@ -183,7 +188,9 @@ class _MemberSelectClubScreenState extends State<MemberSelectClubScreen> {
   Widget _buildClubesList() {
     return RefreshIndicator(
       onRefresh: _loadClubes,
+      color: AppTheme.primaryColor,
       child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         itemCount: _filteredClubes.length,
         itemBuilder: (context, index) {

@@ -6,6 +6,7 @@ import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
 import '../../../../domain/entities/pre_socio.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 class HostPreSociosListScreen extends StatefulWidget {
   const HostPreSociosListScreen({super.key});
@@ -69,9 +70,11 @@ class _HostPreSociosListScreenState extends State<HostPreSociosListScreen> {
   }
 
   Widget _buildError() {
-    return Center(
+    return RefreshableScrollView(
+      onRefresh: _load,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(LucideIcons.alertCircle, size: 48, color: Colors.orange),
           const SizedBox(height: 16),
@@ -89,6 +92,7 @@ class _HostPreSociosListScreenState extends State<HostPreSociosListScreen> {
 
   Widget _buildEmpty() {
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       children: const [
         SizedBox(height: 100),
         Center(
@@ -108,6 +112,7 @@ class _HostPreSociosListScreenState extends State<HostPreSociosListScreen> {
 
   Widget _buildList() {
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       itemCount: _preSocios.length,
       itemBuilder: (_, i) => _PreSocioCard(

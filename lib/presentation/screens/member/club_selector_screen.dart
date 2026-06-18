@@ -9,6 +9,7 @@ import '../../providers/user_provider.dart';
 import '../../widgets/club_card.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 class ClubSelectorScreen extends StatefulWidget {
   const ClubSelectorScreen({super.key});
@@ -127,9 +128,11 @@ class _ClubSelectorScreenState extends State<ClubSelectorScreen> with SingleTick
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
           : _error != null
-              ? Center(
+              ? RefreshableScrollView(
+                  onRefresh: _loadClubs,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(LucideIcons.alertCircle, size: 64, color: Colors.red),
                       const SizedBox(height: 16),
@@ -144,10 +147,12 @@ class _ClubSelectorScreenState extends State<ClubSelectorScreen> with SingleTick
                   ),
                 )
               : _clubs.isEmpty
-                  ? const Center(
+                  ? RefreshableScrollView(
+                      onRefresh: _loadClubs,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
                           Icon(LucideIcons.store, size: 64, color: Colors.grey),
                           SizedBox(height: 16),
                           Text('No hay clubes disponibles', style: TextStyle(fontSize: 16, color: Colors.grey)),
@@ -243,7 +248,11 @@ class _ClubSelectorScreenState extends State<ClubSelectorScreen> with SingleTick
       });
     }
 
-    return ListView.builder(
+    return RefreshIndicator(
+      onRefresh: _loadClubs,
+      color: AppTheme.primaryColor,
+      child: ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(vertical: 16),
       itemCount: sortedClubs.length,
       itemBuilder: (context, index) {
@@ -264,6 +273,7 @@ class _ClubSelectorScreenState extends State<ClubSelectorScreen> with SingleTick
           distance: distance,
         );
       },
+      ),
     );
   }
 }

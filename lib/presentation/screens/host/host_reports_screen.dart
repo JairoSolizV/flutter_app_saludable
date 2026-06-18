@@ -167,7 +167,11 @@ class _HostReportsScreenState extends State<HostReportsScreen> {
       ),
       body: Stack(
         children: [
-          SingleChildScrollView(
+          RefreshIndicator(
+            onRefresh: _cargarClub,
+            color: _green,
+            child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -217,6 +221,7 @@ class _HostReportsScreenState extends State<HostReportsScreen> {
                 ],
               ],
             ),
+          ),
           ),
           if (_descargando)
             Positioned.fill(

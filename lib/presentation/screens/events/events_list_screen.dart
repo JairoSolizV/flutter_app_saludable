@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import '../../../data/datasources/remote/evento_remote_data_source.dart';
 import '../../../domain/entities/evento.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 class EventsListScreen extends StatefulWidget {
   const EventsListScreen({super.key});
@@ -107,11 +108,13 @@ class _EventsListScreenState extends State<EventsListScreen> {
   }
 
   Widget _buildErrorView() {
-    return Center(
+    return RefreshableScrollView(
+      onRefresh: _loadEventos,
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
               LucideIcons.alertCircle,
@@ -150,11 +153,13 @@ class _EventsListScreenState extends State<EventsListScreen> {
   }
 
   Widget _buildEmptyView() {
-    return Center(
+    return RefreshableScrollView(
+      onRefresh: _loadEventos,
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               LucideIcons.calendarX,
@@ -187,6 +192,7 @@ class _EventsListScreenState extends State<EventsListScreen> {
       onRefresh: _loadEventos,
       color: AppTheme.primaryColor,
       child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         itemCount: _eventosFuturos.length,
         itemBuilder: (context, index) {

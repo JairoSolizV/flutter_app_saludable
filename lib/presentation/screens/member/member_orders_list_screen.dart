@@ -8,6 +8,7 @@ import '../../../data/datasources/remote/order_remote_data_source.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../domain/entities/club_membership.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 class MemberOrdersListScreen extends StatefulWidget {
   const MemberOrdersListScreen({super.key});
@@ -179,7 +180,10 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen> with Si
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
           : _error != null
-              ? Center(child: Text('Error: $_error', style: const TextStyle(color: Colors.red)))
+              ? RefreshableScrollView(
+                  onRefresh: _loadOrdersFromBackend,
+                  child: Text('Error: $_error', style: const TextStyle(color: Colors.red)),
+                )
               : RefreshIndicator(
                   onRefresh: _loadOrdersFromBackend,
                   color: AppTheme.primaryColor,
@@ -222,18 +226,29 @@ class _OrdersList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (orders.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32.0),
-          child: Text(
-            'No hay pedidos en esta sección',
-            style: TextStyle(color: Colors.grey, fontSize: 16),
+      // Scrolleable para que el RefreshIndicator ancestro capture el gesto
+      // de "deslizar para actualizar" incluso con la lista vacía.
+      return LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32.0),
+                child: Text(
+                  'No hay pedidos en esta sección',
+                  style: TextStyle(color: Colors.grey, fontSize: 16),
+                ),
+              ),
+            ),
           ),
         ),
       );
     }
 
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       itemCount: orders.length,
       itemBuilder: (context, index) {

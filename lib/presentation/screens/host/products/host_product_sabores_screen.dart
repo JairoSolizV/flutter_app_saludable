@@ -4,6 +4,7 @@ import '../../../../data/datasources/remote/sabor_remote_data_source.dart';
 import '../../../../domain/entities/sabor.dart';
 import '../../../../domain/entities/product.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 /// Pantalla para que el anfitrión gestione los sabores disponibles de un producto
 /// en su club. Accesible desde "Mi Menú" al tocar un producto.
@@ -114,7 +115,8 @@ class _HostProductSaboresScreenState extends State<HostProductSaboresScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
+              ? RefreshableScrollView(
+                  onRefresh: _loadSabores,
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
@@ -133,7 +135,8 @@ class _HostProductSaboresScreenState extends State<HostProductSaboresScreen> {
                   ),
                 )
               : _sabores.isEmpty
-                  ? Center(
+                  ? RefreshableScrollView(
+                      onRefresh: _loadSabores,
                       child: Padding(
                         padding: const EdgeInsets.all(24),
                         child: Column(
@@ -194,7 +197,11 @@ class _HostProductSaboresScreenState extends State<HostProductSaboresScreen> {
                         ),
                         // Lista de sabores
                         Expanded(
-                          child: ListView.separated(
+                          child: RefreshIndicator(
+                            onRefresh: _loadSabores,
+                            color: AppTheme.primaryColor,
+                            child: ListView.separated(
+                            physics: const AlwaysScrollableScrollPhysics(),
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             itemCount: _sabores.length,
                             separatorBuilder: (_, __) => const Divider(height: 1),
@@ -231,6 +238,7 @@ class _HostProductSaboresScreenState extends State<HostProductSaboresScreen> {
                                 ),
                               );
                             },
+                          ),
                           ),
                         ),
                       ],

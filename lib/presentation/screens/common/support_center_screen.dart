@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../../providers/support_provider.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 class SupportCenterScreen extends StatefulWidget {
   const SupportCenterScreen({super.key});
@@ -230,9 +231,11 @@ class _SupportCenterScreenState extends State<SupportCenterScreen> with SingleTi
         }
 
         if (provider.error != null && provider.tickets.isEmpty) {
-          return Center(
+          return RefreshableScrollView(
+            onRefresh: () => provider.fetchMyTickets(),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.error_outline, size: 48, color: Colors.black38),
                 const SizedBox(height: 16),
@@ -255,10 +258,12 @@ class _SupportCenterScreenState extends State<SupportCenterScreen> with SingleTi
         final tickets = provider.tickets;
 
         if (tickets.isEmpty) {
-          return const Center(
+          return RefreshableScrollView(
+            onRefresh: () => provider.fetchMyTickets(),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+              mainAxisSize: MainAxisSize.min,
+              children: const [
                 Icon(LucideIcons.messageSquare, size: 64, color: Colors.black12),
                 SizedBox(height: 16),
                 Text(
@@ -274,6 +279,7 @@ class _SupportCenterScreenState extends State<SupportCenterScreen> with SingleTi
           color: AppTheme.primaryColor,
           onRefresh: () => provider.fetchMyTickets(),
           child: ListView.separated(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
             itemCount: tickets.length,
             separatorBuilder: (context, index) => const SizedBox(height: 12),
