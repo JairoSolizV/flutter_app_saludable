@@ -5,6 +5,7 @@ import '../../domain/entities/product.dart';
 import '../../presentation/screens/splash_screen.dart';
 import '../../presentation/screens/auth/login_screen.dart';
 import '../../presentation/screens/auth/register_screen.dart'; // Add import
+import '../../presentation/screens/auth/email_verification_screen.dart'; // Verificación email
 import '../../presentation/screens/screen_selector.dart';
 import '../../presentation/screens/guest/guest_home_screen.dart';
 import '../../presentation/screens/guest/guest_flavor_catalog.dart';
@@ -66,6 +67,15 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/support',
       builder: (context, state) => const SupportCenterScreen(),
+    ),
+    // Ruta de verificación de email (fuera de Shell, pantalla completa)
+    GoRoute(
+      path: '/verify-email',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        final email = extra?['email'] as String? ?? '';
+        return EmailVerificationScreen(email: email);
+      },
     ),
     // Rutas de Invitado con Shell (BottomNav)
     ShellRoute(

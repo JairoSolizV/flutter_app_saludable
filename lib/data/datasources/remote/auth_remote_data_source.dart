@@ -7,6 +7,8 @@ abstract class AuthRemoteDataSource {
   Future<User> updateUser(User user);
   Future<User> getMe();
   Future<bool> checkEmailExists(String email);
+  Future<bool> verifyEmail(String email, String code);
+  Future<bool> resendVerificationCode(String email);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -254,5 +256,44 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       return {'instagram': socialMediaData};
     }
     return null;
+  }
+
+  @override
+  Future<bool> verifyEmail(String email, String code) async {
+    try {
+      final response = await _client.post('/auth/verify-email', data: {
+        'email': email,
+        'code': code,
+      });
+      if (response.statusCode == 200) {
+        return response.data['verified'] == true;
+      }
+      return false;
+    } on DioException catch (e) {
+      final responseData = e.response?.data;
+      if (responseData is Map && responseData.containsKey('message')) {
+        throw Exception(responseData['message']);
+      }
+      throw Exception(_parseErrorMessage(e, 'Error al verificar el código'));
+    }
+  }
+
+  @override
+  Future<bool> resendVerificationCode(String email) async {
+    try {
+      final response = await _client.post('/auth/resend-code', data: {
+        'email': email,
+      });
+      if (response.statusCode == 200) {
+        return response.data['success'] == true;
+      }
+      return false;
+    } on DioException catch (e) {
+      final responseData = e.response?.data;
+      if (responseData is Map && responseData.containsKey('message')) {
+        throw Exception(responseData['message']);
+      }
+      throw Exception(_parseErrorMessage(e, 'Error al reenviar el código'));
+    }
   }
 }

@@ -265,10 +265,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   );
 
                                   if (success && context.mounted) {
-                                    final user = auth.currentUser;
-                                    if (user != null) {
-                                      Provider.of<UserProvider>(context, listen: false).setUser(user);
-                                      context.go('/basic-home');
+                                    // Redirigir a verificación de correo
+                                    if (auth.requiresVerification) {
+                                      context.go('/verify-email', extra: {
+                                        'email': _emailCtrl.text.trim(),
+                                      });
+                                    } else {
+                                      final user = auth.currentUser;
+                                      if (user != null) {
+                                        Provider.of<UserProvider>(context, listen: false).setUser(user);
+                                        context.go('/basic-home');
+                                      }
                                     }
                                   }
                                 }

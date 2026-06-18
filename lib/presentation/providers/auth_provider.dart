@@ -9,11 +9,13 @@ class AuthProvider extends ChangeNotifier {
   
   bool _isLoading = false;
   String? _errorMessage;
+  bool _requiresVerification = false;
 
   AuthProvider(this._remoteDataSource, this._localRepository);
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  bool get requiresVerification => _requiresVerification;
 
   User? _currentUser;
   User? get currentUser => _currentUser;
@@ -24,12 +26,46 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Resetear el flag de verificación
+  void clearVerificationFlag() {
+    _requiresVerification = false;
+    notifyListeners();
+  }
+
   Future<bool> login(String email, String password) async {
     return _authenticate(() => _remoteDataSource.login(email, password));
   }
 
   Future<bool> register(String nombre, String apellido, String email, String password, String telefono, {int? rolId}) async {
-    return _authenticate(() => _remoteDataSource.register(nombre, apellido, email, password, telefono, rolId: rolId));
+    _isLoading = true;
+    _errorMessage = null;
+    _requiresVerification = false;
+    notifyListeners();
+
+    try {
+      final user = await _remoteDataSource.register(nombre, apellido, email, password, telefono, rolId: rolId);
+      print('[DEBUG AUTH_PROVIDER] Usuario registrado:');
+      print('[DEBUG AUTH_PROVIDER]   - id: ${user.id}');
+      print('[DEBUG AUTH_PROVIDER]   - email: ${user.email}');
+
+      // Guardar usuario localmente (incluso sin verificar, para tener el token)
+      print('[DEBUG AUTH_PROVIDER] Limpiando BD local antes de guardar nuevo usuario...');
+      await _localRepository.logout();
+      await _localRepository.saveUser(user);
+      _currentUser = user;
+
+      // El backend siempre requiere verificación para nuevos registros
+      _requiresVerification = true;
+      
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<bool> checkEmailExists(String email) async {
@@ -37,6 +73,52 @@ class AuthProvider extends ChangeNotifier {
       return await _remoteDataSource.checkEmailExists(email);
     } catch (e) {
       print('[DEBUG AUTH_PROVIDER] Error checking email existence: $e');
+      return false;
+    }
+  }
+
+  /// Verificar correo electrónico con código OTP
+  Future<bool> verifyEmail(String email, String code) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final verified = await _remoteDataSource.verifyEmail(email, code);
+      
+      if (verified) {
+        _requiresVerification = false;
+        print('[DEBUG AUTH_PROVIDER] Correo verificado exitosamente para: $email');
+      } else {
+        _errorMessage = 'Código inválido o expirado. Intenta de nuevo.';
+      }
+
+      _isLoading = false;
+      notifyListeners();
+      return verified;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Reenviar código de verificación
+  Future<bool> resendCode(String email) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final success = await _remoteDataSource.resendVerificationCode(email);
+      _isLoading = false;
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
       return false;
     }
   }
@@ -162,6 +244,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
       print('[DEBUG AUTH_PROVIDER] logout() - Iniciando cierre de sesión');
       _currentUser = null;
+      _requiresVerification = false;
       await _localRepository.logout();
       print('[DEBUG AUTH_PROVIDER] logout() - Sesión cerrada, usuario limpiado');
       notifyListeners();
