@@ -7,6 +7,7 @@ import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../providers/user_provider.dart';
 import 'host_counter_sale_screen.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 class HostOrdersListScreen extends StatefulWidget {
   const HostOrdersListScreen({super.key});
@@ -552,9 +553,11 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _error != null
-                    ? Center(
+                    ? RefreshableScrollView(
+                        onRefresh: _loadOrders,
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(LucideIcons.alertCircle, size: 48, color: Colors.red),
                             const SizedBox(height: 16),
@@ -572,9 +575,11 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                         ),
                       )
                     : filteredOrders.isEmpty
-                        ? Center(
+                        ? RefreshableScrollView(
+                            onRefresh: _loadOrders,
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(LucideIcons.package, size: 64, color: Colors.grey),
                                 const SizedBox(height: 16),
@@ -594,6 +599,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                         : RefreshIndicator(
                             onRefresh: _loadOrders,
             child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
               itemCount: filteredOrders.length,
               itemBuilder: (context, index) {
