@@ -6,6 +6,7 @@ import '../../../data/datasources/remote/product_remote_data_source.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../widgets/product_image.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 class MemberProductsScreen extends StatefulWidget {
   final String clubId;
@@ -76,9 +77,11 @@ class _MemberProductsScreenState extends State<MemberProductsScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
           : _error != null
-              ? Center(
+              ? RefreshableScrollView(
+                  onRefresh: _loadProducts,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(LucideIcons.alertCircle, size: 64, color: Colors.red),
                       const SizedBox(height: 16),
@@ -100,9 +103,11 @@ class _MemberProductsScreenState extends State<MemberProductsScreen> {
                   ),
                 )
               : _products.isEmpty
-                  ? Center(
+                  ? RefreshableScrollView(
+                      onRefresh: _loadProducts,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(LucideIcons.packageOpen, size: 64, color: Colors.grey),
                           const SizedBox(height: 16),
@@ -118,13 +123,18 @@ class _MemberProductsScreenState extends State<MemberProductsScreen> {
                         ],
                       ),
                     )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _products.length,
-                      itemBuilder: (context, index) {
-                        final product = _products[index];
-                        return _buildProductCard(product);
-                      },
+                  : RefreshIndicator(
+                      onRefresh: _loadProducts,
+                      color: AppTheme.primaryColor,
+                      child: ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _products.length,
+                        itemBuilder: (context, index) {
+                          final product = _products[index];
+                          return _buildProductCard(product);
+                        },
+                      ),
                     ),
     );
   }

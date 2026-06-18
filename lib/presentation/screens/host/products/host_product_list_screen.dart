@@ -9,6 +9,7 @@ import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../data/datasources/remote/combo_remote_data_source.dart';
 import '../../../widgets/product_image.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 import 'host_product_sabores_screen.dart';
 import 'host_combo_create_screen.dart';
 
@@ -74,6 +75,14 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
       setState(() {
         _isLoadingClub = false;
       });
+    }
+  }
+
+  /// Recarga los productos del hub. Usado por pull-to-refresh.
+  Future<void> _refreshProducts() async {
+    if (_hubId != null && _clubId != null) {
+      await Provider.of<ProductProvider>(context, listen: false)
+          .loadProducts(hubId: _hubId!, clubId: _clubId!);
     }
   }
 
@@ -246,9 +255,10 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
     return Stack(
       children: [
         if (products.isEmpty)
-          Center(
+          RefreshableScrollView(
+            onRefresh: _refreshProducts,
             child: Text(
-              _searchQuery.isNotEmpty 
+              _searchQuery.isNotEmpty
                   ? 'No se encontraron resultados para "$_searchQuery"'
                   : (isGlobal ? 'No hay productos globales disponibles.' : 'Aún no has creado productos propios.'),
               textAlign: TextAlign.center,
@@ -256,7 +266,11 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
             ),
           )
         else
-          ListView.builder(
+          RefreshIndicator(
+            onRefresh: _refreshProducts,
+            color: AppTheme.primaryColor,
+            child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             itemCount: products.length,
             itemBuilder: (context, index) {
@@ -334,7 +348,8 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
               );
             },
           ),
-          
+          ),
+
         if (!isGlobal)
           Positioned(
             bottom: 16,
@@ -369,7 +384,8 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
         if (_isLoadingCombos)
           const Center(child: CircularProgressIndicator())
         else if (_combosError != null)
-          Center(
+          RefreshableScrollView(
+            onRefresh: _loadCombos,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -386,10 +402,11 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
             ),
           )
         else if (_combos.isEmpty)
-          const Center(
+          RefreshableScrollView(
+            onRefresh: _loadCombos,
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: [
+              children: const [
                 Icon(Icons.fastfood_outlined, size: 64, color: Colors.grey),
                 SizedBox(height: 12),
                 Text(
@@ -401,7 +418,11 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
             ),
           )
         else
-          ListView.builder(
+          RefreshIndicator(
+            onRefresh: _loadCombos,
+            color: AppTheme.primaryColor,
+            child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             itemCount: _combos.length,
             itemBuilder: (context, index) {
@@ -467,6 +488,7 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                 ),
               );
             },
+          ),
           ),
 
         // FAB para crear combo
