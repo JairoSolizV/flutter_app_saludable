@@ -20,6 +20,8 @@ import 'data/datasources/remote/qr_remote_data_source.dart';
 import 'data/datasources/remote/evento_remote_data_source.dart';
 import 'data/datasources/remote/support_remote_data_source.dart'; // Nuevo
 import 'data/datasources/remote/report_remote_data_source.dart';
+import 'data/datasources/remote/resumen_mensual_report_data_source.dart';
+import 'data/datasources/remote/ventas_diarias_report_data_source.dart';
 import 'data/datasources/remote/pre_socio_remote_data_source.dart';
 import 'data/datasources/remote/compras_remote_data_source.dart';
 import 'data/datasources/remote/sabor_remote_data_source.dart';
@@ -41,6 +43,8 @@ late final QRRemoteDataSource qrRemoteDataSource;
 late final EventoRemoteDataSource eventoRemoteDataSource;
 late final SupportRemoteDataSource supportRemoteDataSource; // Nuevo
 late final ReportRemoteDataSource reportRemoteDataSource;
+late final VentasDiariasReportDataSource ventasDiariasReportDataSource;
+late final ResumenMensualReportDataSource resumenMensualReportDataSource;
 late final PreSocioRemoteDataSource preSocioRemoteDataSource;
 late final ComprasRemoteDataSource comprasRemoteDataSource;
 late final SaborRemoteDataSource saborRemoteDataSource;
@@ -69,6 +73,8 @@ void main() {
     eventoRemoteDataSource = EventoRemoteDataSourceImpl(apiClient.client);
     supportRemoteDataSource = SupportRemoteDataSourceImpl(apiClient.client); // Nuevo
     reportRemoteDataSource = ReportRemoteDataSource(apiClient.client);
+    ventasDiariasReportDataSource = VentasDiariasReportDataSource(apiClient.client);
+    resumenMensualReportDataSource = ResumenMensualReportDataSource(apiClient.client);
     preSocioRemoteDataSource = PreSocioRemoteDataSourceImpl(apiClient.client);
     comprasRemoteDataSource = ComprasRemoteDataSourceImpl(apiClient.client);
     saborRemoteDataSource = SaborRemoteDataSource(apiClient.client);
@@ -128,6 +134,12 @@ class AppState extends StatelessWidget {
         ),
         Provider<ReportRemoteDataSource>(
             create: (_) => reportRemoteDataSource,
+        ),
+        Provider<VentasDiariasReportDataSource>(
+            create: (_) => ventasDiariasReportDataSource,
+        ),
+        Provider<ResumenMensualReportDataSource>(
+            create: (_) => resumenMensualReportDataSource,
         ),
         Provider<PreSocioRemoteDataSource>(
             create: (_) => preSocioRemoteDataSource,
