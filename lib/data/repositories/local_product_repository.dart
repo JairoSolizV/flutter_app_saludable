@@ -98,7 +98,7 @@ class LocalProductRepository implements ProductRepository {
   @override
   Future<void> deleteProduct(String id) async {
     if (_remoteDataSource != null) {
-      await (_remoteDataSource as dynamic).deleteProduct(id);
+      await _remoteDataSource.deleteProduct(id);
     }
     // Delete from local cache
     final db = await _dbHelper.database;
@@ -127,7 +127,7 @@ class LocalProductRepository implements ProductRepository {
   @override
   Future<void> toggleProductAvailability(int clubId, String productId) async {
     if (_remoteDataSource != null) {
-      await (_remoteDataSource as dynamic).toggleProductAvailability(clubId, productId);
+      await _remoteDataSource.toggleProductAvailability(clubId, productId);
     }
   }
 }
