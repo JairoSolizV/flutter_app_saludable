@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import '../../domain/entities/order_entity.dart';
 import '../../domain/repositories/order_repository.dart';
 import 'connectivity_service.dart';
@@ -50,7 +51,7 @@ class SyncService {
     } catch (e, stackTrace) {
       debugPrint('[DEBUG SYNC] Failed to sync order ${order.id}: $e');
       debugPrint('[DEBUG SYNC] Stack trace: $stackTrace');
-      if (kDebugMode) print('SyncService: Failed to sync order ${order.id}: $e');
+      if (kDebugMode) logDebug('SyncService: Failed to sync order ${order.id}: $e');
       
       // Si el error es por validación del backend (membresía inactiva, etc.),
       // eliminar el pedido local ya que nunca se podrá sincronizar

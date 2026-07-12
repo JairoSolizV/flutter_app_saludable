@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -95,10 +96,10 @@ class _GuestClubDetailScreenState extends State<GuestClubDetailScreen> {
               width: double.infinity,
               color: Colors.grey[200],
               child: _clubPhotoUrl != null
-                  ? Image.network(
-                      _clubPhotoUrl!,
+                  ? CachedNetworkImage(
+                      imageUrl: _clubPhotoUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
+                      errorWidget: (context, url, error) =>
                           const Icon(Icons.storefront, size: 80, color: Colors.grey),
                     )
                   : const Icon(Icons.storefront, size: 80, color: Colors.grey),

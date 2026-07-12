@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import '../../../domain/entities/user.dart';
 
 abstract class AuthRemoteDataSource {
@@ -174,13 +175,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final data = response.data;
       final token = data['token'];
       
-      print('[DEBUG AUTH_REMOTE] Parsing auth response:');
-      print('[DEBUG AUTH_REMOTE]   - Status: ${response.statusCode}');
-      print('[DEBUG AUTH_REMOTE]   - Token presente: ${token != null}');
+      logDebug('[DEBUG AUTH_REMOTE] Parsing auth response:');
+      logDebug('[DEBUG AUTH_REMOTE]   - Status: ${response.statusCode}');
+      logDebug('[DEBUG AUTH_REMOTE]   - Token presente: ${token != null}');
       if (token != null) {
-        print('[DEBUG AUTH_REMOTE]   - Token length: ${token.length}');
+        logDebug('[DEBUG AUTH_REMOTE]   - Token length: ${token.length}');
         if (token.length > 20) {
-          print('[DEBUG AUTH_REMOTE]   - Token preview: ${token.substring(0, 20)}...');
+          logDebug('[DEBUG AUTH_REMOTE]   - Token preview: ${token.substring(0, 20)}...');
         }
       }
       
@@ -189,7 +190,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final userData = data['usuario'] ?? data;
 
       // DEBUG: Print raw userData
-      print('[DEBUG AUTH_REMOTE] Raw userData from backend: $userData');
+      logDebug('[DEBUG AUTH_REMOTE] Raw userData from backend: $userData');
       
       String role = 'member';
       

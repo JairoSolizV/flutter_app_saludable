@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -59,7 +60,7 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
       }
     } catch (e) {
       // Silently fail or minimal error state for Home
-      print("Error loading home data: $e");
+      logDebug("Error loading home data: $e");
       if (mounted) setState(() => _isLoading = false);
     }
   }

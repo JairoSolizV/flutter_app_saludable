@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/repositories/product_repository.dart';
 
@@ -22,7 +23,7 @@ class ProductProvider extends ChangeNotifier {
     try {
       _products = await _repository.getProducts(hubId: hubId, clubId: clubId);
     } catch (e) {
-      print('Error loading products: $e');
+      logDebug('Error loading products: $e');
       _error = e.toString();
     } finally {
       _isLoading = false;
@@ -41,7 +42,7 @@ class ProductProvider extends ChangeNotifier {
       // Filtrar los productos del menú propio que el anfitrión haya deshabilitado
       _products = fetchedProducts.where((p) => p.active && p.available).toList();
     } catch (e) {
-      print('Error loading available products: $e');
+      logDebug('Error loading available products: $e');
       _error = e.toString();
     } finally {
       _isLoading = false;

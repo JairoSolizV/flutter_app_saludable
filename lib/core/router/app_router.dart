@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import '../../domain/entities/product.dart';
 
@@ -60,10 +61,12 @@ final appRouter = GoRouter(
       path: '/',
       builder: (context, state) => const SplashScreen(),
     ),
-    GoRoute(
-      path: '/screen-selector',
-      builder: (context, state) => const ScreenSelector(),
-    ),
+    // Solo disponible en builds de depuración (VULN-FL-03)
+    if (kDebugMode)
+      GoRoute(
+        path: '/screen-selector',
+        builder: (context, state) => const ScreenSelector(),
+      ),
     GoRoute(
       path: '/support',
       builder: (context, state) => const SupportCenterScreen(),

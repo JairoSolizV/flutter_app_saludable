@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/user_repository.dart';
 import '../../data/datasources/remote/auth_remote_data_source.dart';
@@ -44,12 +45,12 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final user = await _remoteDataSource.register(nombre, apellido, email, password, telefono, rolId: rolId);
-      print('[DEBUG AUTH_PROVIDER] Usuario registrado:');
-      print('[DEBUG AUTH_PROVIDER]   - id: ${user.id}');
-      print('[DEBUG AUTH_PROVIDER]   - email: ${user.email}');
+      logDebug('[DEBUG AUTH_PROVIDER] Usuario registrado:');
+      logDebug('[DEBUG AUTH_PROVIDER]   - id: ${user.id}');
+      logDebug('[DEBUG AUTH_PROVIDER]   - email: ${user.email}');
 
       // Guardar usuario localmente (incluso sin verificar, para tener el token)
-      print('[DEBUG AUTH_PROVIDER] Limpiando BD local antes de guardar nuevo usuario...');
+      logDebug('[DEBUG AUTH_PROVIDER] Limpiando BD local antes de guardar nuevo usuario...');
       await _localRepository.logout();
       await _localRepository.saveUser(user);
       _currentUser = user;
@@ -72,7 +73,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       return await _remoteDataSource.checkEmailExists(email);
     } catch (e) {
-      print('[DEBUG AUTH_PROVIDER] Error checking email existence: $e');
+      logDebug('[DEBUG AUTH_PROVIDER] Error checking email existence: $e');
       return false;
     }
   }
@@ -88,7 +89,7 @@ class AuthProvider extends ChangeNotifier {
       
       if (verified) {
         _requiresVerification = false;
-        print('[DEBUG AUTH_PROVIDER] Correo verificado exitosamente para: $email');
+        logDebug('[DEBUG AUTH_PROVIDER] Correo verificado exitosamente para: $email');
       } else {
         _errorMessage = 'Código inválido o expirado. Intenta de nuevo.';
       }
@@ -130,24 +131,24 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final user = await authMethod();
-      print('[DEBUG AUTH_PROVIDER] Usuario autenticado:');
-      print('[DEBUG AUTH_PROVIDER]   - id: ${user.id}');
-      print('[DEBUG AUTH_PROVIDER]   - email: ${user.email}');
-      print('[DEBUG AUTH_PROVIDER]   - token: ${user.token != null ? "PRESENTE (${user.token!.length} chars)" : "NULL"}');
+      logDebug('[DEBUG AUTH_PROVIDER] Usuario autenticado:');
+      logDebug('[DEBUG AUTH_PROVIDER]   - id: ${user.id}');
+      logDebug('[DEBUG AUTH_PROVIDER]   - email: ${user.email}');
+      logDebug('[DEBUG AUTH_PROVIDER]   - token: ${user.token != null ? "PRESENTE (${user.token!.length} chars)" : "NULL"}');
       if (user.token != null && user.token!.length > 20) {
-        print('[DEBUG AUTH_PROVIDER]   - token preview: ${user.token!.substring(0, 20)}...');
+        logDebug('[DEBUG AUTH_PROVIDER]   - token preview: ${user.token!.substring(0, 20)}...');
       }
       
       // SOLUCIÓN: Limpiar BD local antes de guardar el nuevo usuario
       // Esto asegura que solo haya un usuario en la BD local (single-user app)
       // y evita problemas con tokens expirados de sesiones anteriores
-      print('[DEBUG AUTH_PROVIDER] Limpiando BD local antes de guardar nuevo usuario...');
+      logDebug('[DEBUG AUTH_PROVIDER] Limpiando BD local antes de guardar nuevo usuario...');
       await _localRepository.logout(); // Limpia todos los usuarios viejos
-      print('[DEBUG AUTH_PROVIDER] BD local limpiada correctamente');
+      logDebug('[DEBUG AUTH_PROVIDER] BD local limpiada correctamente');
       
       // Guardar usuario y token localmente
       await _localRepository.saveUser(user);
-      print('[DEBUG AUTH_PROVIDER] Usuario guardado en BD local');
+      logDebug('[DEBUG AUTH_PROVIDER] Usuario guardado en BD local');
       
       _currentUser = user; 
       
@@ -163,15 +164,15 @@ class AuthProvider extends ChangeNotifier {
   }
   Future<void> syncProfile() async {
     try {
-      print('[DEBUG AUTH_PROVIDER] Starting syncProfile()');
+      logDebug('[DEBUG AUTH_PROVIDER] Starting syncProfile()');
       
       final fetchedUser = await _remoteDataSource.getMe();
       
-      print('[DEBUG AUTH_PROVIDER] Fetched user from getMe():');
-      print('[DEBUG AUTH_PROVIDER]   - id: ${fetchedUser.id}');
-      print('[DEBUG AUTH_PROVIDER]   - name: ${fetchedUser.name}');
-      print('[DEBUG AUTH_PROVIDER]   - phone: ${fetchedUser.phone}');
-      print('[DEBUG AUTH_PROVIDER]   - email: ${fetchedUser.email}');
+      logDebug('[DEBUG AUTH_PROVIDER] Fetched user from getMe():');
+      logDebug('[DEBUG AUTH_PROVIDER]   - id: ${fetchedUser.id}');
+      logDebug('[DEBUG AUTH_PROVIDER]   - name: ${fetchedUser.name}');
+      logDebug('[DEBUG AUTH_PROVIDER]   - phone: ${fetchedUser.phone}');
+      logDebug('[DEBUG AUTH_PROVIDER]   - email: ${fetchedUser.email}');
       
       // Preservar el token actual si el endpoint no lo devuelve (caso getMe)
       String? tokenToSave = fetchedUser.token;
@@ -181,20 +182,20 @@ class AuthProvider extends ChangeNotifier {
       
       final userToSave = fetchedUser.copyWith(token: tokenToSave);
       
-      print('[DEBUG AUTH_PROVIDER] User after copyWith (with token):');
-      print('[DEBUG AUTH_PROVIDER]   - phone: ${userToSave.phone}');
-      print('[DEBUG AUTH_PROVIDER]   - token: ${userToSave.token != null ? "present" : "null"}');
+      logDebug('[DEBUG AUTH_PROVIDER] User after copyWith (with token):');
+      logDebug('[DEBUG AUTH_PROVIDER]   - phone: ${userToSave.phone}');
+      logDebug('[DEBUG AUTH_PROVIDER]   - token: ${userToSave.token != null ? "present" : "null"}');
 
       await _localRepository.saveUser(userToSave);
       
-      print('[DEBUG AUTH_PROVIDER] User saved to local repository');
+      logDebug('[DEBUG AUTH_PROVIDER] User saved to local repository');
       
       _currentUser = userToSave;
       notifyListeners();
       
-      print('[DEBUG AUTH_PROVIDER] syncProfile completed successfully');
+      logDebug('[DEBUG AUTH_PROVIDER] syncProfile completed successfully');
     } catch (e) {
-      print('[DEBUG AUTH_PROVIDER] Error syncing profile: $e');
+      logDebug('[DEBUG AUTH_PROVIDER] Error syncing profile: $e');
       // No lanzamos error para no interrumpir UI, solo log
     }
   }
@@ -218,7 +219,7 @@ class AuthProvider extends ChangeNotifier {
         socialMedia: socialMedia,
       );
 
-      print('[DEBUG AUTH_PROVIDER] Updating profile for user ${updatedUser.id}');
+      logDebug('[DEBUG AUTH_PROVIDER] Updating profile for user ${updatedUser.id}');
       
       // 1. Llamada al Backend
       final resultUser = await _remoteDataSource.updateUser(updatedUser);
@@ -231,9 +232,9 @@ class AuthProvider extends ChangeNotifier {
       await _localRepository.saveUser(userToSave);
       _currentUser = userToSave;
       
-      print('[DEBUG AUTH_PROVIDER] Profile updated successfully');
+      logDebug('[DEBUG AUTH_PROVIDER] Profile updated successfully');
     } catch (e) {
-      print('[DEBUG AUTH_PROVIDER] Error updating profile: $e');
+      logDebug('[DEBUG AUTH_PROVIDER] Error updating profile: $e');
       rethrow;
     } finally {
       _isLoading = false;
@@ -242,11 +243,11 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-      print('[DEBUG AUTH_PROVIDER] logout() - Iniciando cierre de sesión');
+      logDebug('[DEBUG AUTH_PROVIDER] logout() - Iniciando cierre de sesión');
       _currentUser = null;
       _requiresVerification = false;
       await _localRepository.logout();
-      print('[DEBUG AUTH_PROVIDER] logout() - Sesión cerrada, usuario limpiado');
+      logDebug('[DEBUG AUTH_PROVIDER] logout() - Sesión cerrada, usuario limpiado');
       notifyListeners();
   }
 }
