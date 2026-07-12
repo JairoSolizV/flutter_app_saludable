@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
@@ -37,31 +38,26 @@ class ProductImage extends StatelessWidget {
       child: SizedBox(
         width: width,
         height: height,
-        child: Image.network(
-          url,
+        child: CachedNetworkImage(
+          imageUrl: url,
           fit: fit,
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Container(
-              width: width,
-              height: height,
-              color: Colors.grey[200],
-              child: const Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
+          placeholder: (context, url) => Container(
+            width: width,
+            height: height,
+            color: Colors.grey[200],
+            child: const Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
               ),
-            );
-          },
-          errorBuilder: (context, error, stackTrace) {
-            return _PlaceholderBatido(
-              width: width,
-              height: height,
-              borderRadius: radius,
-            );
-          },
+            ),
+          ),
+          errorWidget: (context, url, error) => _PlaceholderBatido(
+            width: width,
+            height: height,
+            borderRadius: radius,
+          ),
         ),
       ),
     );
