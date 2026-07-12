@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -104,8 +105,8 @@ class GuestHomeScreen extends StatelessWidget {
                        children: [
                           ClipRRect(
                             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                            child: Image.network(
-                              'https://images.unsplash.com/photo-1490645935967-10de6ba17061?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                            child: CachedNetworkImage(
+                              imageUrl: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
                               height: 150,
                               width: double.infinity,
                               fit: BoxFit.cover,
@@ -144,8 +145,8 @@ class GuestHomeScreen extends StatelessWidget {
                        children: [
                           ClipRRect(
                             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                            child: Image.network(
-                              'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', // Yoga / Exercise image
+                            child: CachedNetworkImage(
+                              imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', // Yoga / Exercise image
                               height: 150,
                               width: double.infinity,
                               fit: BoxFit.cover,
