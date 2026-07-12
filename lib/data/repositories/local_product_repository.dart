@@ -81,15 +81,14 @@ class LocalProductRepository implements ProductRepository {
   @override
   Future<void> createProduct(Product product, int clubId) async {
     if (_remoteDataSource != null) {
-        // Asumimos que _remoteDataSource es ProductRemoteDataSourceImpl
-        await (_remoteDataSource as dynamic).createProduct(product, clubId); 
+        await _remoteDataSource.createProduct(product, clubId);
     }
   }
 
   @override
   Future<void> updateProduct(Product product) async {
     if (_remoteDataSource != null) {
-      await (_remoteDataSource as dynamic).updateProduct(product);
+      await _remoteDataSource.updateProduct(product);
     }
     // Update local cache
     final db = await _dbHelper.database;
