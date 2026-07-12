@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import '../../domain/entities/order_entity.dart';
 import '../../domain/repositories/order_repository.dart';
 import '../../core/services/connectivity_service.dart';
@@ -24,7 +25,7 @@ class OrderProvider extends ChangeNotifier {
     try {
       _orders = await _repository.getOrdersByUser(userId);
     } catch (e) {
-      if (kDebugMode) print('Error loading orders: $e');
+      if (kDebugMode) logDebug('Error loading orders: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -47,7 +48,7 @@ class OrderProvider extends ChangeNotifier {
           debugPrint('[DEBUG ORDER] Pedido sincronizado exitosamente');
         } catch (syncError) {
           debugPrint('[DEBUG ORDER] Error sincronizando pedido: $syncError');
-          if (kDebugMode) print('Error sincronizando pedido: $syncError');
+          if (kDebugMode) logDebug('Error sincronizando pedido: $syncError');
           // No rethrow aquí, el pedido ya está guardado localmente
         }
       } else {
@@ -59,7 +60,7 @@ class OrderProvider extends ChangeNotifier {
       
     } catch (e) {
       debugPrint('[DEBUG ORDER] Error creando pedido: $e');
-      if (kDebugMode) print('Error creating order: $e');
+      if (kDebugMode) logDebug('Error creating order: $e');
       rethrow;
     }
   }

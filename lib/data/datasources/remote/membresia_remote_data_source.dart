@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import 'package:flutter/foundation.dart';
 import '../../../domain/entities/club_membership.dart';
 import '../../../domain/entities/attendance.dart';
@@ -77,9 +78,9 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
       }
     } on DioException catch (e) {
       // LOG DEBUGER
-      print('DIO ERROR: ${e.message}');
-      print('Status: ${e.response?.statusCode}');
-      print('Data: ${e.response?.data}');
+      logDebug('DIO ERROR: ${e.message}');
+      logDebug('Status: ${e.response?.statusCode}');
+      logDebug('Data: ${e.response?.data}');
       
       String msg = e.message ?? 'Error desconocido';
       final statusCode = e.response?.statusCode ?? 'N/A';

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../data/datasources/remote/membresia_remote_data_source.dart';
@@ -56,7 +57,7 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
         });
       }
     } catch (e) {
-      print('Error loading members for referral search: $e');
+      logDebug('Error loading members for referral search: $e');
       if (mounted) setState(() => _isLoadingMembers = false);
     }
   }
@@ -176,8 +177,8 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
     try {
       final membresiaDataSource = Provider.of<MembresiaRemoteDataSource>(context, listen: false);
 
-      print('Activando socio...');
-      print('Payload: ${widget.qrPayload}, ClubID: ${widget.clubId}');
+      logDebug('Activando socio...');
+      logDebug('Payload: ${widget.qrPayload}, ClubID: ${widget.clubId}');
 
       await membresiaDataSource.activarSocio(
         clubId: widget.clubId,
@@ -205,7 +206,7 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
       context.pop();
 
     } catch (e) {
-      print('Error al activar socio: $e');
+      logDebug('Error al activar socio: $e');
       if (!mounted) return;
       
       showDialog(

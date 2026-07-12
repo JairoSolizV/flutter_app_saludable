@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../domain/entities/product.dart';
@@ -67,7 +68,7 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
           }
         }
       } catch (e) {
-        print('Error cargando club: $e');
+        logDebug('Error cargando club: $e');
       }
     }
     

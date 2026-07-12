@@ -1,4 +1,5 @@
 import 'package:sqflite/sqflite.dart';
+import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import 'package:path/path.dart';
 
 class DatabaseHelper {
@@ -105,7 +106,7 @@ class DatabaseHelper {
         await db.execute('ALTER TABLE users ADD COLUMN social_media TEXT');
       } catch (e) {
         // Ignorar si ya existen (por si acaso el usuario corrió una versión intermedia)
-        print("Error migrando columnas (pueden ya existir): $e");
+        logDebug("Error migrando columnas (pueden ya existir): $e");
       }
     }
     if (oldVersion < 3) {
@@ -117,7 +118,7 @@ class DatabaseHelper {
         // Eliminar productos de seed que no tienen hubId (son datos de prueba)
         await db.delete('products', where: 'hubId IS NULL');
       } catch (e) {
-        print("Error migrando tabla products: $e");
+        logDebug("Error migrando tabla products: $e");
       }
     }
     if (oldVersion < 4) {
@@ -126,7 +127,7 @@ class DatabaseHelper {
         await db.execute('ALTER TABLE orders ADD COLUMN club_id INTEGER');
         await db.execute('ALTER TABLE orders ADD COLUMN membresia_id INTEGER');
       } catch (e) {
-        print("Error migrando tabla orders: $e");
+        logDebug("Error migrando tabla orders: $e");
       }
     }
     if (oldVersion < 5) {
@@ -142,7 +143,7 @@ class DatabaseHelper {
         await db.execute('ALTER TABLE order_items ADD COLUMN note TEXT');
         // Eliminar price: SQLite no soporta DROP COLUMN, pero podemos ignorarlo en el código
       } catch (e) {
-        print("Error migrando tabla orders/order_items: $e");
+        logDebug("Error migrando tabla orders/order_items: $e");
       }
     }
     if (oldVersion < 6) {
@@ -150,7 +151,7 @@ class DatabaseHelper {
       try {
         await db.execute('ALTER TABLE products ADD COLUMN puntosValor INTEGER DEFAULT 0');
       } catch (e) {
-        print("Error migrando tabla products (puntosValor): $e");
+        logDebug("Error migrando tabla products (puntosValor): $e");
       }
     }
     if (oldVersion < 7) {
@@ -158,7 +159,7 @@ class DatabaseHelper {
       try {
         await db.execute('ALTER TABLE orders ADD COLUMN tiempoEstimadoMinutos INTEGER');
       } catch (e) {
-        print("Error migrando tabla orders (tiempoEstimadoMinutos): $e");
+        logDebug("Error migrando tabla orders (tiempoEstimadoMinutos): $e");
       }
     }
     if (oldVersion < 8) {
@@ -166,7 +167,7 @@ class DatabaseHelper {
       try {
         await db.execute('ALTER TABLE products ADD COLUMN clubId INTEGER');
       } catch (e) {
-        print("Error migrando tabla products (clubId): $e");
+        logDebug("Error migrando tabla products (clubId): $e");
       }
     }
     if (oldVersion < 9) {
@@ -174,7 +175,7 @@ class DatabaseHelper {
       try {
         await db.execute('ALTER TABLE products ADD COLUMN clubCreadorId INTEGER');
       } catch (e) {
-        print("Error migrando tabla products (clubCreadorId): $e");
+        logDebug("Error migrando tabla products (clubCreadorId): $e");
       }
     }
     if (oldVersion < 10) {
@@ -183,7 +184,7 @@ class DatabaseHelper {
         await db.execute('ALTER TABLE products ADD COLUMN tipo TEXT');
         await db.execute('ALTER TABLE products ADD COLUMN estadoAprobacion TEXT');
       } catch (e) {
-        print("Error migrando tabla products (tipo, estadoAprobacion): $e");
+        logDebug("Error migrando tabla products (tipo, estadoAprobacion): $e");
       }
     }
   }

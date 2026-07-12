@@ -1,4 +1,5 @@
 import 'package:sqflite/sqflite.dart';
+import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import '../../core/database/database_helper.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/repositories/product_repository.dart';
@@ -32,7 +33,7 @@ class LocalProductRepository implements ProductRepository {
         
         return remoteProducts;
       } catch (e) {
-        print('Error fetching remote products: $e');
+        logDebug('Error fetching remote products: $e');
         // NO hacer fallback a local - los productos deben venir del backend
         // Si hay error, devolver lista vacía en lugar de productos obsoletos
         rethrow;
@@ -41,7 +42,7 @@ class LocalProductRepository implements ProductRepository {
     
     // Si no hay remoteDataSource, devolver lista vacía
     // No devolver productos de seed que no existen en el backend
-    print('Warning: No remoteDataSource disponible. No se pueden obtener productos del hub.');
+    logDebug('Warning: No remoteDataSource disponible. No se pueden obtener productos del hub.');
     return [];
   }
   
@@ -115,12 +116,12 @@ class LocalProductRepository implements ProductRepository {
         final remoteProducts = await remote.getAvailableProductsByClub(clubId);
         return remoteProducts;
       } catch (e) {
-        print('Error fetching available products: $e');
+        logDebug('Error fetching available products: $e');
         rethrow;
       }
     }
     
-    print('Warning: No remoteDataSource disponible. No se pueden obtener productos disponibles.');
+    logDebug('Warning: No remoteDataSource disponible. No se pueden obtener productos disponibles.');
     return [];
   }
 

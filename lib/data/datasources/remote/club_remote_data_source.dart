@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import 'package:flutter/foundation.dart';
 import '../../../domain/entities/club_membership.dart';
 
@@ -298,7 +299,7 @@ class ClubRemoteDataSource {
         return null; // No encontrado
       }
     } catch (e) {
-      print('Error buscando club del anfitrión: $e');
+      logDebug('Error buscando club del anfitrión: $e');
       return null;
     }
   }
@@ -357,7 +358,7 @@ class ClubRemoteDataSource {
     try {
       return await _fetchAnfitrion(id);
     } catch (e) {
-      print('Error fetching anfitrion: $e');
+      logDebug('Error fetching anfitrion: $e');
       return Anfitrion(id: id, nombre: '', apellido: '', email: '', telefono: '', redesSociales: '');
     }
   }
@@ -481,7 +482,7 @@ class ClubRemoteDataSource {
       }
       return [];
     } catch (e) {
-      print('Error fetching fotos: $e');
+      logDebug('Error fetching fotos: $e');
       return [];
     }
   }
