@@ -27,14 +27,14 @@ class ApiClient {
 
         // Obtener token del usuario actual (asumiendo single user por ahora en local db)
         // Nota: En una app multi-usuario real, necesitaríamos saber cuál es el activo.
-        // Aquí simplificamos buscando el usuario 'user_1' o el que esté marcado como activo.
+        // Se obtiene el usuario autenticado actual desde el repositorio local.
         // Como getUser requiere ID, y no tenemos el ID en el interceptor,
         // quizás sea mejor que el Token se guarde en SecureStorage separado o UserProvider lo provea.
         // Por simplicidad y consistencia con lo hecho: buscaremos el usuario 'current' si existiera lógica,
         // o leeremos el token stored si lo separamos.
         // Dado el diseño actual en LocalUserRepository, vamos a intentar obtener el usuario principal.
         
-        // Estrategia temporal: Leer de LocalUserRepository un usuario conocido o 'user_1'
+        // Estrategia: leer de LocalUserRepository el usuario autenticado actual.
         // Idealmente: SecureStorage.
         // Ajuste: Vamos a requerir que el token se pase o se obtenga de una fuente síncrona/rápida.
         // Por ahora, consultamos el repo.
