@@ -7,7 +7,7 @@ void main() {
     test('fromJson parsea campos correctamente', () {
       final json = {
         'id': 1,
-        'preSocioId': 2,
+        'prospectoId': 2,
         'nombre': 'Consumir 3 combos',
         'descripcion': 'Combo proteínas',
         'metaCantidad': 3,
@@ -92,7 +92,7 @@ void main() {
         'misiones': [
           {
             'id': 1,
-            'preSocioId': 1,
+            'prospectoId': 1,
             'nombre': 'M1',
             'metaCantidad': 3,
             'progresoActual': 3,

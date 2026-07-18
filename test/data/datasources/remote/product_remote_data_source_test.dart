@@ -1,0 +1,315 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
+import 'package:flutter_app_saludable/data/datasources/remote/product_remote_data_source.dart';
+import 'package:flutter_app_saludable/domain/entities/product.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+class _Stub {
+  _Stub(this.method, this.pathContains, this.statusCode, this.data,
+      this.queryContains);
+  final String method;
+  final String pathContains;
+  final int statusCode;
+  final dynamic data;
+  final Map<String, String>? queryContains;
+}
+
+class _FakeAdapter implements HttpClientAdapter {
+  final List<_Stub> _stubs = [];
+  final List<RequestOptions> requests = [];
+
+  void stub(
+    String method,
+    String pathContains, {
+    int statusCode = 200,
+    dynamic data,
+    Map<String, String>? queryContains,
+  }) {
+    _stubs.add(
+        _Stub(method.toUpperCase(), pathContains, statusCode, data, queryContains));
+  }
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+    for (final s in _stubs) {
+      if (s.method != options.method) continue;
+      if (!options.uri.path.contains(s.pathContains)) continue;
+      if (s.queryContains != null) {
+        final matches = s.queryContains!.entries.every(
+          (e) => options.uri.queryParameters[e.key] == e.value,
+        );
+        if (!matches) continue;
+      }
+      final body = s.data is String ? s.data : jsonEncode(s.data);
+      return ResponseBody.fromString(
+        body,
+        s.statusCode,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+    return ResponseBody.fromString(
+      '{"message":"not stubbed: ${options.method} ${options.uri.path}"}',
+      404,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+Dio _buildDio(_FakeAdapter adapter) {
+  final dio = Dio(BaseOptions(baseUrl: 'https://example.test/api'));
+  dio.httpClientAdapter = adapter;
+  return dio;
+}
+
+dynamic async_(Future<void> Function() body) => body;
+
+void main() {
+  late _FakeAdapter adapter;
+  late ProductRemoteDataSourceImpl ds;
+
+  setUp(() {
+    adapter = _FakeAdapter();
+    ds = ProductRemoteDataSourceImpl(_buildDio(adapter));
+  });
+
+  group('getProducts', () {
+    test('combina productos globales y locales desde listas', async_(() async {
+      adapter.stub('GET', '/productos', data: [
+        {'id': 1, 'nombre': 'Global 1', 'clubCreadorId': null},
+      ], queryContains: {'tipo': 'GLOBAL'});
+      adapter.stub('GET', '/productos', data: [
+        {'id': 2, 'nombre': 'Local 1', 'clubCreadorId': 5, 'disponible': true},
+      ], queryContains: {'tipo': 'LOCAL'});
+
+      final products = await ds.getProducts(hubId: 1, clubId: 5);
+      expect(products, hasLength(2));
+      expect(products.map((p) => p.tipo).toSet(), {'GLOBAL', 'LOCAL'});
+    }));
+
+    test('extrae de envoltorio content y data y productos', async_(() async {
+      adapter.stub('GET', '/productos', data: {
+        'content': [
+          {'id': 1, 'nombre': 'G'},
+        ],
+      }, queryContains: {'tipo': 'GLOBAL'});
+      adapter.stub('GET', '/productos', data: {
+        'productos': [
+          {'id': 2, 'nombre': 'L'},
+        ],
+      }, queryContains: {'tipo': 'LOCAL'});
+
+      final products = await ds.getProducts(hubId: 1, clubId: 5);
+      expect(products, hasLength(2));
+    }));
+
+    test('respuesta sin 200 en alguno lanza ServerException', async_(() async {
+      adapter.stub('GET', '/productos',
+          statusCode: 500, data: {}, queryContains: {'tipo': 'GLOBAL'});
+      adapter.stub('GET', '/productos', data: [], queryContains: {'tipo': 'LOCAL'});
+
+      await expectLater(
+        () => ds.getProducts(hubId: 1, clubId: 5),
+        throwsA(isA<AppException>()),
+      );
+    }));
+  });
+
+  group('getAvailableProductsByClub', () {
+    test('200 con lista directa', async_(() async {
+      adapter.stub('GET', '/productos', data: [
+        {'id': 1, 'nombre': 'P1', 'disponible': true},
+      ]);
+      final products = await ds.getAvailableProductsByClub(5);
+      expect(products, hasLength(1));
+      expect(products.first.available, isTrue);
+    }));
+
+    test('200 con envoltorio content', async_(() async {
+      adapter.stub('GET', '/productos', data: {
+        'content': [
+          {'id': 1, 'nombre': 'P1', 'disponible': false},
+        ],
+      });
+      final products = await ds.getAvailableProductsByClub(5);
+      expect(products.first.available, isFalse);
+    }));
+
+    test('200 con envoltorio data', async_(() async {
+      adapter.stub('GET', '/productos', data: {
+        'data': [
+          {'id': 2, 'nombre': 'P2'},
+        ],
+      });
+      final products = await ds.getAvailableProductsByClub(5);
+      expect(products, hasLength(1));
+      // disponible ausente => true por defecto en este endpoint
+      expect(products.first.available, isTrue);
+    }));
+
+    test('401 lanza UnauthorizedException', async_(() async {
+      adapter.stub('GET', '/productos', statusCode: 401, data: {});
+      await expectLater(
+        () => ds.getAvailableProductsByClub(5),
+        throwsA(isA<AppException>()),
+      );
+    }));
+
+    test('403 lanza ForbiddenException', async_(() async {
+      adapter.stub('GET', '/productos', statusCode: 403, data: {});
+      await expectLater(
+        () => ds.getAvailableProductsByClub(5),
+        throwsA(isA<AppException>()),
+      );
+    }));
+
+    test('500 lanza ServerException', async_(() async {
+      adapter.stub('GET', '/productos', statusCode: 500, data: {});
+      await expectLater(
+        () => ds.getAvailableProductsByClub(5),
+        throwsA(isA<AppException>()),
+      );
+    }));
+  });
+
+  group('toggleProductAvailability', () {
+    test('éxito hace PATCH', async_(() async {
+      adapter.stub('PATCH', '/clubes/1/productos/2/toggle', data: {});
+      await ds.toggleProductAvailability(1, '2');
+      expect(adapter.requests, hasLength(1));
+    }));
+
+    test('id inválido lanza ValidationException sin llamar a la red',
+        async_(() async {
+      await expectLater(
+        () => ds.toggleProductAvailability(1, 'abc'),
+        throwsA(isA<ValidationException>()),
+      );
+      expect(adapter.requests, isEmpty);
+    }));
+
+    test('error del servidor se mapea', async_(() async {
+      adapter.stub('PATCH', '/clubes/1/productos/2/toggle',
+          statusCode: 500, data: {});
+      await expectLater(
+        () => ds.toggleProductAvailability(1, '2'),
+        throwsA(isA<AppException>()),
+      );
+    }));
+  });
+
+  group('createProduct', () {
+    test('hace POST con datos del producto', async_(() async {
+      adapter.stub('POST', '/productos', statusCode: 201, data: {});
+      await ds.createProduct(
+        Product(id: '1', name: 'P', description: 'D'),
+        3,
+      );
+      expect(adapter.requests, hasLength(1));
+    }));
+
+    test('error se mapea a AppException', async_(() async {
+      adapter.stub('POST', '/productos', statusCode: 500, data: {});
+      await expectLater(
+        () => ds.createProduct(Product(id: '1', name: 'P', description: 'D'), 3),
+        throwsA(isA<AppException>()),
+      );
+    }));
+  });
+
+  group('createProductProposal', () {
+    test('éxito no lanza', async_(() async {
+      adapter.stub('POST', '/productos', statusCode: 201, data: {});
+      await ds.createProductProposal(
+        hubId: 1,
+        nombre: 'N',
+        descripcion: 'D',
+        ingredientes: 'I',
+        puntosValor: 5,
+        imagenUrl: 'http://x.png',
+      );
+      expect(adapter.requests, hasLength(1));
+    }));
+
+    test('sin imagenUrl no la incluye pero funciona', async_(() async {
+      adapter.stub('POST', '/productos', statusCode: 200, data: {});
+      await ds.createProductProposal(
+        hubId: 1,
+        nombre: 'N',
+        descripcion: 'D',
+        ingredientes: 'I',
+        puntosValor: 5,
+      );
+      expect(adapter.requests, hasLength(1));
+    }));
+
+    test('status inesperado lanza ServerException', async_(() async {
+      adapter.stub('POST', '/productos', statusCode: 500, data: {});
+      await expectLater(
+        () => ds.createProductProposal(
+          hubId: 1,
+          nombre: 'N',
+          descripcion: 'D',
+          ingredientes: 'I',
+          puntosValor: 5,
+        ),
+        throwsA(isA<AppException>()),
+      );
+    }));
+  });
+
+  group('updateProduct', () {
+    test('hace PUT', async_(() async {
+      adapter.stub('PUT', '/productos/1', statusCode: 200, data: {});
+      await ds.updateProduct(Product(id: '1', name: 'P', description: 'D'));
+      expect(adapter.requests, hasLength(1));
+      expect(adapter.requests.single.method, 'PUT');
+    }));
+
+    test('error se mapea', async_(() async {
+      adapter.stub('PUT', '/productos/1', statusCode: 500, data: {});
+      await expectLater(
+        () => ds.updateProduct(Product(id: '1', name: 'P', description: 'D')),
+        throwsA(isA<AppException>()),
+      );
+    }));
+  });
+
+  group('deleteProduct', () {
+    test('éxito hace PATCH desactivar', async_(() async {
+      adapter.stub('PATCH', '/productos/1/desactivar', statusCode: 200, data: {});
+      await ds.deleteProduct('1');
+      expect(adapter.requests, hasLength(1));
+    }));
+
+    test('404 en patch cae a DELETE de fallback', async_(() async {
+      adapter.stub('PATCH', '/productos/2/desactivar', statusCode: 404, data: {});
+      adapter.stub('DELETE', '/productos/2', statusCode: 200, data: {});
+      await ds.deleteProduct('2');
+      expect(adapter.requests, hasLength(2));
+      expect(adapter.requests.last.method, 'DELETE');
+    }));
+
+    test('error distinto de 404 se mapea sin fallback', async_(() async {
+      adapter.stub('PATCH', '/productos/3/desactivar', statusCode: 500, data: {});
+      await expectLater(
+        () => ds.deleteProduct('3'),
+        throwsA(isA<AppException>()),
+      );
+    }));
+  });
+}
