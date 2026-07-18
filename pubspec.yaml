@@ -49,6 +49,9 @@ dependencies:
   dio: ^5.9.0
   connectivity_plus: ^5.0.2
 
+  # Secure session token (JWT) storage
+  flutter_secure_storage: ^9.2.4
+
   # UI / Assets
   google_fonts: ^6.1.0
   lucide_icons: ^0.257.0
@@ -81,6 +84,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  sqflite_common_ffi: ^2.4.0+3
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
