@@ -1,86 +1,158 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import 'package:flutter/foundation.dart';
-import '../../domain/repositories/user_repository.dart';
+import 'package:flutter_app_saludable/core/api/public_api_paths.dart';
+import 'package:flutter_app_saludable/core/auth/session_expiration_handler.dart';
+import 'package:flutter_app_saludable/core/auth/token_store.dart';
+import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 
 class ApiClient {
   final Dio _dio;
-  final UserRepository _userRepository;
+  final TokenStore _tokenStore;
+  final SessionExpirationHandler? _sessionExpirationHandler;
 
-  ApiClient(this._userRepository)
-      : _dio = Dio(BaseOptions(
-          baseUrl: 'https://clubs-api.onrender.com/api',
-          connectTimeout: const Duration(seconds: 60), // Aumentado para Render cold start
-          receiveTimeout: const Duration(seconds: 60), // Aumentado para respuestas lentas
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-        )) {
+  ApiClient(
+    this._tokenStore, {
+    SessionExpirationHandler? sessionExpirationHandler,
+    Dio? dio,
+  })  : _sessionExpirationHandler = sessionExpirationHandler,
+        _dio = dio ??
+            Dio(BaseOptions(
+              baseUrl: 'https://clubs-api.onrender.com/api',
+              connectTimeout: const Duration(seconds: 60),
+              receiveTimeout: const Duration(seconds: 60),
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+            )) {
     _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        // Ignorar token para endpoints públicos
-        if (options.path.contains('/auth/login') || 
-            options.path.contains('/auth/register') ||
-            options.path.contains('/public/')) {
-           return handler.next(options);
+      onRequest: (options, handler) {
+        // Classification siempre desde el path (extra del caller no fuerza público).
+        final isPublic = PublicApiPaths.isPublic(options.path);
+        options.extra[kRequestIsPublic] = isPublic;
+
+        final existingAuth = _authorizationHeaderValue(options.headers);
+        final hasManualAuth =
+            existingAuth != null && existingAuth.trim().isNotEmpty;
+
+        if (isPublic) {
+          options.extra[kRequestHadAuthorization] = hasManualAuth;
+          if (kDebugMode) {
+            logDebug('REQUEST[${options.method}] => PATH: ${options.path}');
+          }
+          return handler.next(options);
         }
 
-        // Obtener token del usuario actual (asumiendo single user por ahora en local db)
-        // Nota: En una app multi-usuario real, necesitaríamos saber cuál es el activo.
-        // Se obtiene el usuario autenticado actual desde el repositorio local.
-        // Como getUser requiere ID, y no tenemos el ID en el interceptor,
-        // quizás sea mejor que el Token se guarde en SecureStorage separado o UserProvider lo provea.
-        // Por simplicidad y consistencia con lo hecho: buscaremos el usuario 'current' si existiera lógica,
-        // o leeremos el token stored si lo separamos.
-        // Dado el diseño actual en LocalUserRepository, vamos a intentar obtener el usuario principal.
-        
-        // Estrategia: leer de LocalUserRepository el usuario autenticado actual.
-        // Idealmente: SecureStorage.
-        // Ajuste: Vamos a requerir que el token se pase o se obtenga de una fuente síncrona/rápida.
-        // Por ahora, consultamos el repo.
-        
-        // Ajuste: Usamos el método getCurrentUser que acabamos de implementar
-        final user = await _userRepository.getCurrentUser();
-        if (user?.token != null) {
-          options.headers['Authorization'] = 'Bearer ${user!.token}';
+        // Durante invalidación 401 no adjuntar JWT.
+        if (_sessionExpirationHandler?.isInvalidating == true) {
+          options.extra[kRequestHadAuthorization] = hasManualAuth;
           if (kDebugMode) {
-            logDebug('[DEBUG API_CLIENT] Token encontrado para usuario ${user.id}');
-            logDebug('[DEBUG API_CLIENT] Token (primeros 20 chars): ${user.token!.substring(0, user.token!.length > 20 ? 20 : user.token!.length)}...');
+            logDebug(
+              '[DEBUG API_CLIENT] Sesión invalidándose; sin Authorization en ${options.path}',
+            );
           }
-        } else {
-          if (kDebugMode) {
-            logDebug('[DEBUG API_CLIENT] WARNING: No se encontró token para la petición a ${options.path}');
-            logDebug('[DEBUG API_CLIENT] Usuario actual: ${user?.id ?? "null"}');
-          }
+          return handler.next(options);
         }
-        
+
+        var hadAuthorization = hasManualAuth;
+
+        if (_tokenStore.isInitialized) {
+          final token = _tokenStore.getToken();
+          if (token != null && token.isNotEmpty) {
+            options.headers['Authorization'] = 'Bearer $token';
+            hadAuthorization = true;
+            if (kDebugMode) {
+              logDebug(
+                '[DEBUG API_CLIENT] Authorization adjunto para ${options.path}',
+              );
+            }
+          } else if (kDebugMode) {
+            logDebug(
+              '[DEBUG API_CLIENT] Sin token en memoria para ${options.path}',
+            );
+          }
+        } else if (kDebugMode) {
+          logDebug(
+            '[DEBUG API_CLIENT] TokenStore no inicializado en ${options.path}',
+          );
+        }
+
+        options.extra[kRequestHadAuthorization] = hadAuthorization;
+
         if (kDebugMode) {
-            logDebug('REQUEST[${options.method}] => PATH: ${options.path}');
+          logDebug('REQUEST[${options.method}] => PATH: ${options.path}');
         }
         return handler.next(options);
       },
       onResponse: (response, handler) {
         if (kDebugMode) {
-          logDebug('RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}');
+          logDebug(
+            'RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}',
+          );
         }
         return handler.next(response);
       },
-      onError: (DioException e, handler) {
+      onError: (DioException e, handler) async {
+        final status = e.response?.statusCode;
         if (kDebugMode) {
-          logDebug('ERROR[${e.response?.statusCode}] => PATH: ${e.requestOptions.path}');
-          if (e.response?.statusCode == 401) {
-            logDebug('[DEBUG API_CLIENT] ERROR 401: Token expirado o inválido');
-            logDebug('[DEBUG API_CLIENT] Verificando token actual...');
-            // El token podría estar expirado, pero no podemos hacer logout aquí
-            // porque no tenemos acceso al contexto. El error se propagará y
-            // la UI debería manejarlo.
+          logDebug(
+            'ERROR[$status] => PATH: ${e.requestOptions.path}',
+          );
+        }
+
+        if (status == 401) {
+          final extras = e.requestOptions.extra;
+          final hadAuthorization = extras[kRequestHadAuthorization] == true;
+          // Re-evaluar path: el caller no puede forzar público vía extra.
+          final isPublic = PublicApiPaths.isPublic(e.requestOptions.path);
+
+          if (hadAuthorization && !isPublic) {
+            if (kDebugMode) {
+              logDebug(
+                '[DEBUG API_CLIENT] 401 autenticado → invalidar sesión',
+              );
+            }
+            e.requestOptions.extra[kRequestSessionExpiredHandled] = true;
+            final handler401 = _sessionExpirationHandler;
+            if (handler401 != null) {
+              try {
+                await handler401.handleUnauthorized();
+              } catch (_) {
+                logDebug(
+                  '[DEBUG API_CLIENT] SessionExpirationHandler falló',
+                );
+              }
+            }
+          } else if (kDebugMode) {
+            logDebug(
+              '[DEBUG API_CLIENT] 401 en endpoint público o sin JWT; sin logout',
+            );
           }
         }
+
         return handler.next(e);
       },
     ));
   }
 
   Dio get client => _dio;
+
+  /// Expuesto solo para tests de composición DI.
+  @visibleForTesting
+  TokenStore get tokenStoreForTest => _tokenStore;
+
+  @visibleForTesting
+  SessionExpirationHandler? get sessionHandlerForTest =>
+      _sessionExpirationHandler;
+
+  static String? _authorizationHeaderValue(Map<String, dynamic> headers) {
+    for (final entry in headers.entries) {
+      if (entry.key.toLowerCase() == 'authorization') {
+        final value = entry.value;
+        if (value == null) return null;
+        return value.toString();
+      }
+    }
+    return null;
+  }
 }
