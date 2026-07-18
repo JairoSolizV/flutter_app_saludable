@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_app_saludable/core/errors/throw_app_error.dart';
 import '../../../domain/entities/support_ticket.dart';
 
 abstract class SupportRemoteDataSource {
@@ -24,7 +25,7 @@ class SupportRemoteDataSourceImpl implements SupportRemoteDataSource {
   }) async {
     try {
       debugPrint('[DEBUG SOPORTE] Creando ticket: $asunto ($tipoSolicitud)');
-      
+
       final response = await _client.post(
         '/soporte-tickets',
         data: {
@@ -35,12 +36,15 @@ class SupportRemoteDataSourceImpl implements SupportRemoteDataSource {
       );
 
       if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception('Error al crear ticket: ${response.statusCode}');
+        throw Exception('Error al crear ticket');
       }
       debugPrint('[DEBUG SOPORTE] Ticket creado con éxito');
-    } on DioException catch (e) {
-      debugPrint('[DEBUG SOPORTE] DioException al crear ticket: ${e.response?.data}');
-      throw Exception('Error de red al crear ticket de soporte: ${e.message}');
+    } on DioException catch (e, st) {
+      throwDioAsApp(
+        e,
+        fallback: 'Error al crear ticket de soporte',
+        stackTrace: st,
+      );
     }
   }
 
@@ -48,7 +52,7 @@ class SupportRemoteDataSourceImpl implements SupportRemoteDataSource {
   Future<List<SupportTicket>> getTicketsByUser(int userId) async {
     try {
       debugPrint('[DEBUG SOPORTE] Obteniendo tickets para usuario $userId');
-      
+
       final response = await _client.get('/soporte-tickets/usuario/$userId');
 
       if (response.statusCode == 200) {
@@ -56,21 +60,23 @@ class SupportRemoteDataSourceImpl implements SupportRemoteDataSource {
         if (response.data is List) {
           data = response.data as List<dynamic>;
         } else if (response.data is Map) {
-          final Map<String, dynamic> responseMap = response.data as Map<String, dynamic>;
-          if (responseMap.containsKey('content') && responseMap['content'] is List) {
+          final Map<String, dynamic> responseMap =
+              response.data as Map<String, dynamic>;
+          if (responseMap.containsKey('content') &&
+              responseMap['content'] is List) {
             data = responseMap['content'] as List<dynamic>;
-          } else if (responseMap.containsKey('data') && responseMap['data'] is List) {
+          } else if (responseMap.containsKey('data') &&
+              responseMap['data'] is List) {
             data = responseMap['data'] as List<dynamic>;
           }
         }
-        
+
         return data.map((json) => SupportTicket.fromMap(json)).toList();
       } else {
-        throw Exception('Error al obtener tickets: ${response.statusCode}');
+        throw Exception('Error al obtener tickets');
       }
-    } on DioException catch (e) {
-      debugPrint('[DEBUG SOPORTE] DioException al obtener tickets: ${e.response?.data}');
-      throw Exception('Error de red al obtener tickets: ${e.message}');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e, fallback: 'Error al obtener tickets', stackTrace: st);
     }
   }
 }

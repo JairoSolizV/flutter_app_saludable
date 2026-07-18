@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_app_saludable/core/errors/throw_app_error.dart';
 import '../../../domain/entities/pre_socio.dart';
 import '../../../domain/entities/mision_pre_socio.dart';
 
@@ -27,13 +28,6 @@ class PreSocioRemoteDataSourceImpl implements PreSocioRemoteDataSource {
 
   PreSocioRemoteDataSourceImpl(this._client);
 
-  String _extractMessage(DioException e) {
-    final data = e.response?.data;
-    if (data is Map && data['message'] != null) return data['message'].toString();
-    if (data is String) return data;
-    return e.message ?? 'Error desconocido';
-  }
-
   @override
   Future<PreSocio> crearPreSocio({
     required int clubId,
@@ -52,9 +46,8 @@ class PreSocioRemoteDataSourceImpl implements PreSocioRemoteDataSource {
         },
       );
       return PreSocio.fromJson(response.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      throw Exception(
-          'Error creando pre-socio (${e.response?.statusCode}): ${_extractMessage(e)}');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e, fallback: 'Error creando pre-socio', stackTrace: st);
     }
   }
 
@@ -66,9 +59,9 @@ class PreSocioRemoteDataSourceImpl implements PreSocioRemoteDataSource {
       return data
           .map((e) => PreSocio.fromJson(e as Map<String, dynamic>))
           .toList();
-    } on DioException catch (e) {
+    } on DioException catch (e, st) {
       if (e.response?.statusCode == 404) return [];
-      throw Exception('Error obteniendo pre-socios: ${_extractMessage(e)}');
+      throwDioAsApp(e, fallback: 'Error obteniendo pre-socios', stackTrace: st);
     }
   }
 
@@ -76,8 +69,9 @@ class PreSocioRemoteDataSourceImpl implements PreSocioRemoteDataSource {
   Future<void> actualizarPreSocio(int preSocioId, String estado) async {
     try {
       await _client.patch('/prospectos/$preSocioId', data: {'estado': estado});
-    } on DioException catch (e) {
-      throw Exception('Error actualizando pre-socio: ${_extractMessage(e)}');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e,
+          fallback: 'Error actualizando pre-socio', stackTrace: st);
     }
   }
 
@@ -100,8 +94,8 @@ class PreSocioRemoteDataSourceImpl implements PreSocioRemoteDataSource {
         },
       );
       return MisionPreSocio.fromJson(response.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      throw Exception('Error creando misión: ${_extractMessage(e)}');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e, fallback: 'Error creando misión', stackTrace: st);
     }
   }
 
@@ -110,8 +104,9 @@ class PreSocioRemoteDataSourceImpl implements PreSocioRemoteDataSource {
     try {
       final response = await _client.patch('/misiones/$misionId/progreso');
       return MisionPreSocio.fromJson(response.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      throw Exception('Error incrementando progreso: ${_extractMessage(e)}');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e,
+          fallback: 'Error incrementando progreso', stackTrace: st);
     }
   }
 
@@ -119,8 +114,8 @@ class PreSocioRemoteDataSourceImpl implements PreSocioRemoteDataSource {
   Future<void> eliminarMision(int misionId) async {
     try {
       await _client.delete('/misiones/$misionId');
-    } on DioException catch (e) {
-      throw Exception('Error eliminando misión: ${_extractMessage(e)}');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e, fallback: 'Error eliminando misión', stackTrace: st);
     }
   }
 }

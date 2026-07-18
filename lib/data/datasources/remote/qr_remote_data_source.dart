@@ -1,12 +1,14 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
+import 'package:flutter_app_saludable/core/errors/throw_app_error.dart';
 
 /// Data source para operaciones relacionadas con QR
 abstract class QRRemoteDataSource {
   /// Obtiene el QR del socio autenticado
   /// GET /api/socios/me/qr
   Future<QrResponse> getSocioQR();
-  
+
   /// Valida el QR de un socio
   /// POST /api/qr/validar-socio
   /// Body: { "qr": "<string>", "clubId": <int> }
@@ -23,36 +25,30 @@ class QRRemoteDataSourceImpl implements QRRemoteDataSource {
     try {
       debugPrint('[DEBUG QR] Obteniendo QR del socio autenticado');
       debugPrint('[DEBUG QR] Endpoint: GET /api/socios/me/qr');
-      
+
       final response = await _client.get('/socios/me/qr');
-      
-      debugPrint('[DEBUG QR] Respuesta recibida - Status: ${response.statusCode}');
+
+      debugPrint(
+          '[DEBUG QR] Respuesta recibida - Status: ${response.statusCode}');
       debugPrint('[DEBUG QR] Response body: ${response.data}');
-      
+
       if (response.statusCode == 200) {
         return QrResponse.fromJson(response.data);
       } else if (response.statusCode == 401) {
-        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
+        throw UnauthorizedException(
+            'No autenticado. Por favor inicia sesión nuevamente.');
       } else if (response.statusCode == 403) {
-        throw Exception('No tienes permisos para obtener el QR. Debes ser socio.');
+        throw ForbiddenException(
+            'No tienes permisos para obtener el QR. Debes ser socio.');
       } else {
-        throw Exception('Error al obtener QR: ${response.statusCode}');
+        throw ServerException('Error al obtener QR',
+            statusCode: response.statusCode);
       }
-    } on DioException catch (e) {
+    } on DioException catch (e, st) {
       final statusCode = e.response?.statusCode;
       debugPrint('[DEBUG QR] DioException - Status: $statusCode');
       debugPrint('[DEBUG QR] Error: ${e.message}');
-      
-      if (statusCode == 401) {
-        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
-      } else if (statusCode == 403) {
-        throw Exception('No tienes permisos para obtener el QR. Debes ser socio.');
-      } else if (statusCode == 404) {
-        throw Exception('No se encontró información del socio.');
-      }
-      
-      final errorMessage = e.response?.data?['message'] ?? e.message ?? 'Error desconocido';
-      throw Exception('Error obteniendo QR: $errorMessage');
+      throwDioAsApp(e, fallback: 'Error obteniendo QR', stackTrace: st);
     }
   }
 
@@ -64,60 +60,59 @@ class QRRemoteDataSourceImpl implements QRRemoteDataSource {
       if (qr.startsWith('SOCIO:')) {
         qrToSend = qr.substring(6); // Remover "SOCIO:" del inicio
       }
-      
+
       debugPrint('[DEBUG QR] Validando QR del socio');
       debugPrint('[DEBUG QR] QR original: $qr');
       debugPrint('[DEBUG QR] QR a enviar: $qrToSend');
       debugPrint('[DEBUG QR] clubId: $clubId');
       debugPrint('[DEBUG QR] Endpoint: POST /api/qr/validar-socio');
-      
+
       final response = await _client.post(
         '/qr/validar-socio',
         data: {
-          'qr': qrToSend, // Enviar solo el número de socio sin el prefijo "SOCIO:"
+          'qr':
+              qrToSend, // Enviar solo el número de socio sin el prefijo "SOCIO:"
           'clubId': clubId,
         },
       );
-      
-      debugPrint('[DEBUG QR] Respuesta recibida - Status: ${response.statusCode}');
+
+      debugPrint(
+          '[DEBUG QR] Respuesta recibida - Status: ${response.statusCode}');
       debugPrint('[DEBUG QR] Response body: ${response.data}');
-      
+
       if (response.statusCode == 200) {
         final responseData = response.data;
         if (responseData is Map) {
-          return QRValidacionResponse.fromJson(Map<String, dynamic>.from(responseData));
+          return QRValidacionResponse.fromJson(
+              Map<String, dynamic>.from(responseData));
         }
-        throw Exception('Error al validar QR: respuesta inválida');
+        throw ServerException('Error al validar QR: respuesta inválida');
       } else {
         // El backend puede devolver 400 si el QR no es válido, pero con el response body
         final responseData = response.data;
         if (responseData is Map) {
-          return QRValidacionResponse.fromJson(Map<String, dynamic>.from(responseData));
+          return QRValidacionResponse.fromJson(
+              Map<String, dynamic>.from(responseData));
         }
-        throw Exception('Error al validar QR: ${response.statusCode}');
+        throw ServerException('Error al validar QR',
+            statusCode: response.statusCode);
       }
-    } on DioException catch (e) {
+    } on DioException catch (e, st) {
       final statusCode = e.response?.statusCode;
       debugPrint('[DEBUG QR] DioException - Status: $statusCode');
       debugPrint('[DEBUG QR] Error: ${e.message}');
       debugPrint('[DEBUG QR] Response data: ${e.response?.data}');
-      
+
       // El backend puede devolver 400 con el response body válido
       if (statusCode == 400 || statusCode == 200) {
         final responseData = e.response?.data;
         if (responseData is Map) {
-          return QRValidacionResponse.fromJson(Map<String, dynamic>.from(responseData));
+          return QRValidacionResponse.fromJson(
+              Map<String, dynamic>.from(responseData));
         }
       }
-      
-      if (statusCode == 401) {
-        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
-      } else if (statusCode == 403) {
-        throw Exception('No tienes permisos para validar QR.');
-      }
-      
-      final errorMessage = e.response?.data?['message'] ?? e.message ?? 'Error desconocido';
-      throw Exception('Error validando QR: $errorMessage');
+
+      throwDioAsApp(e, fallback: 'Error validando QR', stackTrace: st);
     }
   }
 }
@@ -190,4 +185,3 @@ class QRValidacionResponse {
     );
   }
 }
-

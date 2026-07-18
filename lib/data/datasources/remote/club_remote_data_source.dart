@@ -1,8 +1,10 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
+import 'package:flutter_app_saludable/core/errors/throw_app_error.dart';
 import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import 'package:flutter/foundation.dart';
+import '../../../core/pagination/paged_result.dart';
 import '../../../domain/entities/club_membership.dart';
-
 
 class FotoClub {
   final int id;
@@ -10,7 +12,11 @@ class FotoClub {
   final String urlFoto;
   final String tipo;
 
-  FotoClub({required this.id, required this.clubId, required this.urlFoto, required this.tipo});
+  FotoClub(
+      {required this.id,
+      required this.clubId,
+      required this.urlFoto,
+      required this.tipo});
 
   factory FotoClub.fromJson(Map<String, dynamic> json) {
     return FotoClub(
@@ -58,7 +64,7 @@ class Club {
       if (latValue is String) return double.tryParse(latValue) ?? 0.0;
       return 0.0;
     }
-    
+
     double parseLng() {
       final lngValue = json['lng'];
       if (lngValue == null) return 0.0;
@@ -66,7 +72,7 @@ class Club {
       if (lngValue is String) return double.tryParse(lngValue) ?? 0.0;
       return 0.0;
     }
-    
+
     return Club(
       id: json['id'] as int,
       hubId: json['hubId'] as int,
@@ -94,18 +100,21 @@ class ClubRemoteDataSource {
   /// No requiere validación por HUB o membresía - cualquier socio puede ver todos los clubes activos
   Future<List<Club>> getClubes() async {
     try {
-      debugPrint('[DEBUG CLUB] Obteniendo clubes activos desde endpoint público');
+      debugPrint(
+          '[DEBUG CLUB] Obteniendo clubes activos desde endpoint público');
       debugPrint('[DEBUG CLUB] Endpoint: GET /api/public/clubes');
-      
+
       final response = await _client.get('/public/clubes');
-      
-      debugPrint('[DEBUG CLUB] Respuesta recibida - Status: ${response.statusCode}');
-      debugPrint('[DEBUG CLUB] Response body type: ${response.data.runtimeType}');
-      
+
+      debugPrint(
+          '[DEBUG CLUB] Respuesta recibida - Status: ${response.statusCode}');
+      debugPrint(
+          '[DEBUG CLUB] Response body type: ${response.data.runtimeType}');
+
       if (response.statusCode == 200) {
         final dynamic data = response.data;
         List<dynamic> clubesList = [];
-        
+
         if (data is List) {
           clubesList = data;
         } else if (data is Map) {
@@ -115,41 +124,29 @@ class ClubRemoteDataSource {
             clubesList = data['data'] as List<dynamic>;
           }
         }
-        
+
         final clubes = clubesList.map((json) => Club.fromJson(json)).toList();
         debugPrint('[DEBUG CLUB] Clubes activos encontrados: ${clubes.length}');
-        
+
         // Log de los primeros 3 clubes para debug
         if (clubes.isNotEmpty) {
           debugPrint('[DEBUG CLUB] Primeros clubes:');
           clubes.take(3).forEach((club) {
-            debugPrint('[DEBUG CLUB]   - ${club.nombreClub} (ID: ${club.id}, Estado: ${club.estado}, HUB: ${club.hubId})');
+            debugPrint(
+                '[DEBUG CLUB]   - ${club.nombreClub} (ID: ${club.id}, Estado: ${club.estado}, HUB: ${club.hubId})');
           });
         }
-        
+
         return clubes;
       } else {
-        throw Exception('Error al cargar clubes: ${response.statusCode}');
+        throw ServerException('Error al cargar clubes',
+            statusCode: response.statusCode);
       }
-    } on DioException catch (e) {
-      final statusCode = e.response?.statusCode;
-      debugPrint('[DEBUG CLUB] DioException - Status: $statusCode');
-      debugPrint('[DEBUG CLUB] Error: ${e.message}');
-      debugPrint('[DEBUG CLUB] Response data: ${e.response?.data}');
-      
-      if (statusCode == 401) {
-        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
-      } else if (statusCode == 403) {
-        throw Exception('No tienes permisos para ver los clubes.');
-      } else if (statusCode == 500) {
-        throw Exception('Error del servidor. Por favor intenta más tarde.');
-      }
-      
-      final errorMessage = e.response?.data?['message'] ?? e.message ?? 'Error desconocido';
-      throw Exception('Error obteniendo clubes activos: $errorMessage');
-    } catch (e) {
-      debugPrint('[DEBUG CLUB] Error general obteniendo clubes: $e');
-      throw Exception('Error obteniendo clubes: $e');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e,
+          fallback: 'Error obteniendo clubes activos', stackTrace: st);
+    } catch (e, st) {
+      rethrowApp(e, fallback: 'Error obteniendo clubes', stackTrace: st);
     }
   }
 
@@ -159,19 +156,18 @@ class ClubRemoteDataSource {
     try {
       debugPrint('[DEBUG CLUB] Obteniendo clubes del HUB - hubId: $hubId');
       debugPrint('[DEBUG CLUB] Endpoint: GET /api/clubes?hubId=$hubId');
-      
-      final response = await _client.get(
-        '/clubes',
-        queryParameters: {'hubId': hubId}
-      );
-      
-      debugPrint('[DEBUG CLUB] Respuesta recibida - Status: ${response.statusCode}');
+
+      final response =
+          await _client.get('/clubes', queryParameters: {'hubId': hubId});
+
+      debugPrint(
+          '[DEBUG CLUB] Respuesta recibida - Status: ${response.statusCode}');
       debugPrint('[DEBUG CLUB] Response body: ${response.data}');
-      
+
       if (response.statusCode == 200) {
         final dynamic data = response.data;
         List<dynamic> clubesList = [];
-        
+
         if (data is List) {
           clubesList = data;
         } else if (data is Map) {
@@ -181,31 +177,20 @@ class ClubRemoteDataSource {
             clubesList = data['data'] as List<dynamic>;
           }
         }
-        
+
         final clubes = clubesList.map((json) => Club.fromJson(json)).toList();
         debugPrint('[DEBUG CLUB] Clubes encontrados: ${clubes.length}');
         return clubes;
       } else {
-        throw Exception('Error al cargar clubes del HUB: ${response.statusCode}');
+        throw ServerException('Error al cargar clubes del HUB',
+            statusCode: response.statusCode);
       }
-    } on DioException catch (e) {
-      final statusCode = e.response?.statusCode;
-      debugPrint('[DEBUG CLUB] DioException - Status: $statusCode');
-      debugPrint('[DEBUG CLUB] Error: ${e.message}');
-      
-      if (statusCode == 401) {
-        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
-      } else if (statusCode == 403) {
-        throw Exception('No tienes permisos para ver los clubes.');
-      } else if (statusCode == 500) {
-        throw Exception('Error del servidor. Por favor intenta más tarde.');
-      }
-      
-      final errorMessage = e.response?.data?['message'] ?? e.message ?? 'Error desconocido';
-      throw Exception('Error obteniendo clubes del HUB: $errorMessage');
-    } catch (e) {
-      debugPrint('[DEBUG CLUB] Error general obteniendo clubes del HUB: $e');
-      throw Exception('Error obteniendo clubes del HUB: $e');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e,
+          fallback: 'Error obteniendo clubes del HUB', stackTrace: st);
+    } catch (e, st) {
+      rethrowApp(e,
+          fallback: 'Error obteniendo clubes del HUB', stackTrace: st);
     }
   }
 
@@ -217,12 +202,13 @@ class ClubRemoteDataSource {
     try {
       debugPrint('[DEBUG CLUB] Obteniendo club del anfitrión autenticado');
       debugPrint('[DEBUG CLUB] Endpoint: GET /api/clubes/mio');
-      
+
       final response = await _client.get('/clubes/mio');
-      
-      debugPrint('[DEBUG CLUB] Respuesta recibida - Status: ${response.statusCode}');
+
+      debugPrint(
+          '[DEBUG CLUB] Respuesta recibida - Status: ${response.statusCode}');
       debugPrint('[DEBUG CLUB] Response body: ${response.data}');
-      
+
       if (response.statusCode == 200) {
         final data = response.data;
         if (data is Map<String, dynamic>) {
@@ -241,53 +227,40 @@ class ClubRemoteDataSource {
         }
       } else if (response.statusCode == 401) {
         debugPrint('[DEBUG CLUB] ERROR 401: No autenticado');
-        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
+        throw UnauthorizedException(
+            'No autenticado. Por favor inicia sesión nuevamente.');
       } else if (response.statusCode == 403) {
         debugPrint('[DEBUG CLUB] ERROR 403: Sin permisos');
-        throw Exception('No tienes permisos para acceder a esta información.');
+        throw ForbiddenException(
+            'No tienes permisos para acceder a esta información.');
       } else if (response.statusCode == 500) {
         debugPrint('[DEBUG CLUB] ERROR 500: Error del servidor');
-        throw Exception('Error del servidor. Por favor intenta más tarde.');
+        throw ServerException(
+            'Error del servidor. Por favor intenta más tarde.',
+            statusCode: 500);
       } else {
         debugPrint('[DEBUG CLUB] ERROR: Status code ${response.statusCode}');
-        throw Exception('Error al obtener club: ${response.statusCode}');
+        throw ServerException('Error al obtener club',
+            statusCode: response.statusCode);
       }
-    } on DioException catch (e) {
-      final statusCode = e.response?.statusCode;
-      debugPrint('[DEBUG CLUB] DioException - Status: $statusCode');
-      debugPrint('[DEBUG CLUB] Error: ${e.message}');
-      debugPrint('[DEBUG CLUB] Response data: ${e.response?.data}');
-      
-      if (statusCode == 401) {
-        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
-      } else if (statusCode == 403) {
-        throw Exception('No tienes permisos para acceder a esta información.');
-      } else if (statusCode == 404) {
-        // El backend devuelve 404 cuando no se encuentra el club del anfitrión
-        final errorMessage = e.response?.data?['message']?.toString() ?? 
-                           'No se encontró ningún club asignado a tu cuenta. Verifica que tengas un club asignado como anfitrión.';
-        debugPrint('[DEBUG CLUB] ERROR 404: $errorMessage');
-        throw Exception(errorMessage);
-      } else if (statusCode == 500) {
-        throw Exception('Error del servidor. Por favor intenta más tarde.');
-      } else {
-        final errorMessage = e.response?.data?['message']?.toString() ?? 
-                           e.message ?? 
-                           'Error desconocido al obtener club';
-        throw Exception(errorMessage);
-      }
-    } catch (e) {
+    } on DioException catch (e, st) {
+      throwDioAsApp(e,
+          fallback: 'Error del servidor. Por favor intenta más tarde.',
+          stackTrace: st);
+    } catch (e, st) {
       debugPrint('[DEBUG CLUB] Error general: $e');
       // Si el error contiene "No se encontró", es un error del backend
       if (e.toString().contains('No se encontró')) {
         rethrow;
       }
-      throw Exception('Error buscando club del anfitrión: $e');
+      rethrowApp(e,
+          fallback: 'Error buscando club del anfitrión', stackTrace: st);
     }
   }
 
   /// Método legacy - mantener por compatibilidad pero usar getMyClub() en su lugar
-  @Deprecated('Usar getMyClub() en su lugar. Este método obtiene todos los clubes y filtra.')
+  @Deprecated(
+      'Usar getMyClub() en su lugar. Este método obtiene todos los clubes y filtra.')
   Future<Club?> getClubByHostId(int hostId) async {
     try {
       // Como no hay endpoint específico, obtenemos todos y filtramos
@@ -309,17 +282,19 @@ class ClubRemoteDataSource {
     try {
       debugPrint('[DEBUG CLUB] Obteniendo club por ID - clubId: $clubId');
       debugPrint('[DEBUG CLUB] Endpoint: GET /api/clubes/$clubId');
-      
+
       final response = await _client.get('/clubes/$clubId');
-      
-      debugPrint('[DEBUG CLUB] Respuesta recibida - Status: ${response.statusCode}');
+
+      debugPrint(
+          '[DEBUG CLUB] Respuesta recibida - Status: ${response.statusCode}');
       debugPrint('[DEBUG CLUB] Response body: ${response.data}');
-      
+
       if (response.statusCode == 200) {
         final data = response.data;
         if (data is Map<String, dynamic>) {
           final club = Club.fromJson(data);
-          debugPrint('[DEBUG CLUB] Club encontrado - ID: ${club.id}, Nombre: ${club.nombreClub}');
+          debugPrint(
+              '[DEBUG CLUB] Club encontrado - ID: ${club.id}, Nombre: ${club.nombreClub}');
           return club;
         } else {
           debugPrint('[DEBUG CLUB] WARNING: Formato de respuesta inesperado');
@@ -329,25 +304,18 @@ class ClubRemoteDataSource {
         debugPrint('[DEBUG CLUB] Club no encontrado (404)');
         return null;
       } else {
-        throw Exception('Error al obtener club: ${response.statusCode}');
+        throw ServerException('Error al obtener club',
+            statusCode: response.statusCode);
       }
-    } on DioException catch (e) {
+    } on DioException catch (e, st) {
       final statusCode = e.response?.statusCode;
       debugPrint('[DEBUG CLUB] DioException - Status: $statusCode');
       debugPrint('[DEBUG CLUB] Error: ${e.message}');
-      
+
       if (statusCode == 404) {
         return null; // Club no encontrado, no es un error crítico
-      } else if (statusCode == 401) {
-        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
-      } else if (statusCode == 403) {
-        throw Exception('No tienes permisos para ver este club.');
-      } else if (statusCode == 500) {
-        throw Exception('Error del servidor. Por favor intenta más tarde.');
       }
-      
-      final errorMessage = e.response?.data?['message'] ?? e.message ?? 'Error desconocido';
-      throw Exception('Error obteniendo club: $errorMessage');
+      throwDioAsApp(e, fallback: 'Error obteniendo club', stackTrace: st);
     } catch (e) {
       debugPrint('[DEBUG CLUB] Error general obteniendo club por ID: $e');
       return null;
@@ -359,14 +327,20 @@ class ClubRemoteDataSource {
       return await _fetchAnfitrion(id);
     } catch (e) {
       logDebug('Error fetching anfitrion: $e');
-      return Anfitrion(id: id, nombre: '', apellido: '', email: '', telefono: '', redesSociales: '');
+      return Anfitrion(
+          id: id,
+          nombre: '',
+          apellido: '',
+          email: '',
+          telefono: '',
+          redesSociales: '');
     }
   }
 
   Future<Anfitrion> _fetchAnfitrion(int id, {String? token}) async {
-    final options = token != null 
-       ? Options(headers: {'Authorization': 'Bearer $token'}) 
-       : null;
+    final options = token != null
+        ? Options(headers: {'Authorization': 'Bearer $token'})
+        : null;
     final response = await _client.get('/usuarios/$id', options: options);
     if (response.statusCode == 200) {
       return Anfitrion.fromJson(response.data);
@@ -374,18 +348,55 @@ class ClubRemoteDataSource {
       throw Exception('Failed to load anfitrion');
     }
   }
+
   Future<List<ClubMembership>> getClubMembers(int clubId) async {
     try {
       final response = await _client.get('/membresias/club/$clubId');
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
         return data.map((json) => ClubMembership.fromJson(json)).toList();
       } else {
-        throw Exception('Error al cargar socios: ${response.statusCode}');
+        throw ServerException('Error al cargar socios',
+            statusCode: response.statusCode);
       }
-    } catch (e) {
-      throw Exception('Error detallado al obtener socios: $e');
+    } catch (e, st) {
+      rethrowApp(e,
+          fallback: 'Error detallado al obtener socios', stackTrace: st);
+    }
+  }
+
+  /// Versión paginada de [getClubMembers].
+  /// Endpoint: GET /membresias/club/{clubId}/paginadas?page&size&q
+  Future<PagedResult<ClubMembership>> getClubMembersPage(
+    int clubId, {
+    int page = 0,
+    int size = 20,
+    String? q,
+  }) async {
+    try {
+      final response = await _client.get(
+        '/membresias/club/$clubId/paginadas',
+        queryParameters: {
+          'page': page,
+          'size': size,
+          if (q != null && q.isNotEmpty) 'q': q,
+        },
+      );
+
+      final dynamic data = response.data;
+      if (data is! Map) {
+        throw ServerException('Respuesta inesperada al obtener socios');
+      }
+      return PagedResult<ClubMembership>.fromJson(
+        Map<String, dynamic>.from(data),
+        (json) => ClubMembership.fromJson(json),
+      );
+    } on DioException catch (e, st) {
+      throwDioAsApp(e, fallback: 'Error al cargar socios', stackTrace: st);
+    } catch (e, st) {
+      rethrowApp(e,
+          fallback: 'Error al obtener socios paginados', stackTrace: st);
     }
   }
 
@@ -405,7 +416,7 @@ class ClubRemoteDataSource {
       if (lat.isNaN || lng.isNaN || lat.isInfinite || lng.isInfinite) {
         throw Exception('Las coordenadas de ubicación no son válidas');
       }
-      
+
       debugPrint('[CLUB DS] Solicitud de creación de club:');
       debugPrint('[CLUB DS]   nombreClub: $nombreClub');
       debugPrint('[CLUB DS]   direccion: $direccion');
@@ -414,39 +425,38 @@ class ClubRemoteDataSource {
       debugPrint('[CLUB DS]   lng: $lng (tipo: ${lng.runtimeType})');
       debugPrint('[CLUB DS]   hubId: $hubId');
       debugPrint('[CLUB DS]   anfitrionId: $anfitrionId');
-      
+
       final body = {
         'nombreClub': nombreClub,
         'direccion': direccion,
         'horario': horario,
         'lat': lat,
         'lng': lng,
-        'estado': 'PENDIENTE', 
+        'estado': 'PENDIENTE',
       };
 
       debugPrint('[CLUB DS] Body a enviar: $body');
 
       final response = await _client.post(
-        '/clubes', 
+        '/clubes',
         data: body,
         queryParameters: {
           'hubId': hubId,
           'anfitrionId': anfitrionId,
         },
       );
-      
+
       debugPrint('[CLUB DS] Respuesta del servidor: ${response.statusCode}');
       debugPrint('[CLUB DS] Response data: ${response.data}');
 
       if (response.statusCode != 201 && response.statusCode != 200) {
-        throw Exception('Error al solicitar club: ${response.statusCode}');
+        throw ServerException('Error al solicitar club',
+            statusCode: response.statusCode);
       }
-    } catch (e) {
-      if (e is DioException) {
-         final msg = e.response?.data?.toString() ?? e.message;
-         throw Exception('Error solicitud club: $msg');
-      }
-      throw Exception('Error al solicitar club: $e');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e, fallback: 'Error solicitud club', stackTrace: st);
+    } catch (e, st) {
+      rethrowApp(e, fallback: 'Error al solicitar club', stackTrace: st);
     }
   }
 
@@ -463,13 +473,13 @@ class ClubRemoteDataSource {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Error al actualizar club: ${response.statusCode}');
+        throw ServerException('Error al actualizar club',
+            statusCode: response.statusCode);
       }
-    } catch (e) {
-      if (e is DioException) {
-         throw Exception('Error actualizando club: ${e.message}');
-      }
-      throw Exception('Error al actualizar club: $e');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e, fallback: 'Error actualizando club', stackTrace: st);
+    } catch (e, st) {
+      rethrowApp(e, fallback: 'Error al actualizar club', stackTrace: st);
     }
   }
 
@@ -489,20 +499,19 @@ class ClubRemoteDataSource {
 
   Future<void> subirFotoClub(int clubId, String urlFoto) async {
     try {
-      final response = await _client.post(
-        '/fotos-club/subir',
-        queryParameters: {
-          'clubId': clubId,
-          'urlFoto': urlFoto,
-          'tipo': 'PORTADA'
-        }
-      );
+      final response = await _client.post('/fotos-club/subir',
+          queryParameters: {
+            'clubId': clubId,
+            'urlFoto': urlFoto,
+            'tipo': 'PORTADA'
+          });
 
       if (response.statusCode != 201 && response.statusCode != 200) {
-        throw Exception('Error subiendo foto: ${response.statusCode}');
+        throw ServerException('Error subiendo foto',
+            statusCode: response.statusCode);
       }
-    } catch (e) {
-      throw Exception('Error al subir foto: $e');
+    } catch (e, st) {
+      rethrowApp(e, fallback: 'Error al subir foto', stackTrace: st);
     }
   }
 
@@ -520,9 +529,9 @@ class ClubRemoteDataSource {
             .toList();
       }
       return [];
-    } on DioException catch (e) {
+    } on DioException catch (e, st) {
       if (e.response?.statusCode == 404) return [];
-      throw Exception('Error obteniendo referidos: ${e.message}');
+      throwDioAsApp(e, fallback: 'Error obteniendo referidos', stackTrace: st);
     }
   }
 }
