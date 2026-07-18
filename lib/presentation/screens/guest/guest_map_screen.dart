@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart'; // Add go_router
-import 'package:flutter_map/flutter_map.dart'; 
+import 'package:go_router/go_router.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../../../data/datasources/remote/club_remote_data_source.dart'; // Import DataSource
-import '../../../main.dart'; // Acceso a global clubRemoteDataSource (temporal, idealmente Provider)
+import 'package:provider/provider.dart';
+import '../../../data/datasources/remote/club_remote_data_source.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
-
 
 class GuestMapScreen extends StatefulWidget {
   const GuestMapScreen({super.key});
@@ -16,8 +15,7 @@ class GuestMapScreen extends StatefulWidget {
 }
 
 class _GuestMapScreenState extends State<GuestMapScreen> {
-  // Centro inicial ajustado a uno de los clubes (Santa Cruz)
-  final LatLng _initialCenter = const LatLng(-17.78122028, -63.17921747); 
+  final LatLng _initialCenter = const LatLng(-17.78122028, -63.17921747);
   final MapController _mapController = MapController();
   List<Club> _clubs = [];
   bool _isLoading = true;
@@ -30,7 +28,7 @@ class _GuestMapScreenState extends State<GuestMapScreen> {
 
   Future<void> _loadClubs() async {
     try {
-      final clubs = await clubRemoteDataSource.getClubes();
+      final clubs = await context.read<ClubRemoteDataSource>().getClubes();
       if (mounted) {
         setState(() {
           _clubs = clubs;
@@ -41,7 +39,7 @@ class _GuestMapScreenState extends State<GuestMapScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text('Error al cargar clubes: $e'))
+          SnackBar(content: Text('Error al cargar clubes: $e')),
         );
       }
     }
@@ -50,7 +48,7 @@ class _GuestMapScreenState extends State<GuestMapScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -62,8 +60,8 @@ class _GuestMapScreenState extends State<GuestMapScreen> {
       body: FlutterMap(
         mapController: _mapController,
         options: MapOptions(
-          initialCenter: _clubs.isNotEmpty 
-              ? LatLng(_clubs.first.lat, _clubs.first.lng) 
+          initialCenter: _clubs.isNotEmpty
+              ? LatLng(_clubs.first.lat, _clubs.first.lng)
               : _initialCenter,
           initialZoom: 13.0,
         ),
@@ -105,34 +103,46 @@ class _GuestMapScreenState extends State<GuestMapScreen> {
       builder: (sheetContext) {
         return Container(
           padding: const EdgeInsets.all(24),
-          height: 250, 
+          height: 250,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 club.nombreClub,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF333333)),
+                style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF333333)),
               ),
               const SizedBox(height: 4),
               Text(
                 "Anfitrión: ${club.anfitrionNombre}",
-                style: const TextStyle(fontSize: 14, color: Colors.grey, fontStyle: FontStyle.italic),
+                style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                    fontStyle: FontStyle.italic),
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                   const Icon(LucideIcons.mapPin, color: AppTheme.primaryColor, size: 18),
-                   const SizedBox(width: 8),
-                   Expanded(child: Text(club.direccion, style: const TextStyle(color: Colors.black87))),
+                  const Icon(LucideIcons.mapPin,
+                      color: AppTheme.primaryColor, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: Text(club.direccion,
+                          style: const TextStyle(color: Colors.black87))),
                 ],
               ),
               const SizedBox(height: 8),
-               Row(
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   const Icon(LucideIcons.clock, color: Colors.grey, size: 18),
-                   const SizedBox(width: 8),
-                   Expanded(child: Text(club.horario, style: const TextStyle(color: Colors.grey, fontSize: 12))),
+                  const Icon(LucideIcons.clock, color: Colors.grey, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: Text(club.horario,
+                          style: const TextStyle(
+                              color: Colors.grey, fontSize: 12))),
                 ],
               ),
               const Spacer(),

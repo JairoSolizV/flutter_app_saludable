@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:provider/provider.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
-import '../../../../main.dart'; // acceso a clubRemoteDataSource global
 import '../../../widgets/schedule_selector.dart';
 import '../../../widgets/location_picker_dialog.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
@@ -44,10 +44,13 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
 
   Future<void> _loadCurrentPhoto() async {
     try {
-      final photos = await clubRemoteDataSource.getFotosClub(widget.club.id);
+      final photos = await context
+          .read<ClubRemoteDataSource>()
+          .getFotosClub(widget.club.id);
       if (photos.isNotEmpty) {
         // Assume last is newest
-        final cover = photos.lastWhere((p) => p.tipo == 'PORTADA', orElse: () => photos.last);
+        final cover = photos.lastWhere((p) => p.tipo == 'PORTADA',
+            orElse: () => photos.last);
         setState(() {
           _imageCtrl.text = cover.urlFoto;
         });
@@ -73,7 +76,9 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
     try {
       if (_schedule.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Selecciona el horario de atención'), backgroundColor: Colors.orange),
+          const SnackBar(
+              content: Text('Selecciona el horario de atención'),
+              backgroundColor: Colors.orange),
         );
         setState(() => _isLoading = false);
         return;
@@ -81,7 +86,9 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
 
       if (_lat == null || _lng == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Selecciona la ubicación del club'), backgroundColor: Colors.orange),
+          const SnackBar(
+              content: Text('Selecciona la ubicación del club'),
+              backgroundColor: Colors.orange),
         );
         setState(() => _isLoading = false);
         return;
@@ -96,15 +103,13 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
         // 'fotoUrl': _imageCtrl.text.trim(), // REMOVED: Managed separately
       };
 
+      final clubDs = context.read<ClubRemoteDataSource>();
       // 1. Update basic info
-      await clubRemoteDataSource.updateClub(widget.club.id, data);
+      await clubDs.updateClub(widget.club.id, data);
 
       // 2. Update photo if changed and not empty
       if (_imageCtrl.text.trim().isNotEmpty) {
-         // Check if it's different handling could be complex without storing original
-         // For now, always upload if not empty. A better way: check against loaded.
-         // Or just upload. Backend adds to list.
-         await clubRemoteDataSource.subirFotoClub(widget.club.id, _imageCtrl.text.trim());
+        await clubDs.subirFotoClub(widget.club.id, _imageCtrl.text.trim());
       }
 
       if (mounted) {
@@ -140,7 +145,8 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Sección: Detalles del Club
-              const Text("Detalles del Club", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text("Detalles del Club",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
 
               _buildTextField(
@@ -148,16 +154,18 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                 controller: _nameCtrl,
                 icon: LucideIcons.store,
                 readOnly: true,
-                helperText: "El nombre del club no se puede cambiar libremente. Por favor, comunícate con soporte.",
+                helperText:
+                    "El nombre del club no se puede cambiar libremente. Por favor, comunícate con soporte.",
               ),
               const SizedBox(height: 24),
 
               // Sección: Horario de Atención
               const Divider(height: 1),
               const SizedBox(height: 24),
-              const Text("Horario de Atención", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text("Horario de Atención",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-              
+
               ScheduleSelector(
                 initialSchedule: _schedule.isNotEmpty ? _schedule : null,
                 onScheduleChanged: (schedule) {
@@ -169,9 +177,10 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
               // Sección: Ubicación del Club
               const Divider(height: 1),
               const SizedBox(height: 24),
-              const Text("Ubicación del Club", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text("Ubicación del Club",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-              
+
               OutlinedButton.icon(
                 onPressed: () async {
                   final result = await Navigator.push<LatLng>(
@@ -184,7 +193,7 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                       ),
                     ),
                   );
-                  
+
                   if (result != null) {
                     setState(() {
                       _lat = result.latitude;
@@ -193,16 +202,21 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                   }
                 },
                 icon: const Icon(LucideIcons.mapPin),
-                label: Text(_lat == null ? 'Seleccionar Ubicación' : 'Ubicación seleccionada'),
+                label: Text(_lat == null
+                    ? 'Seleccionar Ubicación'
+                    : 'Ubicación seleccionada'),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
                   side: BorderSide(
-                    color: _lat == null ? Colors.grey.shade400 : AppTheme.primaryColor,
+                    color: _lat == null
+                        ? Colors.grey.shade400
+                        : AppTheme.primaryColor,
                     width: 2,
                   ),
                 ),
               ),
-              
+
               if (_lat != null && _lng != null) ...[
                 const SizedBox(height: 12),
                 Container(
@@ -213,12 +227,14 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle, color: AppTheme.primaryColor, size: 20),
+                      const Icon(Icons.check_circle,
+                          color: AppTheme.primaryColor, size: 20),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Lat: ${_lat!.toStringAsFixed(6)}, Lng: ${_lng!.toStringAsFixed(6)}',
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF2C5E1A)),
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF2C5E1A)),
                         ),
                       ),
                     ],
@@ -241,9 +257,11 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
               // Sección: Imagen del Club
               const Divider(height: 1),
               const SizedBox(height: 24),
-              const Text("Imagen del Club", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text("Imagen del Club",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              const Text("Ingresa la URL de la imagen de portada de tu club.", style: TextStyle(color: Colors.grey)),
+              const Text("Ingresa la URL de la imagen de portada de tu club.",
+                  style: TextStyle(color: Colors.grey)),
               const SizedBox(height: 16),
 
               _buildTextField(
@@ -253,7 +271,7 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                 hint: "https://ejemplo.com/foto.jpg",
                 maxLines: 1,
               ),
-              
+
               // Preview de la imagen si hay URL
               ValueListenableBuilder(
                 valueListenable: _imageCtrl,
@@ -271,7 +289,8 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                     child: CachedNetworkImage(
                       imageUrl: value.text,
                       fit: BoxFit.cover,
-                      errorWidget: (ctx, url, err) => const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                      errorWidget: (ctx, url, err) => const Center(
+                          child: Icon(Icons.broken_image, color: Colors.grey)),
                     ),
                   );
                 },
@@ -286,11 +305,16 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                   onPressed: _isLoading ? null : _saveChanges,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text("GUARDAR CAMBIOS", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text("GUARDAR CAMBIOS",
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white)),
                 ),
               ),
             ],

@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../../../../core/pagination/paged_list_controller.dart';
+import '../../../../core/pagination/paged_result.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../providers/user_provider.dart';
@@ -19,61 +23,125 @@ class HostMembersListScreen extends StatefulWidget {
 class _HostMembersListScreenState extends State<HostMembersListScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isLoading = true;
-  List<ClubMembership> _members = [];
-  String? _error;
+  final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
+  Timer? _debounce;
+
+  PagedListController<ClubMembership, int>? _membersController;
+  bool _isLoadingClub = true;
+  String? _clubError;
+  int? _clubId;
+  String _query = '';
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadMembers();
-    _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text.toLowerCase();
-      });
-    });
+    _scrollController.addListener(_onScroll);
+    _searchController.addListener(_onSearchChanged);
+    _initClub();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    _debounce?.cancel();
+    _membersController?.removeListener(_onMembersChanged);
+    _membersController?.dispose();
     super.dispose();
   }
 
-  Future<void> _loadMembers() async {
+  void _onScroll() {
+    final controller = _membersController;
+    if (controller == null ||
+        !controller.hasNextPage ||
+        controller.isLoadingMore) {
+      return;
+    }
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      controller.loadMore();
+    }
+  }
+
+  void _onSearchChanged() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      final newQuery = _searchController.text.trim();
+      if (newQuery == _query) return;
+      setState(() => _query = newQuery);
+      _membersController?.loadInitial();
+    });
+  }
+
+  void _onMembersChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<PagedResult<ClubMembership>> _fetchMembersPage(int page) {
+    final clubDataSource =
+        Provider.of<ClubRemoteDataSource>(context, listen: false);
+    return clubDataSource.getClubMembersPage(
+      _clubId!,
+      page: page,
+      size: 20,
+      q: _query.isEmpty ? null : _query,
+    );
+  }
+
+  void _setupMembersController() {
+    _membersController?.removeListener(_onMembersChanged);
+    _membersController = PagedListController<ClubMembership, int>(
+      fetchPage: _fetchMembersPage,
+      idExtractor: (m) => m.id,
+    )..addListener(_onMembersChanged);
+  }
+
+  Future<void> _handleRefresh() async {
+    if (_membersController == null) {
+      await _initClub();
+    } else {
+      await _membersController!.refresh();
+    }
+  }
+
+  Future<void> _initClub() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingClub = true;
+      _clubError = null;
+    });
     try {
-      if (mounted) setState(() => _error = null);
-      final user = Provider.of<UserProvider>(context, listen: false).currentUser;
+      final user =
+          Provider.of<UserProvider>(context, listen: false).currentUser;
       if (user == null) {
         throw Exception("Usuario no autenticado");
       }
 
       // 1. Obtener el Club del Anfitrión
-      final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
+      final clubDataSource =
+          Provider.of<ClubRemoteDataSource>(context, listen: false);
       final club = await clubDataSource.getMyClub();
 
       if (club == null) {
         throw Exception("No se encontró un club asociado a este anfitrión.");
       }
 
-      // 2. Obtener los Socios del Club
-      final members = await clubDataSource.getClubMembers(club.id);
+      _clubId = club.id;
+      _setupMembersController();
 
-      if (mounted) {
-        setState(() {
-          _members = members;
-          _isLoading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() => _isLoadingClub = false);
+      await _membersController!.loadInitial();
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString().replaceAll("Exception: ", "");
-          _isLoading = false;
+          _clubError = e.toString().replaceAll("Exception: ", "");
+          _isLoadingClub = false;
         });
       }
     }
@@ -110,68 +178,69 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
   }
 
   Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
+    final membersController = _membersController;
+    final bool isInitialLoading =
+        _isLoadingClub || (membersController?.isInitialLoading ?? false);
+    final String? topLevelError =
+        _clubError ?? membersController?.initialError?.toString();
+
+    if (isInitialLoading) {
+      return const Center(
+          child: CircularProgressIndicator(color: AppTheme.primaryColor));
     }
 
-    if (_error != null) {
+    if (topLevelError != null) {
       return RefreshableScrollView(
-        onRefresh: _loadMembers,
-        child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(LucideIcons.alertCircle, size: 48, color: Colors.orange),
-              const SizedBox(height: 16),
-              Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey, fontSize: 16),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    _isLoading = true;
-                    _error = null;
-                  });
-                  _loadMembers();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor, 
-                  foregroundColor: Colors.white
-                ),
-                child: const Text("Reintentar"),
-              )
-            ],
-          ),
-      );
-    }
-
-    if (_members.isEmpty) {
-      return RefreshableScrollView(
-        onRefresh: _loadMembers,
+        onRefresh: _handleRefresh,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.people_outline, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text('No hay socios registrados aún.', style: TextStyle(color: Colors.grey, fontSize: 16)),
+          children: [
+            const Icon(LucideIcons.alertCircle, size: 48, color: Colors.orange),
+            const SizedBox(height: 16),
+            Text(
+              topLevelError,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _handleRefresh,
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white),
+              child: const Text("Reintentar"),
+            )
           ],
         ),
       );
     }
 
-    // Filtrar miembros
-    final filteredMembers = _members.where((m) {
-      if (_searchQuery.isEmpty) return true;
-      return m.usuarioNombre.toLowerCase().contains(_searchQuery) ||
-             m.numeroSocio.toLowerCase().contains(_searchQuery);
-    }).toList();
+    final members = membersController?.items ?? const <ClubMembership>[];
+    final totalElements = membersController?.totalElements ?? members.length;
+
+    if (members.isEmpty) {
+      return RefreshableScrollView(
+        onRefresh: _handleRefresh,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.people_outline, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(
+              _query.isEmpty
+                  ? 'No hay socios registrados aún.'
+                  : 'No se encontraron socios',
+              style: const TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
 
     return RefreshIndicator(
-      onRefresh: _loadMembers,
+      onRefresh: _handleRefresh,
       color: AppTheme.primaryColor,
       child: Column(
         children: [
@@ -185,10 +254,11 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
               children: [
                 Row(
                   children: [
-                    const Icon(LucideIcons.users, color: AppTheme.primaryColor, size: 20),
+                    const Icon(LucideIcons.users,
+                        color: AppTheme.primaryColor, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      'Total de Socios: ${_members.length}',
+                      'Total de Socios: $totalElements',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -198,13 +268,14 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
                   ],
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '${_members.length}',
+                    '$totalElements',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -215,7 +286,7 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
               ],
             ),
           ),
-          
+
           // Barra de Búsqueda
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -224,7 +295,7 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
               decoration: InputDecoration(
                 hintText: 'Buscar por nombre o número...',
                 prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
+                suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear),
                         onPressed: () {
@@ -245,37 +316,49 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
               ),
             ),
           ),
-          
+
           // Lista de socios
           Expanded(
-            child: filteredMembers.isEmpty
-                ? LayoutBuilder(
-                    builder: (context, constraints) => SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                        child: Center(
-                          child: Text(
-                            'No se encontraron socios',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                : ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredMembers.length,
-                    itemBuilder: (context, index) {
-                      final member = filteredMembers[index];
-                      return _buildMemberCard(member);
-                    },
-                  ),
+            child: ListView.builder(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              itemCount: members.length + 1,
+              itemBuilder: (context, index) {
+                if (index == members.length) {
+                  return _buildListFooter();
+                }
+                final member = members[index];
+                return _buildMemberCard(member);
+              },
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildListFooter() {
+    final controller = _membersController;
+    if (controller == null) return const SizedBox.shrink();
+    if (controller.isLoadingMore) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (controller.loadMoreError != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: TextButton(
+            onPressed: controller.loadMore,
+            child: const Text('Reintentar cargar más'),
+          ),
+        ),
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   Widget _buildMemberCard(ClubMembership member) {
@@ -299,12 +382,16 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
         ),
         borderRadius: BorderRadius.circular(16),
         child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           leading: CircleAvatar(
             backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
             child: Text(
-              member.usuarioNombre.isNotEmpty ? member.usuarioNombre[0].toUpperCase() : '?',
-              style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
+              member.usuarioNombre.isNotEmpty
+                  ? member.usuarioNombre[0].toUpperCase()
+                  : '?',
+              style: const TextStyle(
+                  color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
             ),
           ),
           title: Text(
@@ -318,7 +405,8 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: Colors.green[50], // Color suave para nivel
                       borderRadius: BorderRadius.circular(4),
@@ -326,7 +414,10 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
                     ),
                     child: Text(
                       member.nivelNombre,
-                      style: TextStyle(fontSize: 12, color: Colors.green[800], fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.green[800],
+                          fontWeight: FontWeight.w500),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -362,6 +453,4 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
       ),
     );
   }
-
 }
-

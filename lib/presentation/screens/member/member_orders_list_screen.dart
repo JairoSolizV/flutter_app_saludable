@@ -4,12 +4,17 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/user_provider.dart';
+import '../../../core/pagination/paged_list_controller.dart';
+import '../../../core/pagination/paged_result.dart';
 import '../../../data/datasources/remote/order_remote_data_source.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../domain/entities/club_membership.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
+// Nota: los pedidos offline pendientes de sincronizar NO se mezclan en este
+// listado remoto paginado. Se gestionan por separado vía OrderProvider/
+// SyncService y se muestran en su propia pantalla.
 class MemberOrdersListScreen extends StatefulWidget {
   const MemberOrdersListScreen({super.key});
 
@@ -17,24 +22,79 @@ class MemberOrdersListScreen extends StatefulWidget {
   State<MemberOrdersListScreen> createState() => _MemberOrdersListScreenState();
 }
 
-class _MemberOrdersListScreenState extends State<MemberOrdersListScreen> with SingleTickerProviderStateMixin {
+class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isLoading = true;
-  List<Map<String, dynamic>> _orders = [];
-  String? _error;
+  final ScrollController _activeScrollController = ScrollController();
+  final ScrollController _historyScrollController = ScrollController();
+  PagedListController<Map<String, dynamic>, int>? _ordersController;
+
+  bool _isLoadingMembresia = true;
+  String? _membresiaError;
   ClubMembership? _activeMembership;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadOrdersFromBackend();
+    _activeScrollController
+        .addListener(() => _maybeLoadMore(_activeScrollController));
+    _historyScrollController
+        .addListener(() => _maybeLoadMore(_historyScrollController));
+    _initMembresia();
   }
 
-  Future<void> _loadOrdersFromBackend() async {
+  void _maybeLoadMore(ScrollController scrollController) {
+    final controller = _ordersController;
+    if (controller == null ||
+        !controller.hasNextPage ||
+        controller.isLoadingMore) return;
+    if (!scrollController.hasClients) return;
+    if (scrollController.position.pixels >=
+        scrollController.position.maxScrollExtent - 200) {
+      controller.loadMore();
+    }
+  }
+
+  int _orderId(Map<String, dynamic> order) {
+    final dynamic idValue = order['id'];
+    if (idValue is int) return idValue;
+    return int.tryParse(idValue?.toString() ?? '') ?? 0;
+  }
+
+  void _onOrdersChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<PagedResult<Map<String, dynamic>>> _fetchOrdersPage(
+      int membresiaId, int page) {
+    final orderDataSource =
+        Provider.of<OrderRemoteDataSource>(context, listen: false);
+    return orderDataSource.getOrdersBySocioPage(membresiaId,
+        page: page, size: 20);
+  }
+
+  void _setupOrdersController(int membresiaId) {
+    _ordersController?.removeListener(_onOrdersChanged);
+    _ordersController = PagedListController<Map<String, dynamic>, int>(
+      fetchPage: (page) => _fetchOrdersPage(membresiaId, page),
+      idExtractor: _orderId,
+    )..addListener(_onOrdersChanged);
+  }
+
+  Future<void> _handleRefresh() async {
+    if (_ordersController == null) {
+      await _initMembresia();
+    } else {
+      await _ordersController!.refresh();
+    }
+  }
+
+  Future<void> _initMembresia() async {
+    if (!mounted) return;
     setState(() {
-      _isLoading = true;
-      _error = null;
+      _isLoadingMembresia = true;
+      _membresiaError = null;
       _activeMembership = null;
     });
 
@@ -45,123 +105,157 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen> with Si
         throw Exception('Usuario no autenticado');
       }
 
-      final membresiaDataSource = Provider.of<MembresiaRemoteDataSource>(context, listen: false);
-      final membresias = await membresiaDataSource.getMembresiasPorUsuario(int.parse(user.id));
-      
+      final membresiaDataSource =
+          Provider.of<MembresiaRemoteDataSource>(context, listen: false);
+      final membresias =
+          await membresiaDataSource.getMembresiasPorUsuario(int.parse(user.id));
+
       if (membresias.isEmpty) {
-        setState(() {
-          _orders = [];
-          _isLoading = false;
-        });
+        if (!mounted) return;
+        setState(() => _isLoadingMembresia = false);
         return;
       }
 
       // Obtener pedidos de la primera membresía activa
       final membresia = membresias.first;
       _activeMembership = membresia;
+      _setupOrdersController(membresia.id);
 
-      final orderDataSource = Provider.of<OrderRemoteDataSource>(context, listen: false);
-      final ordersData = await orderDataSource.getOrdersBySocio(membresia.id);
-
-      // Mapear pedidos del backend
-      final mappedOrders = ordersData.map((order) {
-        final dynamic idValue = order['id'];
-        final int pedidoId = idValue is int ? idValue : (idValue != null ? int.tryParse(idValue.toString()) ?? 0 : 0);
-        
-        final dynamic fechaValue = order['fechaPedido'] ?? order['createdAt'];
-        final DateTime fecha = fechaValue != null ? DateTime.tryParse(fechaValue.toString()) ?? DateTime.now() : DateTime.now();
-        
-        final String estado = order['estado']?.toString() ?? 'RECIBIDO';
-        final String clubNombre = order['clubNombre']?.toString() ?? 'Club';
-        final String tipoConsumo = order['tipoConsumo']?.toString() ?? 'EN_LUGAR';
-        final String observaciones = order['observaciones']?.toString() ?? '';
-        final dynamic tiempoValue = order['tiempoEstimadoMinutos'] ?? order['tiempo_estimado_minutos'];
-        final int? tiempoEstimadoMinutos = tiempoValue is int ? tiempoValue : (tiempoValue != null ? int.tryParse(tiempoValue.toString()) : null);
-        
-        // Obtener items del pedido
-        List<Map<String, dynamic>> items = [];
-        
-        // Opción 1: Si viene como lista de items (estructura correcta del backend)
-        if (order['items'] is List) {
-          final itemsList = order['items'] as List;
-          debugPrint('[DEBUG MEMBER ORDERS] Pedido #$pedidoId - items es List con ${itemsList.length} elementos');
-          for (var item in itemsList) {
-            if (item is Map) {
-              final itemMap = Map<String, dynamic>.from(item);
-              debugPrint('[DEBUG MEMBER ORDERS] Item: $itemMap');
-              items.add(itemMap);
-            }
-          }
-        } else {
-          debugPrint('[DEBUG MEMBER ORDERS] Pedido #$pedidoId - items NO es List, tipo: ${order['items']?.runtimeType}');
-          debugPrint('[DEBUG MEMBER ORDERS] Pedido completo: $order');
-        }
-        
-        // Opción 2: Si no hay items pero hay productoNombre y cantidad (compatibilidad con estructura antigua)
-        if (items.isEmpty) {
-          final String? productoNombre = order['productoNombre']?.toString();
-          final dynamic cantidadValue = order['cantidad'];
-          final int cantidad = cantidadValue is int ? cantidadValue : (cantidadValue != null ? int.tryParse(cantidadValue.toString()) ?? 1 : 1);
-          
-          debugPrint('[DEBUG MEMBER ORDERS] Pedido #$pedidoId - Usando compatibilidad, productoNombre: $productoNombre, cantidad: $cantidad');
-          
-          if (productoNombre != null && productoNombre.isNotEmpty && cantidad > 0) {
-            items.add({
-              'productoNombre': productoNombre,
-              'cantidad': cantidad,
-              'nota': observaciones,
-            });
-          }
-        }
-        
-        debugPrint('[DEBUG MEMBER ORDERS] Pedido #$pedidoId - Total items mapeados: ${items.length}');
-        if (items.isNotEmpty) {
-          debugPrint('[DEBUG MEMBER ORDERS] Primer item mapeado: ${items.first}');
-        }
-        
-        return {
-          'id': pedidoId,
-          'pedidoId': pedidoId,
-          'fecha': fecha,
-          'estado': estado,
-          'clubNombre': clubNombre,
-          'tipoConsumo': tipoConsumo,
-          'observaciones': observaciones,
-          'tiempoEstimadoMinutos': tiempoEstimadoMinutos,
-          'items': items,
-        };
-      }).toList();
-
-      setState(() {
-        _orders = mappedOrders;
-        _isLoading = false;
-      });
+      if (!mounted) return;
+      setState(() => _isLoadingMembresia = false);
+      await _ordersController!.loadInitial();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceAll('Exception: ', '');
-        _isLoading = false;
+        _membresiaError = e.toString().replaceAll('Exception: ', '');
+        _isLoadingMembresia = false;
       });
     }
+  }
+
+  /// Mapea un pedido crudo del backend al formato usado por la UI.
+  /// Función pura: no muta estado ni hace I/O.
+  Map<String, dynamic> _mapOrder(Map<String, dynamic> order) {
+    final dynamic idValue = order['id'];
+    final int pedidoId = idValue is int
+        ? idValue
+        : (idValue != null ? int.tryParse(idValue.toString()) ?? 0 : 0);
+
+    final dynamic fechaValue = order['fechaPedido'] ?? order['createdAt'];
+    final DateTime fecha = fechaValue != null
+        ? DateTime.tryParse(fechaValue.toString()) ?? DateTime.now()
+        : DateTime.now();
+
+    final String estado = order['estado']?.toString() ?? 'RECIBIDO';
+    final String clubNombre = order['clubNombre']?.toString() ?? 'Club';
+    final String tipoConsumo = order['tipoConsumo']?.toString() ?? 'EN_LUGAR';
+    final String observaciones = order['observaciones']?.toString() ?? '';
+    final dynamic tiempoValue =
+        order['tiempoEstimadoMinutos'] ?? order['tiempo_estimado_minutos'];
+    final int? tiempoEstimadoMinutos = tiempoValue is int
+        ? tiempoValue
+        : (tiempoValue != null ? int.tryParse(tiempoValue.toString()) : null);
+
+    // Obtener items del pedido
+    List<Map<String, dynamic>> items = [];
+
+    // Opción 1: Si viene como lista de items (estructura correcta del backend)
+    if (order['items'] is List) {
+      final itemsList = order['items'] as List;
+      for (var item in itemsList) {
+        if (item is Map) {
+          items.add(Map<String, dynamic>.from(item));
+        }
+      }
+    }
+
+    // Opción 2: Si no hay items pero hay productoNombre y cantidad (compatibilidad con estructura antigua)
+    if (items.isEmpty) {
+      final String? productoNombre = order['productoNombre']?.toString();
+      final dynamic cantidadValue = order['cantidad'];
+      final int cantidad = cantidadValue is int
+          ? cantidadValue
+          : (cantidadValue != null
+              ? int.tryParse(cantidadValue.toString()) ?? 1
+              : 1);
+
+      if (productoNombre != null && productoNombre.isNotEmpty && cantidad > 0) {
+        items.add({
+          'productoNombre': productoNombre,
+          'cantidad': cantidad,
+          'nota': observaciones,
+        });
+      }
+    }
+
+    return {
+      'id': pedidoId,
+      'pedidoId': pedidoId,
+      'fecha': fecha,
+      'estado': estado,
+      'clubNombre': clubNombre,
+      'tipoConsumo': tipoConsumo,
+      'observaciones': observaciones,
+      'tiempoEstimadoMinutos': tiempoEstimadoMinutos,
+      'items': items,
+    };
+  }
+
+  Widget? _buildFooter() {
+    final controller = _ordersController;
+    if (controller == null) return null;
+    if (controller.isLoadingMore) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (controller.loadMoreError != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: TextButton(
+            onPressed: controller.loadMore,
+            child: const Text('Reintentar cargar más'),
+          ),
+        ),
+      );
+    }
+    return null;
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _activeScrollController.dispose();
+    _historyScrollController.dispose();
+    _ordersController?.removeListener(_onOrdersChanged);
+    _ordersController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Filtrado de pedidos según estado
-    final activeOrders = _orders.where((o) {
+    final rawOrders =
+        _ordersController?.items ?? const <Map<String, dynamic>>[];
+    final mappedOrders = rawOrders.map(_mapOrder).toList();
+
+    // Filtrado local de pedidos según estado (partición del mismo feed
+    // paginado; el backend no distingue Activos/Historial).
+    final activeOrders = mappedOrders.where((o) {
       final estado = o['estado']?.toString().toUpperCase() ?? '';
       return estado != 'ENTREGADO' && estado != 'CANCELADO';
     }).toList();
-    
-    final historyOrders = _orders.where((o) {
+
+    final historyOrders = mappedOrders.where((o) {
       final estado = o['estado']?.toString().toUpperCase() ?? '';
       return estado == 'ENTREGADO' || estado == 'CANCELADO';
     }).toList();
+
+    final bool isInitialLoading =
+        _isLoadingMembresia || (_ordersController?.isInitialLoading ?? false);
+    final String? error =
+        _membresiaError ?? _ordersController?.initialError?.toString();
 
     return Scaffold(
       appBar: AppBar(
@@ -175,25 +269,33 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen> with Si
             Tab(text: 'Activos'),
             Tab(text: 'Historial'),
           ],
-        ), 
+        ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
-          : _error != null
+      body: isInitialLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primaryColor))
+          : error != null
               ? RefreshableScrollView(
-                  onRefresh: _loadOrdersFromBackend,
-                  child: Text('Error: $_error', style: const TextStyle(color: Colors.red)),
+                  onRefresh: _handleRefresh,
+                  child: Text('Error: $error',
+                      style: const TextStyle(color: Colors.red)),
                 )
               : RefreshIndicator(
-                  onRefresh: _loadOrdersFromBackend,
+                  onRefresh: _handleRefresh,
                   color: AppTheme.primaryColor,
                   child: TabBarView(
                     controller: _tabController,
                     children: [
                       // Tab Activos
-                      _OrdersList(orders: activeOrders),
+                      _OrdersList(
+                          orders: activeOrders,
+                          scrollController: _activeScrollController,
+                          footer: _buildFooter()),
                       // Tab Historial
-                      _OrdersList(orders: historyOrders),
+                      _OrdersList(
+                          orders: historyOrders,
+                          scrollController: _historyScrollController,
+                          footer: _buildFooter()),
                     ],
                   ),
                 ),
@@ -212,7 +314,8 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen> with Si
         },
         backgroundColor: AppTheme.primaryColor,
         icon: const Icon(LucideIcons.plus, color: Colors.white),
-        label: const Text('Nuevo Pedido', style: TextStyle(color: Colors.white)),
+        label:
+            const Text('Nuevo Pedido', style: TextStyle(color: Colors.white)),
       ),
     );
   }
@@ -220,8 +323,10 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen> with Si
 
 class _OrdersList extends StatelessWidget {
   final List<Map<String, dynamic>> orders;
+  final ScrollController? scrollController;
+  final Widget? footer;
 
-  const _OrdersList({required this.orders});
+  const _OrdersList({required this.orders, this.scrollController, this.footer});
 
   @override
   Widget build(BuildContext context) {
@@ -230,6 +335,7 @@ class _OrdersList extends StatelessWidget {
       // de "deslizar para actualizar" incluso con la lista vacía.
       return LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
+          controller: scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
@@ -248,19 +354,24 @@ class _OrdersList extends StatelessWidget {
     }
 
     return ListView.builder(
+      controller: scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
-      itemCount: orders.length,
+      itemCount: orders.length + (footer != null ? 1 : 0),
       itemBuilder: (context, index) {
+        if (index == orders.length) return footer!;
         final order = orders[index];
-        final int pedidoId = order['pedidoId'] as int? ?? order['id'] as int? ?? 0;
+        final int pedidoId =
+            order['pedidoId'] as int? ?? order['id'] as int? ?? 0;
         final DateTime fecha = order['fecha'] as DateTime? ?? DateTime.now();
         final String estado = order['estado']?.toString() ?? 'RECIBIDO';
         final String clubNombre = order['clubNombre']?.toString() ?? 'Club';
-        final String tipoConsumo = order['tipoConsumo']?.toString() ?? 'EN_LUGAR';
+        final String tipoConsumo =
+            order['tipoConsumo']?.toString() ?? 'EN_LUGAR';
         final String observaciones = order['observaciones']?.toString() ?? '';
-        final List<Map<String, dynamic>> items = (order['items'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>() ?? [];
+        final List<Map<String, dynamic>> items =
+            (order['items'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+                [];
 
         // Formatear fecha y hora por separado
         final dateStr = DateFormat('dd/MM/yyyy').format(fecha);
@@ -268,7 +379,8 @@ class _OrdersList extends StatelessWidget {
 
         return Card(
           margin: const EdgeInsets.only(bottom: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -280,13 +392,15 @@ class _OrdersList extends StatelessWidget {
                   children: [
                     Text(
                       'Pedido #$pedidoId',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     _StatusBadge(status: estado),
                   ],
                 ),
                 const SizedBox(height: 8),
-                if ((estado == 'PREPARANDO' || estado == 'PREPARING') && order['tiempoEstimadoMinutos'] != null)
+                if ((estado == 'PREPARANDO' || estado == 'PREPARING') &&
+                    order['tiempoEstimadoMinutos'] != null)
                   Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(8),
@@ -297,12 +411,16 @@ class _OrdersList extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        const Icon(LucideIcons.clock, size: 16, color: Colors.blue),
+                        const Icon(LucideIcons.clock,
+                            size: 16, color: Colors.blue),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             '¡Tu pedido se está preparando! Estará listo en aprox. ${order['tiempoEstimadoMinutos']} minutos.',
-                            style: const TextStyle(color: Colors.blue, fontSize: 13, fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                                color: Colors.blue,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
@@ -315,7 +433,10 @@ class _OrdersList extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       clubNombre,
-                      style: TextStyle(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
@@ -323,7 +444,8 @@ class _OrdersList extends StatelessWidget {
                 // Fecha
                 Row(
                   children: [
-                    Icon(LucideIcons.calendar, size: 14, color: Colors.grey[600]),
+                    Icon(LucideIcons.calendar,
+                        size: 14, color: Colors.grey[600]),
                     const SizedBox(width: 4),
                     Text(
                       dateStr,
@@ -356,18 +478,24 @@ class _OrdersList extends StatelessWidget {
                     children: [
                       const Text(
                         'Productos:',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF333333)),
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Color(0xFF333333)),
                       ),
                       const SizedBox(height: 8),
                       ...items.map((item) {
                         final int cantidad = item['cantidad'] as int? ?? 1;
                         // El backend devuelve productoNombre directamente en el item
-                        final String productoNombre = item['productoNombre']?.toString() ?? 
-                            (item['producto'] is Map
-                                ? (item['producto'] as Map)['nombre']?.toString() ?? 'Producto'
-                                : 'Producto');
+                        final String productoNombre =
+                            item['productoNombre']?.toString() ??
+                                (item['producto'] is Map
+                                    ? (item['producto'] as Map)['nombre']
+                                            ?.toString() ??
+                                        'Producto'
+                                    : 'Producto');
                         final String? nota = item['nota']?.toString();
-                        
+
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 4),
                           child: Row(
@@ -375,14 +503,18 @@ class _OrdersList extends StatelessWidget {
                             children: [
                               Text(
                                 '• $cantidad x $productoNombre',
-                                style: const TextStyle(color: Color(0xFF333333), fontSize: 13),
+                                style: const TextStyle(
+                                    color: Color(0xFF333333), fontSize: 13),
                               ),
                               if (nota != null && nota.isNotEmpty) ...[
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     '($nota)',
-                                    style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic),
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                        fontStyle: FontStyle.italic),
                                   ),
                                 ),
                               ],
@@ -397,7 +529,10 @@ class _OrdersList extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
                       'Nota: $observaciones',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic),
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic),
                     ),
                   ),
                 if (tipoConsumo.isNotEmpty)
@@ -405,11 +540,15 @@ class _OrdersList extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 4),
                     child: Row(
                       children: [
-                        Icon(LucideIcons.mapPin, size: 12, color: Colors.grey[600]),
+                        Icon(LucideIcons.mapPin,
+                            size: 12, color: Colors.grey[600]),
                         const SizedBox(width: 4),
                         Text(
-                          tipoConsumo == 'PARA_RECOGER' ? 'Para Recoger' : 'Consumir aquí',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          tipoConsumo == 'PARA_RECOGER'
+                              ? 'Para Recoger'
+                              : 'Consumir aquí',
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.grey[600]),
                         ),
                       ],
                     ),
@@ -473,7 +612,8 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+        style:
+            TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
       ),
     );
   }

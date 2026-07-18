@@ -2,16 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
-import '../../../data/datasources/remote/order_remote_data_source.dart';
-import '../../../data/datasources/remote/product_remote_data_source.dart';
-import '../../../data/datasources/remote/combo_remote_data_source.dart';
 import '../../../domain/entities/product.dart';
 import '../../../domain/entities/combo.dart';
 import '../../providers/counter_sale_provider.dart';
 import '../../widgets/product_image.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
-class HostCounterSaleScreen extends StatelessWidget {
+class HostCounterSaleScreen extends StatefulWidget {
   final int clubId;
   final int hubId;
 
@@ -22,15 +19,25 @@ class HostCounterSaleScreen extends StatelessWidget {
   });
 
   @override
+  State<HostCounterSaleScreen> createState() => _HostCounterSaleScreenState();
+}
+
+class _HostCounterSaleScreenState extends State<HostCounterSaleScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<CounterSaleProvider>().init(
+            clubId: widget.clubId,
+            hubId: widget.hubId,
+          );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => CounterSaleProvider(
-        Provider.of<ProductRemoteDataSource>(context, listen: false),
-        Provider.of<OrderRemoteDataSource>(context, listen: false),
-        Provider.of<ComboRemoteDataSource>(context, listen: false),
-      )..init(clubId: clubId, hubId: hubId),
-      child: const _HostCounterSaleView(),
-    );
+    return const _HostCounterSaleView();
   }
 }
 
@@ -63,21 +70,19 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
         final action = await showDialog<String>(
           context: context,
           builder: (dialogContext) => AlertDialog(
-                title: const Text('Venta registrada'),
-                content: const Text('Venta registrada correctamente'),
-                actions: [
-                  TextButton(
-                    onPressed: () =>
-                        Navigator.of(dialogContext).pop('nueva_venta'),
-                    child: const Text('Nueva venta'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () =>
-                        Navigator.of(dialogContext).pop('ver_pedidos'),
-                    child: const Text('Ver pedidos'),
-                  ),
-                ],
+            title: const Text('Venta registrada'),
+            content: const Text('Venta registrada correctamente'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop('nueva_venta'),
+                child: const Text('Nueva venta'),
               ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(dialogContext).pop('ver_pedidos'),
+                child: const Text('Ver pedidos'),
+              ),
+            ],
+          ),
         );
 
         if (!mounted) return;
@@ -91,7 +96,8 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
         }
       } else {
         final message = provider.submitError ?? 'No se pudo registrar la venta';
-        final isMaxSabores = message.contains('MAX_SABORES_EXCEDIDO') || message.contains('3 sabores');
+        final isMaxSabores = message.contains('MAX_SABORES_EXCEDIDO') ||
+            message.contains('3 sabores');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(isMaxSabores
@@ -167,18 +173,25 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
                           ),
                           Text(
                             'Total puntos: ${provider.totalPuntos}',
-                            style: const TextStyle(color: AppTheme.primaryColor),
+                            style:
+                                const TextStyle(color: AppTheme.primaryColor),
                           ),
                           Row(
                             children: [
-                              const Text('Sabores: ', style: TextStyle(fontSize: 12)),
+                              const Text('Sabores: ',
+                                  style: TextStyle(fontSize: 12)),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: provider.isMaxSaboresReached ? Colors.orange.shade50 : Colors.green.shade50,
+                                  color: provider.isMaxSaboresReached
+                                      ? Colors.orange.shade50
+                                      : Colors.green.shade50,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: provider.isMaxSaboresReached ? Colors.orange : Colors.green,
+                                    color: provider.isMaxSaboresReached
+                                        ? Colors.orange
+                                        : Colors.green,
                                   ),
                                 ),
                                 child: Text(
@@ -186,7 +199,9 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
-                                    color: provider.isMaxSaboresReached ? Colors.orange.shade800 : Colors.green.shade800,
+                                    color: provider.isMaxSaboresReached
+                                        ? Colors.orange.shade800
+                                        : Colors.green.shade800,
                                   ),
                                 ),
                               ),
@@ -280,18 +295,25 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
                                         child: TabBarView(
                                           children: [
                                             _ProductGrid(
-                                              products: provider.generalProducts,
+                                              products:
+                                                  provider.generalProducts,
                                               crossAxisCount: 1,
                                               childAspectRatio: 3.2,
                                               onAdd: (p) {
-                                                final added = provider.addProduct(p);
-                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                final added =
+                                                    provider.addProduct(p);
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
                                                   SnackBar(
                                                     content: Text(added
                                                         ? '${p.name} agregado al ticket'
                                                         : 'Máximo ${CounterSaleProvider.maxSabores} sabores por combo.'),
-                                                    backgroundColor: added ? null : Colors.orange,
-                                                    duration: Duration(milliseconds: added ? 700 : 2500),
+                                                    backgroundColor: added
+                                                        ? null
+                                                        : Colors.orange,
+                                                    duration: Duration(
+                                                        milliseconds:
+                                                            added ? 700 : 2500),
                                                   ),
                                                 );
                                               },
@@ -302,14 +324,20 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
                                               crossAxisCount: 1,
                                               childAspectRatio: 3.2,
                                               onAdd: (p) {
-                                                final added = provider.addProduct(p);
-                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                final added =
+                                                    provider.addProduct(p);
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
                                                   SnackBar(
                                                     content: Text(added
                                                         ? '${p.name} agregado al ticket'
                                                         : 'Máximo ${CounterSaleProvider.maxSabores} sabores por combo.'),
-                                                    backgroundColor: added ? null : Colors.orange,
-                                                    duration: Duration(milliseconds: added ? 700 : 2500),
+                                                    backgroundColor: added
+                                                        ? null
+                                                        : Colors.orange,
+                                                    duration: Duration(
+                                                        milliseconds:
+                                                            added ? 700 : 2500),
                                                   ),
                                                 );
                                               },
@@ -318,14 +346,21 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
                                               combos: provider.activeCombos,
                                               crossAxisCount: 1,
                                               onAdd: (combo) {
-                                                final added = provider.addCombo(combo);
-                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                final added =
+                                                    provider.addCombo(combo);
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
                                                   SnackBar(
                                                     content: Text(added
                                                         ? 'Combo "${combo.nombre}" agregado al ticket'
                                                         : 'No hay espacio para agregar este combo (máx. ${CounterSaleProvider.maxSabores} sabores).'),
-                                                    backgroundColor: added ? Colors.green : Colors.orange,
-                                                    duration: Duration(milliseconds: added ? 1200 : 2500),
+                                                    backgroundColor: added
+                                                        ? Colors.green
+                                                        : Colors.orange,
+                                                    duration: Duration(
+                                                        milliseconds: added
+                                                            ? 1200
+                                                            : 2500),
                                                   ),
                                                 );
                                               },
@@ -335,9 +370,10 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
                                       ),
                                       if (_showMobileTicket)
                                         SizedBox(
-                                          height:
-                                              MediaQuery.of(context).size.height *
-                                                  0.42,
+                                          height: MediaQuery.of(context)
+                                                  .size
+                                                  .height *
+                                              0.42,
                                           child: _TicketPanel(
                                             obsCtrl: _obsCtrl,
                                             showLeftBorder: false,
@@ -352,18 +388,25 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
                                         child: TabBarView(
                                           children: [
                                             _ProductGrid(
-                                              products: provider.generalProducts,
+                                              products:
+                                                  provider.generalProducts,
                                               crossAxisCount: 2,
                                               childAspectRatio: 1.8,
                                               onAdd: (p) {
-                                                final added = provider.addProduct(p);
-                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                final added =
+                                                    provider.addProduct(p);
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
                                                   SnackBar(
                                                     content: Text(added
                                                         ? '${p.name} agregado al ticket'
                                                         : 'Máximo ${CounterSaleProvider.maxSabores} sabores por combo.'),
-                                                    backgroundColor: added ? null : Colors.orange,
-                                                    duration: Duration(milliseconds: added ? 700 : 2500),
+                                                    backgroundColor: added
+                                                        ? null
+                                                        : Colors.orange,
+                                                    duration: Duration(
+                                                        milliseconds:
+                                                            added ? 700 : 2500),
                                                   ),
                                                 );
                                               },
@@ -374,14 +417,20 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
                                               crossAxisCount: 2,
                                               childAspectRatio: 1.8,
                                               onAdd: (p) {
-                                                final added = provider.addProduct(p);
-                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                final added =
+                                                    provider.addProduct(p);
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
                                                   SnackBar(
                                                     content: Text(added
                                                         ? '${p.name} agregado al ticket'
                                                         : 'Máximo ${CounterSaleProvider.maxSabores} sabores por combo.'),
-                                                    backgroundColor: added ? null : Colors.orange,
-                                                    duration: Duration(milliseconds: added ? 700 : 2500),
+                                                    backgroundColor: added
+                                                        ? null
+                                                        : Colors.orange,
+                                                    duration: Duration(
+                                                        milliseconds:
+                                                            added ? 700 : 2500),
                                                   ),
                                                 );
                                               },
@@ -390,14 +439,21 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
                                               combos: provider.activeCombos,
                                               crossAxisCount: 2,
                                               onAdd: (combo) {
-                                                final added = provider.addCombo(combo);
-                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                final added =
+                                                    provider.addCombo(combo);
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
                                                   SnackBar(
                                                     content: Text(added
                                                         ? 'Combo "${combo.nombre}" agregado al ticket'
                                                         : 'No hay espacio para agregar este combo (máx. ${CounterSaleProvider.maxSabores} sabores).'),
-                                                    backgroundColor: added ? Colors.green : Colors.orange,
-                                                    duration: Duration(milliseconds: added ? 1200 : 2500),
+                                                    backgroundColor: added
+                                                        ? Colors.green
+                                                        : Colors.orange,
+                                                    duration: Duration(
+                                                        milliseconds: added
+                                                            ? 1200
+                                                            : 2500),
                                                   ),
                                                 );
                                               },
@@ -422,7 +478,8 @@ class _HostCounterSaleViewState extends State<_HostCounterSaleView> {
     );
   }
 
-  Widget _buildClienteBlock(CounterSaleProvider provider, {required bool isMobile}) {
+  Widget _buildClienteBlock(CounterSaleProvider provider,
+      {required bool isMobile}) {
     final isPublic = provider.socioCodigo.trim().isEmpty;
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 12, 12, 8),
@@ -550,7 +607,8 @@ class _ProductGrid extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const Icon(LucideIcons.plusCircle, color: AppTheme.primaryColor),
+                  const Icon(LucideIcons.plusCircle,
+                      color: AppTheme.primaryColor),
                 ],
               ),
             ),
@@ -581,8 +639,10 @@ class _ComboGrid extends StatelessWidget {
           children: [
             Icon(Icons.fastfood_outlined, size: 48, color: Colors.grey),
             SizedBox(height: 8),
-            Text('No hay combos disponibles', style: TextStyle(color: Colors.grey)),
-            Text('Crea combos desde Mi Menú', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            Text('No hay combos disponibles',
+                style: TextStyle(color: Colors.grey)),
+            Text('Crea combos desde Mi Menú',
+                style: TextStyle(color: Colors.grey, fontSize: 12)),
           ],
         ),
       );
@@ -608,7 +668,8 @@ class _ComboGrid extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     backgroundColor: AppTheme.primaryColor,
-                    child: const Icon(Icons.fastfood, color: Colors.white, size: 20),
+                    child: const Icon(Icons.fastfood,
+                        color: Colors.white, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -617,24 +678,29 @@ class _ComboGrid extends StatelessWidget {
                       children: [
                         Text(
                           combo.nombre,
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 15),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           itemsText,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.grey[600]),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           '${combo.puntosValor} pts',
-                          style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(LucideIcons.plusCircle, color: AppTheme.primaryColor),
+                  const Icon(LucideIcons.plusCircle,
+                      color: AppTheme.primaryColor),
                 ],
               ),
             ),
@@ -668,7 +734,8 @@ class _TicketPanel extends StatelessWidget {
           child: Column(
             children: [
               const ListTile(
-                title: Text('Ticket', style: TextStyle(fontWeight: FontWeight.w700)),
+                title: Text('Ticket',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
               ),
               Expanded(
                 child: provider.cartItems.isEmpty
@@ -688,14 +755,19 @@ class _TicketPanel extends StatelessWidget {
                                   if (item.comboNombre != null)
                                     Container(
                                       margin: const EdgeInsets.only(bottom: 4),
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: AppTheme.primaryColor.withOpacity(0.1),
+                                        color: AppTheme.primaryColor
+                                            .withOpacity(0.1),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
                                         'Combo: ${item.comboNombre}',
-                                        style: TextStyle(fontSize: 11, color: AppTheme.primaryColor, fontWeight: FontWeight.w600),
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: AppTheme.primaryColor,
+                                            fontWeight: FontWeight.w600),
                                       ),
                                     ),
                                   Row(
@@ -742,8 +814,8 @@ class _TicketPanel extends StatelessWidget {
                                   const SizedBox(height: 6),
                                   TextFormField(
                                     initialValue: item.note,
-                                    onChanged: (v) =>
-                                        provider.setItemNote(item.product.id, v),
+                                    onChanged: (v) => provider.setItemNote(
+                                        item.product.id, v),
                                     decoration: const InputDecoration(
                                       hintText: 'Nota del ítem (opcional)',
                                       isDense: true,

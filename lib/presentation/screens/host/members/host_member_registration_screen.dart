@@ -24,13 +24,15 @@ class HostMemberRegistrationScreen extends StatefulWidget {
   });
 
   @override
-  State<HostMemberRegistrationScreen> createState() => _HostMemberRegistrationScreenState();
+  State<HostMemberRegistrationScreen> createState() =>
+      _HostMemberRegistrationScreenState();
 }
 
-class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScreen> {
+class _HostMemberRegistrationScreenState
+    extends State<HostMemberRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _conocioCtrl = TextEditingController();
-  
+
   bool _isLoading = false;
   bool _isLoadingMembers = true;
   List<ClubMembership> _members = [];
@@ -44,14 +46,17 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
 
   Future<void> _loadMembers() async {
     try {
-      final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
+      final clubDataSource =
+          Provider.of<ClubRemoteDataSource>(context, listen: false);
       final members = await clubDataSource.getClubMembers(widget.clubId);
       if (mounted) {
         setState(() {
           _members = members;
           _isLoadingMembers = false;
           if (widget.prefilledReferralId != null) {
-            final match = members.where((m) => m.id == widget.prefilledReferralId).toList();
+            final match = members
+                .where((m) => m.id == widget.prefilledReferralId)
+                .toList();
             if (match.isNotEmpty) _selectedReferral = match.first;
           }
         });
@@ -83,7 +88,7 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-               Container(
+              Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.green.shade50,
@@ -97,27 +102,33 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('ID/Código Detectado:', style: TextStyle(color: Colors.grey)),
-                        Text(displayId, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                        const Text('ID/Código Detectado:',
+                            style: TextStyle(color: Colors.grey)),
+                        Text(displayId,
+                            style: const TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
-              
-              const Text('Información Adicional', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text('Información Adicional',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-
-              const Text('Referido por (Opcional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text('Referido por (Opcional)',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
               if (widget.prefilledReferralId != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(children: [
-                    const Icon(Icons.lock_outline, size: 16, color: Colors.grey),
+                    const Icon(Icons.lock_outline,
+                        size: 16, color: Colors.grey),
                     const SizedBox(width: 4),
-                    const Text('Referido pre-asignado desde la ficha del preSocio.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    const Text(
+                        'Referido pre-asignado desde la ficha del preSocio.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey)),
                   ]),
                 ),
               if (_isLoadingMembers)
@@ -131,13 +142,14 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
                       : (value) => setState(() => _selectedReferral = value),
                   enabled: widget.prefilledReferralId == null,
                   enableGlobalSearch: true,
-                  onGlobalSearch: (query) {
-                    final ds = Provider.of<MembresiaRemoteDataSource>(context, listen: false);
-                    return ds.buscarMiembrosGlobal(query: query);
+                  onGlobalSearch: (query, page) {
+                    final ds = Provider.of<MembresiaRemoteDataSource>(context,
+                        listen: false);
+                    return ds.buscarMiembrosGlobalPage(
+                        query: query, page: page, size: 20);
                   },
                 ),
               const SizedBox(height: 16),
-
               TextFormField(
                 controller: _conocioCtrl,
                 decoration: const InputDecoration(
@@ -147,7 +159,6 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
                 ),
               ),
               const SizedBox(height: 32),
-
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -155,11 +166,16 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
                   onPressed: _isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('CONFIRMAR ACTIVACIÓN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('CONFIRMAR ACTIVACIÓN',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white)),
                 ),
               ),
             ],
@@ -175,17 +191,20 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
     setState(() => _isLoading = true);
 
     try {
-      final membresiaDataSource = Provider.of<MembresiaRemoteDataSource>(context, listen: false);
+      final membresiaDataSource =
+          Provider.of<MembresiaRemoteDataSource>(context, listen: false);
 
       logDebug('Activando socio...');
       logDebug('Payload: ${widget.qrPayload}, ClubID: ${widget.clubId}');
 
-      await membresiaDataSource.activarSocio(
+      await membresiaDataSource
+          .activarSocio(
         clubId: widget.clubId,
         activationPayload: widget.qrPayload,
         referidoPorMembresiaId: _selectedReferral?.id,
         comoConocio: _conocioCtrl.text,
-      ).timeout(const Duration(seconds: 15), onTimeout: () {
+      )
+          .timeout(const Duration(seconds: 15), onTimeout: () {
         throw Exception('Tiempo de espera agotado. Verifica tu conexión.');
       });
 
@@ -193,22 +212,24 @@ class _HostMemberRegistrationScreenState extends State<HostMemberRegistrationScr
 
       if (widget.preSocioId != null) {
         try {
-          final preSocioDs = Provider.of<PreSocioRemoteDataSource>(context, listen: false);
+          final preSocioDs =
+              Provider.of<PreSocioRemoteDataSource>(context, listen: false);
           await preSocioDs.actualizarPreSocio(widget.preSocioId!, 'CONVERTIDO');
         } catch (_) {}
       }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Socio activado exitosamente'), backgroundColor: Colors.green),
+        const SnackBar(
+            content: Text('Socio activado exitosamente'),
+            backgroundColor: Colors.green),
       );
 
       context.pop();
-
     } catch (e) {
       logDebug('Error al activar socio: $e');
       if (!mounted) return;
-      
+
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
