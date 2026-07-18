@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_saludable/core/auth/session_state_resetter.dart';
 import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/user_repository.dart';
 
-class UserProvider extends ChangeNotifier {
+class UserProvider extends ChangeNotifier implements SessionScopedState {
   final UserRepository _repository;
   User? _currentUser;
   bool _isLoading = false;
@@ -12,6 +13,13 @@ class UserProvider extends ChangeNotifier {
 
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
+
+  @override
+  Future<void> clearSessionState() async {
+    _currentUser = null;
+    _isLoading = false;
+    notifyListeners();
+  }
 
   Future<void> loadUser(String userId) async {
     _isLoading = true;
@@ -33,8 +41,8 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<void> updateUserProfile({
-    String? name, 
-    String? email, 
+    String? name,
+    String? email,
     String? phone,
     String? birthDate,
     Map<String, dynamic>? socialMedia,
@@ -58,6 +66,7 @@ class UserProvider extends ChangeNotifier {
       rethrow;
     }
   }
+
   void logout() {
     _currentUser = null;
     notifyListeners();
