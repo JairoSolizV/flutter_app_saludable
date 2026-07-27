@@ -1,13 +1,29 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import 'package:path/path.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   static Database? _database;
+  static String? _databasePathOverride;
 
   factory DatabaseHelper() => _instance;
 
   DatabaseHelper._internal();
+
+  /// Cierra la conexión abierta y opcionalmente fija otra ruta (solo tests).
+  ///
+  /// Permite aislar la BD entre archivos de test concurrentes que de otro
+  /// modo competirían por el mismo `nutrilife_club.db` en disco.
+  @visibleForTesting
+  static Future<void> resetForTest({String? databasePath}) async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
+    _databasePathOverride = databasePath;
+  }
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -16,10 +32,11 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDatabase() async {
-    String path = join(await getDatabasesPath(), 'nutrilife_club.db');
+    final String path = _databasePathOverride ??
+        join(await getDatabasesPath(), 'nutrilife_club.db');
     return await openDatabase(
       path,
-      version: 10,
+      version: 11,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -90,7 +107,9 @@ class DatabaseHelper {
         FOREIGN KEY(product_id) REFERENCES products(id)
       )
     ''');
-    
+
+    await _ensureOrderIndexes(db);
+
     // NO insertar datos de seed - los productos deben venir del backend
     // await _seedData(db);
   }
@@ -98,26 +117,28 @@ class DatabaseHelper {
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       // Si la versión es vieja, agregamos las columnas nuevas
-      // Nota: SQLite no soporta IF NOT EXISTS en ADD COLUMN en versiones viejas, 
+      // Nota: SQLite no soporta IF NOT EXISTS en ADD COLUMN en versiones viejas,
       // pero aquí asumimos upgrade lineal v1 -> v2
       try {
         await db.execute('ALTER TABLE users ADD COLUMN birth_date TEXT');
         await db.execute('ALTER TABLE users ADD COLUMN social_media TEXT');
       } catch (e) {
         // Ignorar si ya existen (por si acaso el usuario corrió una versión intermedia)
-        print("Error migrando columnas (pueden ya existir): $e");
+        logDebug("Error migrando columnas (pueden ya existir): $e");
       }
     }
     if (oldVersion < 3) {
       // Agregar columnas nuevas a products para soportar hubId y disponible
       try {
         await db.execute('ALTER TABLE products ADD COLUMN hubId INTEGER');
-        await db.execute('ALTER TABLE products ADD COLUMN active INTEGER DEFAULT 1');
-        await db.execute('ALTER TABLE products ADD COLUMN disponible INTEGER DEFAULT 0');
+        await db.execute(
+            'ALTER TABLE products ADD COLUMN active INTEGER DEFAULT 1');
+        await db.execute(
+            'ALTER TABLE products ADD COLUMN disponible INTEGER DEFAULT 0');
         // Eliminar productos de seed que no tienen hubId (son datos de prueba)
         await db.delete('products', where: 'hubId IS NULL');
       } catch (e) {
-        print("Error migrando tabla products: $e");
+        logDebug("Error migrando tabla products: $e");
       }
     }
     if (oldVersion < 4) {
@@ -126,7 +147,7 @@ class DatabaseHelper {
         await db.execute('ALTER TABLE orders ADD COLUMN club_id INTEGER');
         await db.execute('ALTER TABLE orders ADD COLUMN membresia_id INTEGER');
       } catch (e) {
-        print("Error migrando tabla orders: $e");
+        logDebug("Error migrando tabla orders: $e");
       }
     }
     if (oldVersion < 5) {
@@ -137,28 +158,30 @@ class DatabaseHelper {
         await db.execute('ALTER TABLE orders ADD COLUMN observaciones TEXT');
         // Eliminar columna total si existe (SQLite no soporta DROP COLUMN directamente)
         // En su lugar, crearemos una nueva tabla y migraremos datos
-        
+
         // Agregar nota a order_items y eliminar price
         await db.execute('ALTER TABLE order_items ADD COLUMN note TEXT');
         // Eliminar price: SQLite no soporta DROP COLUMN, pero podemos ignorarlo en el código
       } catch (e) {
-        print("Error migrando tabla orders/order_items: $e");
+        logDebug("Error migrando tabla orders/order_items: $e");
       }
     }
     if (oldVersion < 6) {
       // Agregar puntosValor a products
       try {
-        await db.execute('ALTER TABLE products ADD COLUMN puntosValor INTEGER DEFAULT 0');
+        await db.execute(
+            'ALTER TABLE products ADD COLUMN puntosValor INTEGER DEFAULT 0');
       } catch (e) {
-        print("Error migrando tabla products (puntosValor): $e");
+        logDebug("Error migrando tabla products (puntosValor): $e");
       }
     }
     if (oldVersion < 7) {
       // Agregar tiempoEstimadoMinutos a orders
       try {
-        await db.execute('ALTER TABLE orders ADD COLUMN tiempoEstimadoMinutos INTEGER');
+        await db.execute(
+            'ALTER TABLE orders ADD COLUMN tiempoEstimadoMinutos INTEGER');
       } catch (e) {
-        print("Error migrando tabla orders (tiempoEstimadoMinutos): $e");
+        logDebug("Error migrando tabla orders (tiempoEstimadoMinutos): $e");
       }
     }
     if (oldVersion < 8) {
@@ -166,26 +189,48 @@ class DatabaseHelper {
       try {
         await db.execute('ALTER TABLE products ADD COLUMN clubId INTEGER');
       } catch (e) {
-        print("Error migrando tabla products (clubId): $e");
+        logDebug("Error migrando tabla products (clubId): $e");
       }
     }
     if (oldVersion < 9) {
       // Agregar verdadero clubCreadorId a products
       try {
-        await db.execute('ALTER TABLE products ADD COLUMN clubCreadorId INTEGER');
+        await db
+            .execute('ALTER TABLE products ADD COLUMN clubCreadorId INTEGER');
       } catch (e) {
-        print("Error migrando tabla products (clubCreadorId): $e");
+        logDebug("Error migrando tabla products (clubCreadorId): $e");
       }
     }
     if (oldVersion < 10) {
       // Agregar tipo y estadoAprobacion a products
       try {
         await db.execute('ALTER TABLE products ADD COLUMN tipo TEXT');
-        await db.execute('ALTER TABLE products ADD COLUMN estadoAprobacion TEXT');
+        await db
+            .execute('ALTER TABLE products ADD COLUMN estadoAprobacion TEXT');
       } catch (e) {
-        print("Error migrando tabla products (tipo, estadoAprobacion): $e");
+        logDebug("Error migrando tabla products (tipo, estadoAprobacion): $e");
       }
     }
+    if (oldVersion < 11) {
+      // Índices para lecturas batch de pedidos (user + sync queue + items).
+      try {
+        await _ensureOrderIndexes(db);
+      } catch (e) {
+        logDebug("Error migrando índices de orders/order_items: $e");
+      }
+    }
+  }
+
+  /// Idempotente: CREATE INDEX IF NOT EXISTS.
+  static Future<void> _ensureOrderIndexes(Database db) async {
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_orders_user_synced '
+      'ON orders(user_id, is_synced)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_order_items_order_id '
+      'ON order_items(order_id)',
+    );
   }
 
   // Método deshabilitado - NO usar datos de seed
@@ -232,7 +277,8 @@ class DatabaseHelper {
   // Métodos CRUD genéricos
   Future<int> insert(String table, Map<String, dynamic> row) async {
     Database db = await database;
-    return await db.insert(table, row, conflictAlgorithm: ConflictAlgorithm.replace);
+    return await db.insert(table, row,
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<Map<String, dynamic>>> queryAllRows(String table) async {
@@ -240,7 +286,8 @@ class DatabaseHelper {
     return await db.query(table);
   }
 
-  Future<int> update(String table, Map<String, dynamic> row, String columnId) async {
+  Future<int> update(
+      String table, Map<String, dynamic> row, String columnId) async {
     Database db = await database;
     String id = row[columnId];
     return await db.update(table, row, where: '$columnId = ?', whereArgs: [id]);

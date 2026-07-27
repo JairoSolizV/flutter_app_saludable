@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
+import 'package:flutter_app_saludable/core/errors/throw_app_error.dart';
 import 'package:flutter/foundation.dart';
 import '../../../domain/entities/product.dart';
 
@@ -8,8 +10,10 @@ abstract class ProductRemoteDataSource {
   Future<List<Product>> getProducts({required int hubId, required int clubId});
   Future<List<Product>> getAvailableProductsByClub(int clubId);
   Future<void> createProduct(Product product, int clubId);
+
   /// Sube una imagen y devuelve la URL (imagenUrl) para el producto.
   Future<String> uploadProductImage(File imageFile);
+
   /// Enviar propuesta de producto. imagenUrl opcional (foto subida o URL).
   Future<void> createProductProposal({
     required int hubId,
@@ -30,31 +34,41 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
   ProductRemoteDataSourceImpl(this._client);
 
   @override
-  Future<List<Product>> getProducts({required int hubId, required int clubId}) async {
+  Future<List<Product>> getProducts(
+      {required int hubId, required int clubId}) async {
     try {
       // Nuevos endpoints separados para Globales y Locales
-      debugPrint('[DEBUG PRODUCTOS] Obteniendo productos separados por tipo para el club $clubId');
-      
-      final globalResponseFuture = _client.get('/productos', queryParameters: {'clubId': clubId, 'tipo': 'GLOBAL'});
-      final localResponseFuture = _client.get('/productos', queryParameters: {'clubId': clubId, 'tipo': 'LOCAL'});
+      debugPrint(
+          '[DEBUG PRODUCTOS] Obteniendo productos separados por tipo para el club $clubId');
 
-      final responses = await Future.wait([globalResponseFuture, localResponseFuture]);
+      final globalResponseFuture = _client.get('/productos',
+          queryParameters: {'clubId': clubId, 'tipo': 'GLOBAL'});
+      final localResponseFuture = _client.get('/productos',
+          queryParameters: {'clubId': clubId, 'tipo': 'LOCAL'});
+
+      final responses =
+          await Future.wait([globalResponseFuture, localResponseFuture]);
       final globalResponse = responses[0];
       final localResponse = responses[1];
-      
+
       if (globalResponse.statusCode == 200 && localResponse.statusCode == 200) {
         // Función para extraer lista de response data
         List<dynamic> extractData(Response res) {
-          debugPrint('[DEBUG PRODUCTOS] Extrayendo data de repuesta. Tipo real: ${res.data.runtimeType}\nContenido bruto: ${res.data}');
+          debugPrint(
+              '[DEBUG PRODUCTOS] Extrayendo data de repuesta. Tipo real: ${res.data.runtimeType}\nContenido bruto: ${res.data}');
           if (res.data is List) {
             return res.data as List<dynamic>;
           } else if (res.data is Map) {
-            final Map<String, dynamic> responseMap = res.data as Map<String, dynamic>;
-            if (responseMap.containsKey('content') && responseMap['content'] is List) {
+            final Map<String, dynamic> responseMap =
+                res.data as Map<String, dynamic>;
+            if (responseMap.containsKey('content') &&
+                responseMap['content'] is List) {
               return responseMap['content'] as List<dynamic>;
-            } else if (responseMap.containsKey('data') && responseMap['data'] is List) {
+            } else if (responseMap.containsKey('data') &&
+                responseMap['data'] is List) {
               return responseMap['data'] as List<dynamic>;
-            } else if (responseMap.containsKey('productos') && responseMap['productos'] is List) {
+            } else if (responseMap.containsKey('productos') &&
+                responseMap['productos'] is List) {
               return responseMap['productos'] as List<dynamic>;
             }
           }
@@ -64,49 +78,66 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
         debugPrint('[DEBUG PRODUCTOS] Extrayendo datos globales...');
         final globalDataList = extractData(globalResponse);
         debugPrint('[DEBUG PRODUCTOS] Global length: ${globalDataList.length}');
-        
+
         debugPrint('[DEBUG PRODUCTOS] Extrayendo datos locales...');
         final localDataList = extractData(localResponse);
         debugPrint('[DEBUG PRODUCTOS] Local length: ${localDataList.length}');
-        
+
         final combinedProducts = <Product>[];
 
         Product parseProduct(dynamic json, String defaultTipo) {
-           // Manejar el id correctamente: puede venir como int o String del backend
-           final dynamic idValue = json['id'];
-           final String productId = idValue is int ? idValue.toString() : (idValue?.toString() ?? '');
-           
-           // Manejar hubId correctamente: puede venir como int o null
-           final dynamic hubIdValue = json['hubId'];
-           final int? parsedHubId = hubIdValue is int ? hubIdValue : (hubIdValue != null ? int.tryParse(hubIdValue.toString()) : null);
-           
-           // Manejar disponible: null significa que no hay relación, debe ser false por defecto
-           final dynamic disponibleValue = json['disponible'];
-           final bool available = disponibleValue == true || disponibleValue == 1;
-           
-           // Obtener inteligentemente el clubCreadorId y parsearlo a int
-           final dynamic rawClubCreadorId = json['clubCreadorId'] ?? json['club_creador_id'] ?? json['clubId'] ?? json['club_id'];
-           final int? parsedClubCreadorId = rawClubCreadorId != null 
-                ? (rawClubCreadorId is int ? rawClubCreadorId : int.tryParse(rawClubCreadorId.toString())) 
-                : null;
-           
-           final String imageUrl = json['imagenUrl']?.toString() ?? json['image_url']?.toString() ?? '';
-           final int puntosValor = json['puntosValor'] is int ? json['puntosValor'] as int : (int.tryParse(json['puntosValor']?.toString() ?? '0') ?? 0);
-           return Product(
-             id: productId,
-             name: json['nombre']?.toString() ?? 'Sin nombre',
-             description: json['descripcion']?.toString() ?? '',
-             price: 0.0,
-             puntosValor: puntosValor,
-             category: 'General',
-             imageUrl: imageUrl,
-             hubId: parsedHubId,
-             clubCreadorId: parsedClubCreadorId,
-             tipo: json['tipo']?.toString().toUpperCase() ?? defaultTipo,
-             estadoAprobacion: json['estadoAprobacion']?.toString().toUpperCase() ?? 'APROBADO',
-             active: json['activo'] == true || json['activo'] == 1,
-             available: available,
-           );
+          // Manejar el id correctamente: puede venir como int o String del backend
+          final dynamic idValue = json['id'];
+          final String productId =
+              idValue is int ? idValue.toString() : (idValue?.toString() ?? '');
+
+          // Manejar hubId correctamente: puede venir como int o null
+          final dynamic hubIdValue = json['hubId'];
+          final int? parsedHubId = hubIdValue is int
+              ? hubIdValue
+              : (hubIdValue != null
+                  ? int.tryParse(hubIdValue.toString())
+                  : null);
+
+          // Manejar disponible: null significa que no hay relación, debe ser false por defecto
+          final dynamic disponibleValue = json['disponible'];
+          final bool available =
+              disponibleValue == true || disponibleValue == 1;
+
+          // Obtener inteligentemente el clubCreadorId y parsearlo a int
+          final dynamic rawClubCreadorId = json['clubCreadorId'] ??
+              json['club_creador_id'] ??
+              json['clubId'] ??
+              json['club_id'];
+          final int? parsedClubCreadorId = rawClubCreadorId != null
+              ? (rawClubCreadorId is int
+                  ? rawClubCreadorId
+                  : int.tryParse(rawClubCreadorId.toString()))
+              : null;
+
+          final String imageUrl = json['imagenUrl']?.toString() ??
+              json['image_url']?.toString() ??
+              '';
+          final int puntosValor = json['puntosValor'] is int
+              ? json['puntosValor'] as int
+              : (int.tryParse(json['puntosValor']?.toString() ?? '0') ?? 0);
+          return Product(
+            id: productId,
+            name: json['nombre']?.toString() ?? 'Sin nombre',
+            description: json['descripcion']?.toString() ?? '',
+            price: 0.0,
+            puntosValor: puntosValor,
+            category: 'General',
+            imageUrl: imageUrl,
+            hubId: parsedHubId,
+            clubCreadorId: parsedClubCreadorId,
+            tipo: json['tipo']?.toString().toUpperCase() ?? defaultTipo,
+            estadoAprobacion:
+                json['estadoAprobacion']?.toString().toUpperCase() ??
+                    'APROBADO',
+            active: json['activo'] == true || json['activo'] == 1,
+            available: available,
+          );
         }
 
         for (var json in globalDataList) {
@@ -118,10 +149,11 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
 
         return combinedProducts;
       } else {
-        throw Exception('Error al cargar productos: globales status ${globalResponse.statusCode}, locales status ${localResponse.statusCode}');
+        throw ServerException('Error al cargar productos');
       }
-    } on DioException catch (e) {
-      throw Exception('Error de red al cargar productos: ${e.message}');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e,
+          fallback: 'Error de red al cargar productos', stackTrace: st);
     }
   }
 
@@ -132,105 +164,125 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       // El backend devuelve automáticamente:
       // - Productos globales habilitados
       // - Productos locales del club en estado APROBADO y disponibles
-      debugPrint('[DEBUG PRODUCTOS] Obteniendo productos disponibles del club - clubId: $clubId');
-      debugPrint('[DEBUG PRODUCTOS] Endpoint: GET /api/productos?clubId=$clubId');
-      debugPrint('[DEBUG PRODUCTOS] URL completa: ${_client.options.baseUrl}/productos?clubId=$clubId');
-      
+      debugPrint(
+          '[DEBUG PRODUCTOS] Obteniendo productos disponibles del club - clubId: $clubId');
+      debugPrint(
+          '[DEBUG PRODUCTOS] Endpoint: GET /api/productos?clubId=$clubId');
+      debugPrint(
+          '[DEBUG PRODUCTOS] URL completa: ${_client.options.baseUrl}/productos?clubId=$clubId');
+
       final response = await _client.get(
         '/productos?clubId=$clubId',
       );
 
-      debugPrint('[DEBUG PRODUCTOS] Respuesta recibida - Status: ${response.statusCode}');
+      debugPrint(
+          '[DEBUG PRODUCTOS] Respuesta recibida - Status: ${response.statusCode}');
       debugPrint('[DEBUG PRODUCTOS] Response body: ${response.data}');
-      debugPrint('[DEBUG PRODUCTOS] Tipo de data: ${response.data.runtimeType}');
-      
+      debugPrint(
+          '[DEBUG PRODUCTOS] Tipo de data: ${response.data.runtimeType}');
+
       if (response.statusCode == 200) {
         // Manejar diferentes formatos de respuesta del backend
         List<dynamic> data = [];
         if (response.data is List) {
           data = response.data as List<dynamic>;
         } else if (response.data is Map) {
-          final Map<String, dynamic> responseMap = response.data as Map<String, dynamic>;
-          if (responseMap.containsKey('content') && responseMap['content'] is List) {
+          final Map<String, dynamic> responseMap =
+              response.data as Map<String, dynamic>;
+          if (responseMap.containsKey('content') &&
+              responseMap['content'] is List) {
             data = responseMap['content'] as List<dynamic>;
-          } else if (responseMap.containsKey('data') && responseMap['data'] is List) {
+          } else if (responseMap.containsKey('data') &&
+              responseMap['data'] is List) {
             data = responseMap['data'] as List<dynamic>;
           }
         }
-        
-        debugPrint('[DEBUG PRODUCTOS] Total de productos disponibles en respuesta: ${data.length}');
-        
+
+        debugPrint(
+            '[DEBUG PRODUCTOS] Total de productos disponibles en respuesta: ${data.length}');
+
         return data.map<Product>((json) {
-           // Manejar el id correctamente: puede venir como int o String del backend
-           final dynamic idValue = json['id'];
-           final String productId = idValue is int ? idValue.toString() : (idValue?.toString() ?? '');
-           
-           // Debug: imprimir el ID del producto obtenido
-           debugPrint('[DEBUG PRODUCTOS] Producto disponible - ID: $productId, Nombre: ${json['nombre']}');
-           
-           // Manejar hubId correctamente: puede venir como int o null
-           final dynamic hubIdValue = json['hubId'];
-           final int? hubId = hubIdValue is int ? hubIdValue : (hubIdValue != null ? int.tryParse(hubIdValue.toString()) : null);
-           
-           // Manejar disponible: si viene false, es false. Si viene null, true por defecto para este endpoint
-           final dynamic disponibleValue = json['disponible'];
-           final bool isAvailable = disponibleValue == false || disponibleValue == 0 ? false : true;
+          // Manejar el id correctamente: puede venir como int o String del backend
+          final dynamic idValue = json['id'];
+          final String productId =
+              idValue is int ? idValue.toString() : (idValue?.toString() ?? '');
 
-           // Obtener inteligentemente el clubCreadorId y parsearlo a int
-           final dynamic rawClubCreadorId = json['clubCreadorId'] ?? json['club_creador_id'] ?? json['clubId'] ?? json['club_id'];
-           final int? parsedClubCreadorId = rawClubCreadorId != null
-                ? (rawClubCreadorId is int ? rawClubCreadorId : int.tryParse(rawClubCreadorId.toString()))
-                : null;
-           final String imageUrl = json['imagenUrl']?.toString() ?? json['image_url']?.toString() ?? '';
-           final int puntosValor = json['puntosValor'] is int ? json['puntosValor'] as int : (int.tryParse(json['puntosValor']?.toString() ?? '0') ?? 0);
-           final String tipo = json['tipo']?.toString().toUpperCase() ?? 'GLOBAL';
-           final String estadoAprobacion = json['estadoAprobacion']?.toString().toUpperCase() ?? 'APROBADO';
+          // Debug: imprimir el ID del producto obtenido
+          debugPrint(
+              '[DEBUG PRODUCTOS] Producto disponible - ID: $productId, Nombre: ${json['nombre']}');
 
-           return Product(
-             id: productId,
-             name: json['nombre']?.toString() ?? 'Sin nombre',
-             description: json['descripcion']?.toString() ?? '',
-             price: 0.0,
-             puntosValor: puntosValor,
-             category: 'General',
-             imageUrl: imageUrl,
-             hubId: hubId,
-             clubCreadorId: parsedClubCreadorId,
-             tipo: tipo,
-             estadoAprobacion: estadoAprobacion,
-             active: json['activo'] == true || json['activo'] == 1,
-             available: isAvailable,
-           );
+          // Manejar hubId correctamente: puede venir como int o null
+          final dynamic hubIdValue = json['hubId'];
+          final int? hubId = hubIdValue is int
+              ? hubIdValue
+              : (hubIdValue != null
+                  ? int.tryParse(hubIdValue.toString())
+                  : null);
+
+          // Manejar disponible: si viene false, es false. Si viene null, true por defecto para este endpoint
+          final dynamic disponibleValue = json['disponible'];
+          final bool isAvailable =
+              disponibleValue == false || disponibleValue == 0 ? false : true;
+
+          // Obtener inteligentemente el clubCreadorId y parsearlo a int
+          final dynamic rawClubCreadorId = json['clubCreadorId'] ??
+              json['club_creador_id'] ??
+              json['clubId'] ??
+              json['club_id'];
+          final int? parsedClubCreadorId = rawClubCreadorId != null
+              ? (rawClubCreadorId is int
+                  ? rawClubCreadorId
+                  : int.tryParse(rawClubCreadorId.toString()))
+              : null;
+          final String imageUrl = json['imagenUrl']?.toString() ??
+              json['image_url']?.toString() ??
+              '';
+          final int puntosValor = json['puntosValor'] is int
+              ? json['puntosValor'] as int
+              : (int.tryParse(json['puntosValor']?.toString() ?? '0') ?? 0);
+          final String tipo =
+              json['tipo']?.toString().toUpperCase() ?? 'GLOBAL';
+          final String estadoAprobacion =
+              json['estadoAprobacion']?.toString().toUpperCase() ?? 'APROBADO';
+
+          return Product(
+            id: productId,
+            name: json['nombre']?.toString() ?? 'Sin nombre',
+            description: json['descripcion']?.toString() ?? '',
+            price: 0.0,
+            puntosValor: puntosValor,
+            category: 'General',
+            imageUrl: imageUrl,
+            hubId: hubId,
+            clubCreadorId: parsedClubCreadorId,
+            tipo: tipo,
+            estadoAprobacion: estadoAprobacion,
+            active: json['activo'] == true || json['activo'] == 1,
+            available: isAvailable,
+          );
         }).toList();
       } else if (response.statusCode == 401) {
         debugPrint('[DEBUG PRODUCTOS] ERROR 401: No autenticado');
-        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
+        throw UnauthorizedException(
+            'No autenticado. Por favor inicia sesión nuevamente.');
       } else if (response.statusCode == 403) {
         debugPrint('[DEBUG PRODUCTOS] ERROR 403: Sin permisos');
-        throw Exception('No tienes permisos para ver los productos.');
+        throw ForbiddenException('No tienes permisos para ver los productos.');
       } else if (response.statusCode == 500) {
         debugPrint('[DEBUG PRODUCTOS] ERROR 500: Error del servidor');
-        throw Exception('Error del servidor. Por favor intenta más tarde.');
+        throw ServerException(
+            'Error del servidor. Por favor intenta más tarde.',
+            statusCode: 500);
       } else {
-        debugPrint('[DEBUG PRODUCTOS] ERROR: Status code ${response.statusCode}');
-        throw Exception('Error al cargar productos: ${response.statusCode}');
+        debugPrint(
+            '[DEBUG PRODUCTOS] ERROR: Status code ${response.statusCode}');
+        throw ServerException('Error al cargar productos',
+            statusCode: response.statusCode);
       }
-    } on DioException catch (e) {
-      final statusCode = e.response?.statusCode;
-      debugPrint('[DEBUG PRODUCTOS] DioException - Status: $statusCode');
-      debugPrint('[DEBUG PRODUCTOS] Response data: ${e.response?.data}');
-      
-      if (statusCode == 401) {
-        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
-      } else if (statusCode == 403) {
-        throw Exception('No tienes permisos para ver los productos.');
-      } else if (statusCode == 500) {
-        throw Exception('Error del servidor. Por favor intenta más tarde.');
-      }
-      
-      final errorMessage = e.response?.data?['message'] ?? e.message ?? 'Error desconocido';
-      debugPrint('[DEBUG PRODUCTOS] Error obteniendo productos - Status: $statusCode, Error: $errorMessage');
-      throw Exception('Error de red al cargar productos disponibles: $errorMessage');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e,
+          fallback: 'Error de red al cargar productos disponibles',
+          stackTrace: st);
     }
   }
 
@@ -239,52 +291,24 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
     try {
       // Convertir productId de String a int para el backend
       final int productIdInt = int.parse(productId);
-      
+
       // Debug: imprimir los valores que se están enviando
-      debugPrint('[DEBUG PRODUCTOS] Toggle producto - clubId: $clubId, productId: $productId (int: $productIdInt)');
-      
+      debugPrint(
+          '[DEBUG PRODUCTOS] Toggle producto - clubId: $clubId, productId: $productId (int: $productIdInt)');
+
       // Endpoint: PATCH /api/clubes/{clubId}/productos/{productoId}/toggle
-      final response = await _client.patch('/clubes/$clubId/productos/$productIdInt/toggle');
-      
+      final response =
+          await _client.patch('/clubes/$clubId/productos/$productIdInt/toggle');
+
       // Debug: imprimir respuesta exitosa
-      debugPrint('[DEBUG PRODUCTOS] Toggle exitoso - Response: ${response.statusCode}');
-    } on DioException catch (e) {
-      // Mejorar mensaje de error con más detalles
-      final statusCode = e.response?.statusCode;
-      final responseData = e.response?.data;
-      
-      debugPrint('[DEBUG PRODUCTOS] Error en toggle - Status: $statusCode, Data: $responseData');
-      
-      // Extraer mensaje de error del backend (ApiResponse tiene message en la raíz)
-      String errorMessage = 'Error desconocido';
-      if (responseData is Map) {
-        // El backend devuelve ApiResponse con estructura: { success: false, message: "...", data: null }
-        errorMessage = responseData['message']?.toString() ?? 
-                      responseData['error']?.toString() ?? 
-                      responseData['data']?.toString() ??
-                      e.message ?? 'Error desconocido';
-      } else if (responseData is String) {
-        errorMessage = responseData;
-      } else {
-        errorMessage = e.message ?? 'Error desconocido';
-      }
-      
-      debugPrint('[DEBUG PRODUCTOS] Mensaje de error extraído: $errorMessage');
-      
-      if (statusCode == 403) {
-        throw Exception('Error cambiando disponibilidad: No tienes permisos para modificar este producto. Verifica que seas el anfitrión del club.');
-      } else if (statusCode == 401) {
-        throw Exception('Error cambiando disponibilidad: Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
-      } else if (statusCode == 404) {
-        // El mensaje del backend ya dice "Producto no encontrado con id: X"
-        throw Exception('Error cambiando disponibilidad: $errorMessage');
-      } else if (statusCode == 400) {
-        throw Exception('Error cambiando disponibilidad: Solicitud inválida. $errorMessage');
-      } else {
-        throw Exception('Error cambiando disponibilidad: $errorMessage');
-      }
+      debugPrint(
+          '[DEBUG PRODUCTOS] Toggle exitoso - Response: ${response.statusCode}');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e,
+          fallback: 'Error cambiando disponibilidad', stackTrace: st);
     } on FormatException {
-      throw Exception('Error cambiando disponibilidad: ID de producto inválido: $productId');
+      throw ValidationException(
+          'Error cambiando disponibilidad: ID de producto inválido');
     }
   }
 
@@ -299,11 +323,11 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
 
       await _client.post(
         '/productos',
-        queryParameters: {'clubId': clubId}, 
+        queryParameters: {'clubId': clubId},
         data: data,
       );
-    } on DioException catch (e) {
-      throw Exception('Error al crear producto: ${e.response?.data['message'] ?? e.message}');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e, fallback: 'Error en productos', stackTrace: st);
     }
   }
 
@@ -327,13 +351,15 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       );
       if (response.statusCode == 200 && response.data is Map) {
         final path = response.data['imagenUrl']?.toString() ?? '';
-        if (path.isEmpty) throw Exception('No se recibió URL de imagen');
+        if (path.isEmpty) throw ServerException('No se recibió URL de imagen');
         final baseUri = Uri.parse(_client.options.baseUrl);
         return '${baseUri.origin}$path';
       }
-      throw Exception('Error al subir la imagen: ${response.statusCode}');
-    } on DioException catch (e) {
-      throw Exception('Error de red al subir imagen: ${e.message}');
+      throw ServerException('Error al subir la imagen',
+          statusCode: response.statusCode);
+    } on DioException catch (e, st) {
+      throwDioAsApp(e,
+          fallback: 'Error de red al subir imagen', stackTrace: st);
     }
   }
 
@@ -355,7 +381,8 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
         'puntosValor': puntosValor,
         'activo': true,
       };
-      if (imagenUrl != null && imagenUrl.isNotEmpty) data['imagenUrl'] = imagenUrl;
+      if (imagenUrl != null && imagenUrl.isNotEmpty)
+        data['imagenUrl'] = imagenUrl;
 
       debugPrint('[DEBUG PRODUCTOS] Enviando propuesta de producto: $data');
       debugPrint('[DEBUG PRODUCTOS] Endpoint: POST /api/productos');
@@ -365,22 +392,17 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
         data: data,
       );
 
-      debugPrint('[DEBUG PRODUCTOS] Respuesta propuesta producto - Status: ${response.statusCode}');
+      debugPrint(
+          '[DEBUG PRODUCTOS] Respuesta propuesta producto - Status: ${response.statusCode}');
       debugPrint('[DEBUG PRODUCTOS] Body: ${response.data}');
 
       if (response.statusCode != 201 && response.statusCode != 200) {
-        throw Exception('Error al enviar propuesta de producto: ${response.statusCode}');
+        throw ServerException('Error al enviar propuesta de producto',
+            statusCode: response.statusCode);
       }
-    } on DioException catch (e) {
-      final statusCode = e.response?.statusCode;
-      final data = e.response?.data;
-      String message = e.message ?? 'Error desconocido';
-      if (data is Map && data['message'] != null) {
-        message = data['message'].toString();
-      }
-      debugPrint('[DEBUG PRODUCTOS] Error propuesta producto - Status: $statusCode, Message: $message');
-      debugPrint('[DEBUG PRODUCTOS] Response data completo: $data');
-      throw Exception('Error al enviar propuesta de producto: $message');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e,
+          fallback: 'Error al enviar propuesta de producto', stackTrace: st);
     }
   }
 
@@ -394,8 +416,8 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       };
       // Endpoint PUT /api/productos/{id}
       await _client.put('/productos/${product.id}', data: data);
-    } on DioException catch (e) {
-       throw Exception('Error al actualizar producto: ${e.response?.data['message'] ?? e.message}');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e, fallback: 'Error en productos', stackTrace: st);
     }
   }
 
@@ -408,15 +430,15 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       // En el paso 758 puse: await _client.patch('/productos/$id/desactivar');
       // Voy a mantener eso.
       await _client.patch('/productos/$id/desactivar');
-    } on DioException catch (e) {
+    } on DioException catch (e, st) {
       // Si falla ruta no encontrada, intentamos DELETE estándar como fallback
       if (e.response?.statusCode == 404) {
-          try {
-             await _client.delete('/productos/$id');
-             return;
-          } catch (_) {}
+        try {
+          await _client.delete('/productos/$id');
+          return;
+        } catch (_) {}
       }
-      throw Exception('Error al eliminar producto: ${e.response?.data['message'] ?? e.message}');
+      throwDioAsApp(e, fallback: 'Error al eliminar producto', stackTrace: st);
     }
   }
 }

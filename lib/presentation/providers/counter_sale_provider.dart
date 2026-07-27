@@ -1,4 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_app_saludable/core/auth/session_state_resetter.dart';
+import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
+import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 
 import '../../data/datasources/remote/order_remote_data_source.dart';
 import '../../data/datasources/remote/product_remote_data_source.dart';
@@ -22,12 +25,16 @@ class CounterSaleItem {
   });
 }
 
-class CounterSaleProvider extends ChangeNotifier {
+class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
   final ProductRemoteDataSource _productDataSource;
   final OrderRemoteDataSource _orderDataSource;
   final ComboRemoteDataSource? _comboDataSource;
 
-  CounterSaleProvider(this._productDataSource, this._orderDataSource, [this._comboDataSource]);
+  CounterSaleProvider(
+    this._productDataSource,
+    this._orderDataSource, [
+    this._comboDataSource,
+  ]);
 
   bool isCatalogLoading = false;
   bool isSubmitting = false;
@@ -49,8 +56,7 @@ class CounterSaleProvider extends ChangeNotifier {
       _products.where((p) => p.tipo == 'GLOBAL').toList();
   List<Product> get clubSpecialties =>
       _products.where((p) => p.tipo == 'LOCAL').toList();
-  List<Combo> get activeCombos =>
-      _combos.where((c) => c.activo).toList();
+  List<Combo> get activeCombos => _combos.where((c) => c.activo).toList();
   List<CounterSaleItem> get cartItems => _cart.values.toList();
   int get totalItems =>
       _cart.values.fold(0, (sum, item) => sum + item.quantity);
@@ -58,8 +64,26 @@ class CounterSaleProvider extends ChangeNotifier {
   static const int maxSabores = 3;
   int get distinctProducts => _cart.length;
   bool get isMaxSaboresReached => _cart.length >= maxSabores;
-  int get totalPuntos =>
-      _cart.values.fold(0, (sum, item) => sum + (item.product.puntosValor * item.quantity));
+  int get totalPuntos => _cart.values
+      .fold(0, (sum, item) => sum + (item.product.puntosValor * item.quantity));
+
+  @override
+  Future<void> clearSessionState() async {
+    clubId = null;
+    hubId = null;
+    socioCodigo = '';
+    tipoConsumo = 'EN_LUGAR';
+    observaciones = '';
+    _products = [];
+    _combos = [];
+    _cart.clear();
+    isCatalogLoading = false;
+    isSubmitting = false;
+    submitSuccess = false;
+    catalogError = null;
+    submitError = null;
+    notifyListeners();
+  }
 
   Future<void> init({
     required int clubId,
@@ -83,16 +107,19 @@ class CounterSaleProvider extends ChangeNotifier {
         clubId: clubId!,
       );
       // Cargar combos del club
-      if (_comboDataSource != null) {
+      final comboDs = _comboDataSource;
+      if (comboDs != null) {
         try {
-          _combos = await _comboDataSource!.getCombosByClub(clubId!);
+          _combos = await comboDs.getCombosByClub(clubId!);
         } catch (e) {
-          debugPrint('[COUNTER SALE] Error cargando combos: $e');
+          debugPrint('[COUNTER SALE] Error cargando combos');
           _combos = [];
         }
       }
     } catch (e) {
-      catalogError = e.toString().replaceAll('Exception: ', '');
+      if (shouldPresentErrorToUser(e)) {
+        catalogError = ErrorMapper.publicMessage(e);
+      }
     } finally {
       isCatalogLoading = false;
       notifyListeners();
@@ -160,7 +187,9 @@ class CounterSaleProvider extends ChangeNotifier {
           quantity: comboItem.cantidad,
           comboId: combo.id,
           comboNombre: combo.nombre,
-          note: comboItem.saborNombre != null ? 'Sabor: ${comboItem.saborNombre}' : '',
+          note: comboItem.saborNombre != null
+              ? 'Sabor: ${comboItem.saborNombre}'
+              : '',
         );
       }
     }
@@ -243,11 +272,14 @@ class CounterSaleProvider extends ChangeNotifier {
       submitSuccess = true;
       return true;
     } catch (e, st) {
-      debugPrint('[COUNTER SALE] submit error: $e');
+      debugPrint('[COUNTER SALE] submit error');
       debugPrint('[COUNTER SALE] stack: $st');
-      submitError = e.toString().replaceAll('Exception: ', '');
+      if (shouldPresentErrorToUser(e)) {
+        submitError = ErrorMapper.publicMessage(e);
+      } else {
+        submitError = null;
+      }
       submitSuccess = false;
-      // NO limpiamos ticket en error.
       return false;
     } finally {
       isSubmitting = false;

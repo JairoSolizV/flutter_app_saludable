@@ -1,5 +1,9 @@
 import 'dart:convert';
 
+/// Perfil de usuario de la app.
+///
+/// [token] es **transitorio en memoria** (respuesta de login / hidratación desde
+/// [TokenStore]). **No** se persiste en SQLite: ver [toMap].
 class User {
   final String id;
   final String name;
@@ -29,23 +33,27 @@ class User {
       name: map['name'],
       email: map['email'],
       role: map['role'],
-      token: map['token'],
+      // JWT ya no se hidrata desde SQLite (columna legacy solo para migración).
+      token: null,
       phone: map['phone'],
       photoUrl: map['photo_url'],
       birthDate: map['birth_date'],
-      socialMedia: map['social_media'] != null 
-        ? (map['social_media'] is String ? jsonDecode(map['social_media']) : map['social_media']) 
-        : null,
+      socialMedia: map['social_media'] != null
+          ? (map['social_media'] is String
+              ? jsonDecode(map['social_media'])
+              : map['social_media'])
+          : null,
     );
   }
 
+  /// Persistencia de perfil. El JWT siempre se guarda como null en SQLite.
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'name': name,
       'email': email,
       'role': role,
-      'token': token,
+      'token': null,
       'phone': phone,
       'photo_url': photoUrl,
       'birth_date': birthDate,
@@ -60,12 +68,13 @@ class User {
     String? photoUrl,
     String? birthDate,
     Map<String, dynamic>? socialMedia,
-    String? token, // Added token
+    String? token,
+    bool clearToken = false,
   }) {
     return User(
       id: id,
       role: role,
-      token: token ?? this.token, // Use new token if provided, else keep existing
+      token: clearToken ? null : (token ?? this.token),
       name: name ?? this.name,
       email: email ?? this.email,
       phone: phone ?? this.phone,
@@ -74,4 +83,7 @@ class User {
       socialMedia: socialMedia ?? this.socialMedia,
     );
   }
+
+  /// Perfil sin JWT (para persistir en SQLite).
+  User withoutToken() => copyWith(clearToken: true);
 }

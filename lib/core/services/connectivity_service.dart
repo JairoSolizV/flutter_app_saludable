@@ -3,42 +3,65 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 
 class ConnectivityService {
   final Connectivity _connectivity = Connectivity();
-  final StreamController<bool> _connectionChangeController = StreamController<bool>.broadcast();
+  final StreamController<bool> _connectionChangeController =
+      StreamController<bool>.broadcast();
+  final Future<bool> Function()? _checkOverride;
+  StreamSubscription? _subscription;
+  StreamSubscription? _testStreamSubscription;
+  bool _disposed = false;
 
   Stream<bool> get connectionStream => _connectionChangeController.stream;
 
-  ConnectivityService() {
-    // Escuchar cambios de conectividad (Version legacy puede ser Stream<ConnectivityResult>)
-    _connectivity.onConnectivityChanged.listen(_connectionChange);
-    // Chequeo inicial
+  ConnectivityService({Future<bool> Function()? checkOverride})
+      : _checkOverride = checkOverride {
+    if (_checkOverride != null) return;
+    _subscription =
+        _connectivity.onConnectivityChanged.listen(_connectionChange);
     checkConnection();
   }
 
+  /// Variante de test/offline que no escucha el plugin nativo.
+  ConnectivityService.forTest({
+    required Future<bool> Function() checkConnection,
+    Stream<bool>? connectionStream,
+  }) : _checkOverride = checkConnection {
+    if (connectionStream != null) {
+      _testStreamSubscription =
+          connectionStream.listen(_connectionChangeController.add);
+    }
+  }
+
   Future<bool> checkConnection() async {
-    // Si la versión instalada devuelve ConnectivityResult (singular) o List<ConnectivityResult>, debemos manejarlo.
-    // El error sugería que `_connectionChange` esperaba List pero el stream daba singular.
-    // Vamos a usar `await _connectivity.checkConnectivity()` y ver qué tipo retorna dinámicamente si pudiéramos, 
-    // pero en compilación estática debemos acertar.
-    // El error `The argument type 'void Function(List<ConnectivityResult>)' ... 'void Function(ConnectivityResult)?'`
-    // CONFIRMA que el Stream emite `ConnectivityResult` (singular).
-    
+    final override = _checkOverride;
+    if (override != null) {
+      return override();
+    }
+
     var result = await _connectivity.checkConnectivity();
     bool hasConnection = result != ConnectivityResult.none;
     return hasConnection;
   }
 
-  void _connectionChange(dynamic result) { // Usamos dynamic para acomodar ambas versiones por si acaso, pero casteamos.
-    // En versión vieja result es ConnectivityResult.
+  void _connectionChange(dynamic result) {
+    if (_disposed || _connectionChangeController.isClosed) return;
     bool hasConnection;
     if (result is List) {
-       hasConnection = !result.contains(ConnectivityResult.none);
+      hasConnection = !result.contains(ConnectivityResult.none);
     } else {
-       hasConnection = result != ConnectivityResult.none;
+      hasConnection = result != ConnectivityResult.none;
     }
     _connectionChangeController.add(hasConnection);
   }
-  
+
   void dispose() {
-    _connectionChangeController.close();
+    if (_disposed) return;
+    _disposed = true;
+    _subscription?.cancel();
+    _subscription = null;
+    _testStreamSubscription?.cancel();
+    _testStreamSubscription = null;
+    if (!_connectionChangeController.isClosed) {
+      _connectionChangeController.close();
+    }
   }
 }

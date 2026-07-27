@@ -1,4 +1,5 @@
 import 'package:sqflite/sqflite.dart';
+import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import '../../core/database/database_helper.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/repositories/product_repository.dart';
@@ -32,7 +33,7 @@ class LocalProductRepository implements ProductRepository {
         
         return remoteProducts;
       } catch (e) {
-        print('Error fetching remote products: $e');
+        logDebug('Error fetching remote products: $e');
         // NO hacer fallback a local - los productos deben venir del backend
         // Si hay error, devolver lista vacía en lugar de productos obsoletos
         rethrow;
@@ -41,7 +42,7 @@ class LocalProductRepository implements ProductRepository {
     
     // Si no hay remoteDataSource, devolver lista vacía
     // No devolver productos de seed que no existen en el backend
-    print('Warning: No remoteDataSource disponible. No se pueden obtener productos del hub.');
+    logDebug('Warning: No remoteDataSource disponible. No se pueden obtener productos del hub.');
     return [];
   }
   
@@ -81,15 +82,14 @@ class LocalProductRepository implements ProductRepository {
   @override
   Future<void> createProduct(Product product, int clubId) async {
     if (_remoteDataSource != null) {
-        // Asumimos que _remoteDataSource es ProductRemoteDataSourceImpl
-        await (_remoteDataSource as dynamic).createProduct(product, clubId); 
+        await _remoteDataSource.createProduct(product, clubId);
     }
   }
 
   @override
   Future<void> updateProduct(Product product) async {
     if (_remoteDataSource != null) {
-      await (_remoteDataSource as dynamic).updateProduct(product);
+      await _remoteDataSource.updateProduct(product);
     }
     // Update local cache
     final db = await _dbHelper.database;
@@ -99,7 +99,7 @@ class LocalProductRepository implements ProductRepository {
   @override
   Future<void> deleteProduct(String id) async {
     if (_remoteDataSource != null) {
-      await (_remoteDataSource as dynamic).deleteProduct(id);
+      await _remoteDataSource.deleteProduct(id);
     }
     // Delete from local cache
     final db = await _dbHelper.database;
@@ -116,19 +116,19 @@ class LocalProductRepository implements ProductRepository {
         final remoteProducts = await remote.getAvailableProductsByClub(clubId);
         return remoteProducts;
       } catch (e) {
-        print('Error fetching available products: $e');
+        logDebug('Error fetching available products: $e');
         rethrow;
       }
     }
     
-    print('Warning: No remoteDataSource disponible. No se pueden obtener productos disponibles.');
+    logDebug('Warning: No remoteDataSource disponible. No se pueden obtener productos disponibles.');
     return [];
   }
 
   @override
   Future<void> toggleProductAvailability(int clubId, String productId) async {
     if (_remoteDataSource != null) {
-      await (_remoteDataSource as dynamic).toggleProductAvailability(clubId, productId);
+      await _remoteDataSource.toggleProductAvailability(clubId, productId);
     }
   }
 }

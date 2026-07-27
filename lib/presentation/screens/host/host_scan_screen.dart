@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -262,10 +263,10 @@ class _HostScanScreenState extends State<HostScanScreen> {
       final currentUser = Provider.of<UserProvider>(context, listen: false).currentUser;
       final int hostId = int.tryParse(currentUser?.id ?? '0') ?? 0;
 
-      print('SCAN_DEBUG: Buscando club hostId: $hostId');
+      logDebug('SCAN_DEBUG: Buscando club hostId: $hostId');
       final club = await clubDataSource.getMyClub();
       
-      print('SCAN_DEBUG: Club encontrado: ${club?.nombreClub}');
+      logDebug('SCAN_DEBUG: Club encontrado: ${club?.nombreClub}');
 
       if (club == null) {
         throw Exception('No se encontró club para este anfitrión.');
@@ -278,7 +279,7 @@ class _HostScanScreenState extends State<HostScanScreen> {
 
       // 3. Navegar
       if (!mounted) return;
-      print('SCAN_DEBUG: Navegando a registro...');
+      logDebug('SCAN_DEBUG: Navegando a registro...');
       
       await context.push('/host-register-member', extra: {
         'qrPayload': code,
@@ -293,7 +294,7 @@ class _HostScanScreenState extends State<HostScanScreen> {
       }
 
     } catch (e) {
-      print('SCAN_DEBUG: Error: $e');
+      logDebug('SCAN_DEBUG: Error: $e');
       // Asegurar cierre de loading si falló
       try {
         if (mounted) Navigator.of(context, rootNavigator: true).pop();

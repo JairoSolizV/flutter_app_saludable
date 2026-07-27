@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_app_saludable/core/auth/session_state_resetter.dart';
+import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
+import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import '../../../domain/entities/support_ticket.dart';
 import '../../data/datasources/remote/support_remote_data_source.dart';
 import '../../data/repositories/local_user_repository.dart';
 
-class SupportProvider extends ChangeNotifier {
+class SupportProvider extends ChangeNotifier implements SessionScopedState {
   final SupportRemoteDataSource _remoteDataSource;
   final LocalUserRepository _localUserRepository;
 
@@ -17,6 +20,14 @@ class SupportProvider extends ChangeNotifier {
 
   SupportProvider(this._remoteDataSource, this._localUserRepository);
 
+  @override
+  Future<void> clearSessionState() async {
+    _tickets = [];
+    _isLoading = false;
+    _error = null;
+    notifyListeners();
+  }
+
   Future<void> fetchMyTickets() async {
     _isLoading = true;
     _error = null;
@@ -24,23 +35,28 @@ class SupportProvider extends ChangeNotifier {
 
     try {
       final user = await _localUserRepository.getCurrentUser();
-      
+
       if (user != null) {
         _tickets = await _remoteDataSource.getTicketsByUser(int.parse(user.id));
-        // Ordenar del más reciente al más antiguo
         _tickets.sort((a, b) => b.fechaCreacion.compareTo(a.fechaCreacion));
       } else {
         _error = 'No hay usuario autenticado logueado actualmente.';
       }
     } catch (e) {
-      _error = e.toString();
+      if (shouldPresentErrorToUser(e)) {
+        _error = ErrorMapper.publicMessage(e);
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<bool> createTicket(String tipoSolicitud, String asunto, String mensaje) async {
+  Future<bool> createTicket(
+    String tipoSolicitud,
+    String asunto,
+    String mensaje,
+  ) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -51,12 +67,13 @@ class SupportProvider extends ChangeNotifier {
         asunto: asunto,
         mensaje: mensaje,
       );
-      
-      // Regargar después de crear
+
       await fetchMyTickets();
       return true;
     } catch (e) {
-      _error = e.toString();
+      if (shouldPresentErrorToUser(e)) {
+        _error = ErrorMapper.publicMessage(e);
+      }
       _isLoading = false;
       notifyListeners();
       return false;

@@ -1,21 +1,36 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
+import 'package:flutter_app_saludable/app.dart';
+import 'package:flutter_app_saludable/core/di/app_dependencies.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
-import 'package:flutter_app_saludable/main.dart';
+import 'helpers/test_app_dependencies.dart';
 
 void main() {
-  testWidgets('App starts correctly', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const AppState());
+  testWidgets('NutriLifeApp smoke con dependencias fake', (tester) async {
+    late AppDependencies deps;
+    await tester.runAsync(() async {
+      deps = await buildTestDependencies();
+    });
+    addTearDown(deps.dispose);
 
-    // Verify that the app builds without errors
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, __) => const Scaffold(
+            body: Text('Nutrilife Club'),
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      NutriLifeApp(dependencies: deps, router: router),
+    );
+    await tester.pump();
+
+    expect(find.text('Nutrilife Club'), findsOneWidget);
     expect(find.byType(MaterialApp), findsOneWidget);
   });
 }

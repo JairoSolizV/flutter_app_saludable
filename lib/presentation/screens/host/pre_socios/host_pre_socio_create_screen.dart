@@ -14,7 +14,8 @@ class HostPreSocioCreateScreen extends StatefulWidget {
   const HostPreSocioCreateScreen({super.key, required this.clubId});
 
   @override
-  State<HostPreSocioCreateScreen> createState() => _HostPreSocioCreateScreenState();
+  State<HostPreSocioCreateScreen> createState() =>
+      _HostPreSocioCreateScreenState();
 }
 
 class _HostPreSocioCreateScreenState extends State<HostPreSocioCreateScreen> {
@@ -43,7 +44,11 @@ class _HostPreSocioCreateScreenState extends State<HostPreSocioCreateScreen> {
     try {
       final ds = Provider.of<ClubRemoteDataSource>(context, listen: false);
       final members = await ds.getClubMembers(widget.clubId);
-      if (mounted) setState(() { _members = members; _isLoadingMembers = false; });
+      if (mounted)
+        setState(() {
+          _members = members;
+          _isLoadingMembers = false;
+        });
     } catch (_) {
       if (mounted) setState(() => _isLoadingMembers = false);
     }
@@ -62,13 +67,16 @@ class _HostPreSocioCreateScreenState extends State<HostPreSocioCreateScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pre-Socio creado'), backgroundColor: Colors.green),
+        const SnackBar(
+            content: Text('Pre-Socio creado'), backgroundColor: Colors.green),
       );
       context.pop();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -97,7 +105,9 @@ class _HostPreSocioCreateScreenState extends State<HostPreSocioCreateScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.person_outline),
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'El nombre es requerido' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'El nombre es requerido'
+                    : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -108,10 +118,13 @@ class _HostPreSocioCreateScreenState extends State<HostPreSocioCreateScreen> {
                   prefixIcon: Icon(Icons.phone_outlined),
                 ),
                 keyboardType: TextInputType.phone,
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'El teléfono es requerido' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'El teléfono es requerido'
+                    : null,
               ),
               const SizedBox(height: 16),
-              const Text('Referido por (Opcional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text('Referido por (Opcional)',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
               _isLoadingMembers
                   ? const LinearProgressIndicator(color: AppTheme.primaryColor)
@@ -120,9 +133,12 @@ class _HostPreSocioCreateScreenState extends State<HostPreSocioCreateScreen> {
                       selected: _referente,
                       onChanged: (v) => setState(() => _referente = v),
                       enableGlobalSearch: true,
-                      onGlobalSearch: (query) {
-                        final ds = Provider.of<MembresiaRemoteDataSource>(context, listen: false);
-                        return ds.buscarMiembrosGlobal(query: query);
+                      onGlobalSearch: (query, page) {
+                        final ds = Provider.of<MembresiaRemoteDataSource>(
+                            context,
+                            listen: false);
+                        return ds.buscarMiembrosGlobalPage(
+                            query: query, page: page, size: 20);
                       },
                     ),
               const SizedBox(height: 32),
@@ -133,11 +149,16 @@ class _HostPreSocioCreateScreenState extends State<HostPreSocioCreateScreen> {
                   onPressed: _isSubmitting ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                   ),
                   child: _isSubmitting
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('CREAR FICHA', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                      : const Text('CREAR FICHA',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white)),
                 ),
               ),
             ],

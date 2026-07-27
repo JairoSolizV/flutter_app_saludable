@@ -1,12 +1,23 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
+import 'package:flutter_app_saludable/core/errors/throw_app_error.dart';
 import 'package:flutter/foundation.dart';
+import '../../../core/pagination/paged_result.dart';
 import '../../../domain/entities/club_membership.dart';
 import '../../../domain/entities/attendance.dart';
 import '../../../domain/entities/arbol_referidos.dart';
 
 abstract class MembresiaRemoteDataSource {
-  Future<void> crearMembresia({required int usuarioId, required int clubId, int? nivelId, Map<String, dynamic>? extraData});
-  Future<void> activarSocio({required int clubId, required String activationPayload, int? referidoPorMembresiaId, String? comoConocio});
+  Future<void> crearMembresia(
+      {required int usuarioId,
+      required int clubId,
+      int? nivelId,
+      Map<String, dynamic>? extraData});
+  Future<void> activarSocio(
+      {required int clubId,
+      required String activationPayload,
+      int? referidoPorMembresiaId,
+      String? comoConocio});
   Future<List<ClubMembership>> getMembresiasPorUsuario(int usuarioId);
   Future<List<Attendance>> getAsistencias(int membresiaId);
   Future<AsistenciaResponse> registrarAsistencia({
@@ -15,9 +26,19 @@ abstract class MembresiaRemoteDataSource {
     required double latitud,
     required double longitud,
   });
-  Future<Attendance> registrarAsistenciaManual({required int membresiaId, String? fecha, String? nota});
+  Future<Attendance> registrarAsistenciaManual(
+      {required int membresiaId, String? fecha, String? nota});
   Future<Map<String, dynamic>> getEstadoCombo(int membresiaId);
   Future<List<ClubMembership>> buscarMiembrosGlobal({String? query});
+
+  /// Versión paginada de [buscarMiembrosGlobal].
+  /// Endpoint: GET /membresias/buscar/paginado?q&page&size
+  Future<PagedResult<ClubMembership>> buscarMiembrosGlobalPage({
+    String? query,
+    int page = 0,
+    int size = 20,
+  });
+
   Future<ArbolReferidos> getArbolReferidos(int membresiaId);
 }
 
@@ -54,12 +75,11 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
   MembresiaRemoteDataSourceImpl(this._client);
 
   @override
-  Future<void> activarSocio({
-    required int clubId, 
-    required String activationPayload, 
-    int? referidoPorMembresiaId, 
-    String? comoConocio
-  }) async {
+  Future<void> activarSocio(
+      {required int clubId,
+      required String activationPayload,
+      int? referidoPorMembresiaId,
+      String? comoConocio}) async {
     try {
       final body = {
         'activationPayload': activationPayload.trim(),
@@ -73,32 +93,20 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
       );
 
       if (response.statusCode != 201 && response.statusCode != 200) {
-        throw Exception('Error al activar socio: ${response.statusCode}');
+        throw ServerException('Error al activar socio',
+            statusCode: response.statusCode);
       }
-    } on DioException catch (e) {
-      // LOG DEBUGER
-      print('DIO ERROR: ${e.message}');
-      print('Status: ${e.response?.statusCode}');
-      print('Data: ${e.response?.data}');
-      
-      String msg = e.message ?? 'Error desconocido';
-      final statusCode = e.response?.statusCode ?? 'N/A';
-
-      if (e.response?.data != null) {
-        if (e.response!.data is Map && e.response!.data['message'] != null) {
-          msg = e.response!.data['message'];
-        } else if (e.response!.data is String) {
-          msg = e.response!.data; 
-        } else {
-             msg = e.response!.data.toString();
-        }
-      }
-      throw Exception('Error ($statusCode): $msg');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e, fallback: 'Error en membresías', stackTrace: st);
     }
   }
 
   @override
-  Future<void> crearMembresia({required int usuarioId, required int clubId, int? nivelId, Map<String, dynamic>? extraData}) async {
+  Future<void> crearMembresia(
+      {required int usuarioId,
+      required int clubId,
+      int? nivelId,
+      Map<String, dynamic>? extraData}) async {
     try {
       final queryParams = {
         'usuarioId': usuarioId,
@@ -108,60 +116,51 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
         queryParams['nivelId'] = nivelId;
       }
 
-       final body = extraData ?? {};
+      final body = extraData ?? {};
 
       final response = await _client.post(
         '/membresias',
         queryParameters: queryParams,
-        data: body, 
+        data: body,
       );
 
       if (response.statusCode != 201 && response.statusCode != 200) {
-        throw Exception('Error al crear membresía: ${response.statusCode}');
+        throw ServerException('Error al crear membresía',
+            statusCode: response.statusCode);
       }
-    } on DioException catch (e) {
-      String msg = e.message ?? 'Error desconocido';
-      final statusCode = e.response?.statusCode ?? 'N/A';
-      String rawData = '';
-
-      if (e.response?.data != null) {
-        rawData = e.response!.data.toString();
-        if (e.response!.data is Map && e.response!.data['message'] != null) {
-          msg = e.response!.data['message'];
-        } else if (e.response!.data is String) {
-          msg = e.response!.data; 
-        } else {
-             msg = e.response!.data.toString();
-        }
-      }
-      throw Exception('Error ($statusCode): $msg | RAW: $rawData');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e, fallback: 'Error en membresías', stackTrace: st);
     }
   }
+
   @override
   Future<List<ClubMembership>> getMembresiasPorUsuario(int usuarioId) async {
     try {
       final response = await _client.get('/membresias/usuario/$usuarioId');
-      
+
       if (response.statusCode == 200) {
         final dynamic data = response.data;
-        
+
         if (data is List) {
           return data.map((json) => ClubMembership.fromJson(json)).toList();
         } else if (data is Map<String, dynamic>) {
           // Si devuelve un solo objeto, lo envolvemos en una lista
           return [ClubMembership.fromJson(data)];
         } else {
-           return [];
+          return [];
         }
       } else {
-         if (response.statusCode == 404) return [];
-         throw Exception('Error cargando membresías: ${response.statusCode}');
+        if (response.statusCode == 404) return [];
+        throw ServerException('Error cargando membresías',
+            statusCode: response.statusCode);
       }
-    } catch (e) {
-      if (e is DioException && e.response?.statusCode == 404) {
+    } on DioException catch (e, st) {
+      if (e.response?.statusCode == 404) {
         return [];
       }
-      throw Exception('Error al obtener membresías: $e');
+      throwDioAsApp(e, fallback: 'Error al obtener membresías', stackTrace: st);
+    } catch (e, st) {
+      rethrowApp(e, fallback: 'Error al obtener membresías', stackTrace: st);
     }
   }
 
@@ -169,20 +168,22 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
   Future<List<Attendance>> getAsistencias(int membresiaId) async {
     try {
       final response = await _client.get('/asistencias/socio/$membresiaId');
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
         return data.map((json) => Attendance.fromJson(json)).toList();
       } else {
-        throw Exception('Error cargando asistencias: ${response.statusCode}');
+        throw ServerException('Error cargando asistencias',
+            statusCode: response.statusCode);
       }
-    } catch (e) {
-       throw Exception('Error al obtener asistencias: $e');
+    } catch (e, st) {
+      rethrowApp(e, fallback: 'Error al obtener asistencias', stackTrace: st);
     }
   }
+
   @override
   Future<AsistenciaResponse> registrarAsistencia({
-    required int membresiaId, 
+    required int membresiaId,
     required int clubId,
     required double latitud,
     required double longitud,
@@ -190,9 +191,11 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
     try {
       // Endpoint correcto según el backend: POST /api/asistencias/registrar
       // Con query params: membresiaId, clubId, qrClub (opcional)
-      debugPrint('[DEBUG MEMBRESIA] Registrando asistencia - membresiaId: $membresiaId, clubId: $clubId');
-      debugPrint('[DEBUG MEMBRESIA] Endpoint: POST /api/asistencias/registrar?membresiaId=$membresiaId&clubId=$clubId');
-      
+      debugPrint(
+          '[DEBUG MEMBRESIA] Registrando asistencia - membresiaId: $membresiaId, clubId: $clubId');
+      debugPrint(
+          '[DEBUG MEMBRESIA] Endpoint: POST /api/asistencias/registrar?membresiaId=$membresiaId&clubId=$clubId');
+
       final response = await _client.post(
         '/asistencias/registrar',
         queryParameters: {
@@ -202,63 +205,32 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
         },
       );
 
-      debugPrint('[DEBUG MEMBRESIA] Respuesta recibida - Status: ${response.statusCode}');
+      debugPrint(
+          '[DEBUG MEMBRESIA] Respuesta recibida - Status: ${response.statusCode}');
       debugPrint('[DEBUG MEMBRESIA] Response body: ${response.data}');
 
       if (response.statusCode != 201 && response.statusCode != 200) {
-        throw Exception('Error al registrar asistencia: ${response.statusCode}');
+        throw ServerException('Error al registrar asistencia',
+            statusCode: response.statusCode);
       }
 
       // Parsear respuesta para obtener racha actual y máxima
       final responseData = response.data;
       if (responseData is Map) {
-        return AsistenciaResponse.fromJson(Map<String, dynamic>.from(responseData));
+        return AsistenciaResponse.fromJson(
+            Map<String, dynamic>.from(responseData));
       }
-      
+
       // Si no hay datos, retornar respuesta vacía
       return AsistenciaResponse(
         rachaActual: null,
         rachaMaxima: null,
         mensaje: 'Asistencia registrada correctamente',
       );
-    } on DioException catch (e) {
-      final statusCode = e.response?.statusCode;
-      debugPrint('[DEBUG MEMBRESIA] DioException - Status: $statusCode');
-      debugPrint('[DEBUG MEMBRESIA] Error: ${e.message}');
-      debugPrint('[DEBUG MEMBRESIA] Response data: ${e.response?.data}');
-      
-      if (statusCode == 401) {
-        throw Exception('No autenticado. Por favor inicia sesión nuevamente.');
-      } else if (statusCode == 403) {
-        throw Exception('No tienes permisos para registrar asistencia.');
-      } else if (statusCode == 500) {
-        throw Exception('Error del servidor. Por favor intenta más tarde.');
-      }
-      
-      final responseData = e.response?.data;
-      String msg = 'Error desconocido';
-      
-      if (responseData is Map) {
-        msg = responseData['message']?.toString() ?? 
-              responseData['error']?.toString() ?? 
-              e.message ?? 'Error desconocido';
-        
-        // Si el backend responde que ya se registró hoy, devolver respuesta con mensaje
-        if (msg.toLowerCase().contains('ya registraste') || 
-            msg.toLowerCase().contains('ya existe') ||
-            msg.toLowerCase().contains('duplicado')) {
-          return AsistenciaResponse.fromJson(Map<String, dynamic>.from(responseData));
-        }
-      } else if (responseData is String) {
-        msg = responseData;
-      } else {
-        msg = e.message ?? 'Error desconocido';
-      }
-      
-      throw Exception('Error registro asistencia: $msg');
-    } catch (e) {
-      debugPrint('[DEBUG MEMBRESIA] Error general registrando asistencia: $e');
-      throw Exception('Error al registrar asistencia: $e');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e, fallback: 'Error registro asistencia', stackTrace: st);
+    } catch (e, st) {
+      rethrowApp(e, fallback: 'Error al registrar asistencia', stackTrace: st);
     }
   }
 
@@ -277,28 +249,27 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
         },
       );
       if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception('Error al registrar asistencia: ${response.statusCode}');
+        throw ServerException('Error al registrar asistencia',
+            statusCode: response.statusCode);
       }
       return Attendance.fromJson(response.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      String msg = e.message ?? 'Error desconocido';
-      if (data is Map && data['message'] != null) msg = data['message'].toString();
-      if (e.response?.statusCode == 409) {
-        throw Exception('Ya existe una asistencia registrada para hoy.');
-      }
-      throw Exception('Error registrando asistencia manual: $msg');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e,
+          fallback: 'Error registrando asistencia manual', stackTrace: st);
     }
   }
 
   @override
   Future<Map<String, dynamic>> getEstadoCombo(int membresiaId) async {
     try {
-      final response = await _client.get('/membresias/$membresiaId/estado-combo');
+      final response =
+          await _client.get('/membresias/$membresiaId/estado-combo');
       return response.data as Map<String, dynamic>;
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) return {'haConsumidoCombo': false, 'totalCombosConsumidos': 0};
-      throw Exception('Error obteniendo estado de combo: ${e.message}');
+    } on DioException catch (e, st) {
+      if (e.response?.statusCode == 404)
+        return {'haConsumidoCombo': false, 'totalCombosConsumidos': 0};
+      throwDioAsApp(e,
+          fallback: 'Error obteniendo estado de combo', stackTrace: st);
     }
   }
 
@@ -320,27 +291,60 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
         return data.map((json) => ClubMembership.fromJson(json)).toList();
       }
       return [];
-    } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Error al buscar miembros');
-    } catch (e) {
-      throw Exception('Error al buscar miembros: $e');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e, fallback: 'Error en membresías', stackTrace: st);
+    } catch (e, st) {
+      rethrowApp(e, fallback: 'Error al buscar miembros', stackTrace: st);
+    }
+  }
+
+  @override
+  Future<PagedResult<ClubMembership>> buscarMiembrosGlobalPage({
+    String? query,
+    int page = 0,
+    int size = 20,
+  }) async {
+    try {
+      final response = await _client.get(
+        '/membresias/buscar/paginado',
+        queryParameters: {
+          'page': page,
+          'size': size,
+          if (query != null && query.isNotEmpty) 'q': query,
+        },
+      );
+
+      final dynamic data = response.data;
+      if (data is! Map) {
+        throw ServerException('Respuesta inesperada al buscar socios');
+      }
+      return PagedResult<ClubMembership>.fromJson(
+        Map<String, dynamic>.from(data),
+        (json) => ClubMembership.fromJson(json),
+      );
+    } on DioException catch (e, st) {
+      throwDioAsApp(e, fallback: 'Error en membresías', stackTrace: st);
+    } catch (e, st) {
+      rethrowApp(e, fallback: 'Error al buscar miembros', stackTrace: st);
     }
   }
 
   @override
   Future<ArbolReferidos> getArbolReferidos(int membresiaId) async {
     try {
-      final response = await _client.get('/membresias/$membresiaId/arbol-referidos');
+      final response =
+          await _client.get('/membresias/$membresiaId/arbol-referidos');
       if (response.statusCode == 200) {
         return ArbolReferidos.fromJson(response.data as Map<String, dynamic>);
       } else {
-        throw Exception('Error al obtener el árbol de referidos: ${response.statusCode}');
+        throw ServerException('Error al obtener el árbol de referidos',
+            statusCode: response.statusCode);
       }
-    } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Error al obtener el árbol de referidos');
-    } catch (e) {
-      throw Exception('Error al obtener el árbol de referidos: $e');
+    } on DioException catch (e, st) {
+      throwDioAsApp(e, fallback: 'Error en membresías', stackTrace: st);
+    } catch (e, st) {
+      rethrowApp(e,
+          fallback: 'Error al obtener el árbol de referidos', stackTrace: st);
     }
   }
 }
-

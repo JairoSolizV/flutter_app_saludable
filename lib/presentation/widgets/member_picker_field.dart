@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../core/pagination/paged_result.dart';
 import '../../domain/entities/club_membership.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
@@ -9,7 +10,12 @@ class MemberPickerField extends StatelessWidget {
   final ValueChanged<ClubMembership?> onChanged;
   final bool enabled;
   final bool enableGlobalSearch;
-  final Future<List<ClubMembership>> Function(String query)? onGlobalSearch;
+
+  /// Búsqueda global paginada: recibe `query` y `page` (0-indexed) y debe
+  /// devolver la [PagedResult] correspondiente (p. ej. desde
+  /// `buscarMiembrosGlobalPage`).
+  final Future<PagedResult<ClubMembership>> Function(String query, int page)?
+      onGlobalSearch;
 
   const MemberPickerField({
     super.key,
@@ -80,7 +86,8 @@ class _MemberPickerSheet extends StatefulWidget {
   final List<ClubMembership> members;
   final ClubMembership? initial;
   final bool enableGlobalSearch;
-  final Future<List<ClubMembership>> Function(String query)? onGlobalSearch;
+  final Future<PagedResult<ClubMembership>> Function(String query, int page)?
+      onGlobalSearch;
 
   const _MemberPickerSheet({
     required this.members,
@@ -95,9 +102,13 @@ class _MemberPickerSheet extends StatefulWidget {
 
 class _MemberPickerSheetState extends State<_MemberPickerSheet> {
   final TextEditingController _searchCtrl = TextEditingController();
+  final ScrollController _resultsScrollController = ScrollController();
   late List<ClubMembership> _filtered;
   List<ClubMembership> _globalResults = [];
   bool _isSearchingGlobal = false;
+  bool _isLoadingMoreGlobal = false;
+  int _globalPage = 0;
+  bool _globalHasNext = false;
   Timer? _debounce;
 
   @override
@@ -105,6 +116,7 @@ class _MemberPickerSheetState extends State<_MemberPickerSheet> {
     super.initState();
     _filtered = List.of(widget.members);
     _searchCtrl.addListener(_onSearchChanged);
+    _resultsScrollController.addListener(_onResultsScroll);
   }
 
   @override
@@ -112,7 +124,18 @@ class _MemberPickerSheetState extends State<_MemberPickerSheet> {
     _debounce?.cancel();
     _searchCtrl.removeListener(_onSearchChanged);
     _searchCtrl.dispose();
+    _resultsScrollController.removeListener(_onResultsScroll);
+    _resultsScrollController.dispose();
     super.dispose();
+  }
+
+  void _onResultsScroll() {
+    if (!widget.enableGlobalSearch || widget.onGlobalSearch == null) return;
+    if (!_resultsScrollController.hasClients) return;
+    final position = _resultsScrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 200) {
+      _loadMoreGlobal();
+    }
   }
 
   void _onSearchChanged() {
@@ -123,6 +146,8 @@ class _MemberPickerSheetState extends State<_MemberPickerSheet> {
       if (query.isEmpty) {
         _filtered = List.of(widget.members);
         _globalResults = [];
+        _globalPage = 0;
+        _globalHasNext = false;
         return;
       }
 
@@ -143,17 +168,23 @@ class _MemberPickerSheetState extends State<_MemberPickerSheet> {
 
   Future<void> _performGlobalSearch(String query) async {
     if (query.isEmpty) {
-      setState(() => _globalResults = []);
+      setState(() {
+        _globalResults = [];
+        _globalPage = 0;
+        _globalHasNext = false;
+      });
       return;
     }
 
     setState(() => _isSearchingGlobal = true);
 
     try {
-      final results = await widget.onGlobalSearch!(query);
+      final result = await widget.onGlobalSearch!(query, 0);
       if (mounted) {
         setState(() {
-          _globalResults = results;
+          _globalResults = result.content;
+          _globalPage = result.page;
+          _globalHasNext = result.hasNext;
           _isSearchingGlobal = false;
         });
       }
@@ -164,11 +195,37 @@ class _MemberPickerSheetState extends State<_MemberPickerSheet> {
     }
   }
 
+  Future<void> _loadMoreGlobal() async {
+    if (_isLoadingMoreGlobal || !_globalHasNext) return;
+    final query = _searchCtrl.text.trim();
+    if (query.isEmpty || widget.onGlobalSearch == null) return;
+
+    setState(() => _isLoadingMoreGlobal = true);
+    try {
+      final result = await widget.onGlobalSearch!(query, _globalPage + 1);
+      if (!mounted) return;
+      setState(() {
+        final existingIds = _globalResults.map((m) => m.id).toSet();
+        _globalResults = [
+          ..._globalResults,
+          ...result.content.where((m) => !existingIds.contains(m.id)),
+        ];
+        _globalPage = result.page;
+        _globalHasNext = result.hasNext;
+        _isLoadingMoreGlobal = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingMoreGlobal = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
-    final showGlobalSection = widget.enableGlobalSearch &&
-        _searchCtrl.text.trim().isNotEmpty;
+    final showGlobalSection =
+        widget.enableGlobalSearch && _searchCtrl.text.trim().isNotEmpty;
 
     return Padding(
       padding: EdgeInsets.only(bottom: mediaQuery.viewInsets.bottom),
@@ -245,15 +302,15 @@ class _MemberPickerSheetState extends State<_MemberPickerSheet> {
     return ListView.separated(
       itemCount: _filtered.length,
       separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder: (context, index) =>
-          _buildMemberTile(_filtered[index]),
+      itemBuilder: (context, index) => _buildMemberTile(_filtered[index]),
     );
   }
 
   Widget _buildSearchResults(bool showGlobalSection) {
     final hasLocalResults = _filtered.isNotEmpty;
     final hasGlobalResults = _globalResults.isNotEmpty;
-    final noResults = !hasLocalResults && !hasGlobalResults && !_isSearchingGlobal;
+    final noResults =
+        !hasLocalResults && !hasGlobalResults && !_isSearchingGlobal;
 
     if (noResults) {
       return const Center(
@@ -265,6 +322,7 @@ class _MemberPickerSheetState extends State<_MemberPickerSheet> {
     }
 
     return ListView(
+      controller: _resultsScrollController,
       children: [
         if (hasLocalResults) ...[
           const Padding(
@@ -300,6 +358,18 @@ class _MemberPickerSheetState extends State<_MemberPickerSheet> {
               child: LinearProgressIndicator(color: AppTheme.primaryColor),
             ),
           ..._globalResults.map((m) => _buildMemberTile(m, isGlobal: true)),
+          if (_isLoadingMoreGlobal)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: AppTheme.primaryColor),
+                ),
+              ),
+            ),
         ],
       ],
     );
@@ -312,9 +382,7 @@ class _MemberPickerSheetState extends State<_MemberPickerSheet> {
             ? Colors.blueGrey.withOpacity(0.15)
             : AppTheme.primaryColor,
         child: Text(
-          m.usuarioNombre.isNotEmpty
-              ? m.usuarioNombre[0].toUpperCase()
-              : '?',
+          m.usuarioNombre.isNotEmpty ? m.usuarioNombre[0].toUpperCase() : '?',
           style: TextStyle(
             color: isGlobal ? Colors.blueGrey : Colors.white,
             fontWeight: FontWeight.bold,

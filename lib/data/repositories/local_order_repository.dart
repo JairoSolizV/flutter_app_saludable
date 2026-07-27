@@ -1,22 +1,56 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import '../../core/database/database_helper.dart';
+import '../../core/utils/app_logger.dart';
 import '../../domain/entities/order_entity.dart';
 import '../../domain/repositories/order_repository.dart';
 
-class LocalOrderRepository implements OrderRepository {
-  final DatabaseHelper _dbHelper;
+typedef DatabaseGetter = Future<Database> Function();
 
-  LocalOrderRepository(this._dbHelper);
+/// Repositorio local de pedidos. Lecturas de items en batch (sin N+1).
+class LocalOrderRepository implements OrderRepository {
+  LocalOrderRepository(DatabaseHelper dbHelper)
+      : _getDatabase = (() => dbHelper.database);
+
+  /// Constructor de test: permite SQLite in-memory e instrumentación.
+  @visibleForTesting
+  LocalOrderRepository.test(this._getDatabase);
+
+  final DatabaseGetter _getDatabase;
+
+  /// SQLite default variable limit is 999; leave margin for other bind args.
+  static const int sqliteInChunkSize = 500;
+
+  /// Contador de llamadas SQL (tests N+1). No usar en producción.
+  @visibleForTesting
+  int sqlCallCount = 0;
+
+  @visibleForTesting
+  void resetSqlCallCount() => sqlCallCount = 0;
+
+  void _trackSql() => sqlCallCount++;
+
+  Future<Database> get _db async => _getDatabase();
 
   @override
   Future<void> createOrder(OrderEntity order) async {
-    final db = await _dbHelper.database;
-    
-    // Transacción para asegurar consistencia
+    final owner = order.userId.trim();
+    if (owner.isEmpty) {
+      throw ArgumentError(
+        'No se puede crear un pedido offline sin userId de propietario',
+      );
+    }
+
+    final db = await _db;
+    _trackSql();
     await db.transaction((txn) async {
-      await txn.insert('orders', order.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
-      
-      for (var item in order.items) {
+      await txn.insert(
+        'orders',
+        order.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+      for (final item in order.items) {
         await txn.insert('order_items', item.toMap());
       }
     });
@@ -24,73 +58,94 @@ class LocalOrderRepository implements OrderRepository {
 
   @override
   Future<List<OrderEntity>> getOrdersByUser(String userId) async {
-    final db = await _dbHelper.database;
-    
-    // Obtener pedidos
+    final owner = userId.trim();
+    if (owner.isEmpty) return [];
+
+    final db = await _db;
+    _trackSql();
     final orderMaps = await db.query(
       'orders',
       where: 'user_id = ?',
-      whereArgs: [userId],
+      whereArgs: [owner],
       orderBy: 'created_at DESC',
     );
 
-    List<OrderEntity> orders = [];
-
-    for (var orderMap in orderMaps) {
-      final orderId = orderMap['id'] as String;
-      
-      // Obtener items para cada pedido
-      // Hacemos un JOIN simple manual o Query separada
-      final itemMaps = await db.rawQuery('''
-        SELECT oi.*, p.name as product_name 
-        FROM order_items oi
-        JOIN products p ON oi.product_id = p.id
-        WHERE oi.order_id = ?
-      ''', [orderId]);
-
-      final items = itemMaps.map((m) => OrderItem.fromMap(m, productName: m['product_name'] as String)).toList();
-
-      orders.add(OrderEntity.fromMap(orderMap, items: items));
-    }
-
-    return orders;
+    return _attachItems(
+      db,
+      orderMaps,
+      joinProducts: true,
+    );
   }
 
   @override
-  Future<List<OrderEntity>> getUnsyncedOrders() async {
-    final db = await _dbHelper.database;
-    final res = await db.query('orders', where: 'is_synced = ?', whereArgs: [0]);
-    
-    // Nota: Para sincronización completa deberíamos cargar items también, 
-    // por brevedad aquí cargamos solo la cabecera o items si es necesario para el backend.
-    // Asumiremos que el backend necesita todo.
-    
-    List<OrderEntity> orders = [];
-    for (var row in res) {
-        // Cargar items (similar a getOrdersByUser)
-         final orderId = row['id'] as String;
-         final itemMaps = await db.query('order_items', where: 'order_id = ?', whereArgs: [orderId]);
-         final items = itemMaps.map((m) => OrderItem.fromMap(m)).toList();
-         
-         orders.add(OrderEntity.fromMap(row, items: items));
+  Future<List<OrderEntity>> getUnsyncedOrdersForUser(String userId) async {
+    final owner = userId.trim();
+    if (owner.isEmpty) return [];
+
+    final db = await _db;
+
+    _trackSql();
+    final res = await db.query(
+      'orders',
+      where:
+          'is_synced = ? AND user_id = ? AND user_id IS NOT NULL AND TRIM(user_id) != ?',
+      whereArgs: [0, owner, ''],
+      orderBy: 'created_at ASC',
+    );
+
+    final orphans = await countOrphanUnsyncedOrders();
+    if (orphans > 0) {
+      logDebug(
+        '[Orders] $orphans pedido(s) offline huérfano(s) en cuarentena (no sync)',
+      );
     }
-    return orders;
+
+    // Sync no requiere nombre de producto; conservar items aunque falte catálogo.
+    return _attachItems(db, res, joinProducts: false);
+  }
+
+  @override
+  Future<int> countOrphanUnsyncedOrders() async {
+    final db = await _db;
+    _trackSql();
+    final res = await db.rawQuery('''
+      SELECT COUNT(*) AS c FROM orders
+      WHERE is_synced = 0
+        AND (user_id IS NULL OR TRIM(user_id) = '')
+    ''');
+    final value = res.first['c'];
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse('$value') ?? 0;
   }
 
   @override
   Future<void> markAsSynced(String orderId) async {
-    final db = await _dbHelper.database;
-    await db.update(
-      'orders',
-      {'is_synced': 1},
-      where: 'id = ?',
-      whereArgs: [orderId],
-    );
+    await markOrdersAsSynced([orderId]);
+  }
+
+  @override
+  Future<void> markOrdersAsSynced(List<String> orderIds) async {
+    final ids = orderIds.where((id) => id.trim().isNotEmpty).toList();
+    if (ids.isEmpty) return;
+
+    final db = await _db;
+    _trackSql();
+    await db.transaction((txn) async {
+      for (final chunk in _chunks(ids, sqliteInChunkSize)) {
+        final placeholders = List.filled(chunk.length, '?').join(',');
+        await txn.rawUpdate(
+          'UPDATE orders SET is_synced = 1 WHERE id IN ($placeholders)',
+          chunk,
+        );
+      }
+    });
   }
 
   @override
   Future<void> updateOrderStatus(String orderId, String status) async {
-    final db = await _dbHelper.database;
+    final db = await _db;
+    _trackSql();
     await db.update(
       'orders',
       {'status': status},
@@ -101,33 +156,110 @@ class LocalOrderRepository implements OrderRepository {
 
   @override
   Future<void> deleteOrder(String orderId) async {
-    final db = await _dbHelper.database;
-    await db.transaction((txn) async {
-      // Eliminar items primero (foreign key)
-      await txn.delete('order_items', where: 'order_id = ?', whereArgs: [orderId]);
-      // Eliminar pedido
-      await txn.delete('orders', where: 'id = ?', whereArgs: [orderId]);
-    });
+    await deleteOrders([orderId]);
   }
 
   @override
-  Future<void> deleteUnsyncedOrders() async {
-    final db = await _dbHelper.database;
+  Future<void> deleteOrders(List<String> orderIds) async {
+    final ids = orderIds.where((id) => id.trim().isNotEmpty).toList();
+    if (ids.isEmpty) return;
+
+    final db = await _db;
+    _trackSql();
     await db.transaction((txn) async {
-      // Obtener IDs de pedidos no sincronizados
-      final unsyncedOrders = await txn.query(
-        'orders',
-        columns: ['id'],
-        where: 'is_synced = ?',
-        whereArgs: [0],
-      );
-      
-      // Eliminar items y pedidos
-      for (var order in unsyncedOrders) {
-        final orderId = order['id'] as String;
-        await txn.delete('order_items', where: 'order_id = ?', whereArgs: [orderId]);
-        await txn.delete('orders', where: 'id = ?', whereArgs: [orderId]);
+      for (final chunk in _chunks(ids, sqliteInChunkSize)) {
+        final placeholders = List.filled(chunk.length, '?').join(',');
+        await txn.rawDelete(
+          'DELETE FROM order_items WHERE order_id IN ($placeholders)',
+          chunk,
+        );
+        await txn.rawDelete(
+          'DELETE FROM orders WHERE id IN ($placeholders)',
+          chunk,
+        );
       }
     });
+  }
+
+  /// Carga items de todas las órdenes en consultas batch (chunks), sin N+1.
+  ///
+  /// [joinProducts]: si true, INNER JOIN products (mismo comportamiento previo
+  /// de getOrdersByUser: items sin producto en catálogo local no aparecen).
+  Future<List<OrderEntity>> _attachItems(
+    Database db,
+    List<Map<String, Object?>> orderRows, {
+    required bool joinProducts,
+  }) async {
+    if (orderRows.isEmpty) return [];
+
+    final orderIds = <String>[];
+    for (final row in orderRows) {
+      final id = row['id']?.toString();
+      if (id != null && id.isNotEmpty) orderIds.add(id);
+    }
+
+    final itemsByOrderId = <String, List<OrderItem>>{
+      for (final id in orderIds) id: <OrderItem>[],
+    };
+
+    for (final chunk in _chunks(orderIds, sqliteInChunkSize)) {
+      if (chunk.isEmpty) continue;
+      final placeholders = List.filled(chunk.length, '?').join(',');
+      _trackSql();
+
+      final List<Map<String, Object?>> itemRows;
+      if (joinProducts) {
+        itemRows = await db.rawQuery(
+          '''
+          SELECT oi.*, p.name AS product_name
+          FROM order_items oi
+          INNER JOIN products p ON oi.product_id = p.id
+          WHERE oi.order_id IN ($placeholders)
+          ORDER BY oi.order_id ASC, oi.id ASC
+          ''',
+          chunk,
+        );
+      } else {
+        itemRows = await db.rawQuery(
+          '''
+          SELECT oi.*
+          FROM order_items oi
+          WHERE oi.order_id IN ($placeholders)
+          ORDER BY oi.order_id ASC, oi.id ASC
+          ''',
+          chunk,
+        );
+      }
+
+      for (final m in itemRows) {
+        final orderId = m['order_id']?.toString();
+        if (orderId == null) continue;
+        final list = itemsByOrderId[orderId];
+        if (list == null) continue;
+        list.add(
+          OrderItem.fromMap(
+            m,
+            productName: (m['product_name'] as String?) ?? '',
+          ),
+        );
+      }
+    }
+
+    // Conservar el orden de las filas de órdenes (ya ordenadas por la query).
+    return [
+      for (final row in orderRows)
+        OrderEntity.fromMap(
+          row,
+          items: itemsByOrderId[row['id']?.toString()] ?? const [],
+        ),
+    ];
+  }
+
+  static Iterable<List<T>> _chunks<T>(List<T> source, int size) sync* {
+    if (source.isEmpty) return;
+    for (var i = 0; i < source.length; i += size) {
+      final end = (i + size < source.length) ? i + size : source.length;
+      yield source.sublist(i, end);
+    }
   }
 }

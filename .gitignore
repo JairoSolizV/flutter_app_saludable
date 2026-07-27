@@ -39,6 +39,10 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
+# Dart obfuscation symbols if ever stored under the repo (prefer external path)
+/release-symbols/
+**/split-debug-info/
+
 # Android Studio will place build artifacts here
 /android/app/debug
 /android/app/profile

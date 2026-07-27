@@ -1,0 +1,17 @@
+# Copia este archivo localmente como key.properties (mismo directorio android/).
+# El archivo real key.properties NO se sube a Git (está en android/.gitignore).
+#
+# storeFile: ruta absoluta recomendada, o relativa al directorio android/.
+# Credenciales de CI: usar el gestor de secretos con las variables
+#   NUTRILIFE_KEYSTORE_PATH
+#   NUTRILIFE_KEYSTORE_PASSWORD
+#   NUTRILIFE_KEY_ALIAS
+#   NUTRILIFE_KEY_PASSWORD
+# (las variables de entorno tienen precedencia sobre este archivo).
+#
+# Nunca uses el keystore ni la contraseña de debug (debug.keystore / "android").
+
+storeFile=/ruta/segura/upload-keystore.jks
+storePassword=REEMPLAZAR_LOCALMENTE
+keyAlias=REEMPLAZAR_LOCALMENTE
+keyPassword=REEMPLAZAR_LOCALMENTE
