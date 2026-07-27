@@ -7,7 +7,7 @@
     <!-- Permiso de cámara para escanear QR -->
     <uses-permission android:name="android.permission.CAMERA" />
     <application
-        android:label="Nutrilife Club"
+        android:label="Nutrition Clubs"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
