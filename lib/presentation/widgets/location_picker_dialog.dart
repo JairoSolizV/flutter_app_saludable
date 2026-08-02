@@ -106,7 +106,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.flutter_app_saludable',
+                userAgentPackageName: 'com.nutritionclubs.app',
               ),
               MarkerLayer(
                 markers: [

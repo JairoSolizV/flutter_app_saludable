@@ -68,7 +68,7 @@ class _GuestMapScreenState extends State<GuestMapScreen> {
         children: [
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'com.example.flutter_app_saludable',
+            userAgentPackageName: 'com.nutritionclubs.app',
           ),
           MarkerLayer(
             markers: _clubs.map((club) {
