@@ -23,3 +23,12 @@
 -keep class io.flutter.view.** { *; }
 -keep class io.flutter.** { *; }
 -keep class io.flutter.plugins.** { *; }
+
+# Play Core / deferred components (Google Play split-install).
+# Flutter referencia com.google.android.play.core.** para la carga diferida,
+# pero esta app NO usa esa función y la librería play-core no está en el
+# classpath, por lo que R8 aborta el release con "Missing classes".
+# Suprimimos SOLO esas advertencias (scope acotado, NO -ignorewarnings global;
+# el shrinking/ofuscación siguen activos). R8 lista las clases en
+# build/app/outputs/mapping/release/missing_rules.txt.
+-dontwarn com.google.android.play.core.**
