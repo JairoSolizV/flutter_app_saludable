@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Política de Privacidad — Nutrition Clubs</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    max-width: 46rem; margin: 0 auto; padding: 2.5rem 1.25rem 5rem;
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1b1b1f; background: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #e6e1e5; background: #131316; }
+    a { color: #9ecaff; }
+    th, td { border-color: #3a3a40 !important; }
+    thead th { background: #1e1e23 !important; }
+  }
+  h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 .25rem; }
+  h2 { font-size: 1.2rem; margin: 2.25rem 0 .6rem; }
+  .meta { color: #6b6b74; font-size: .9rem; margin-bottom: 2rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .95rem; }
+  th, td { border: 1px solid #d8d8de; padding: .55rem .7rem; text-align: left; vertical-align: top; }
+  thead th { background: #f5f5f7; }
+  code { font-size: .9em; }
+  ul { padding-left: 1.25rem; }
+  li { margin: .3rem 0; }
+  .wrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<h1>Política de Privacidad</h1>
+<p class="meta">Aplicación: <strong>Nutrition Clubs</strong> (<code>com.nutritionclubs.app</code>)<br>
+Última actualización: 13 de agosto de 2026</p>
+
+<p>Esta política explica qué datos personales trata la aplicación móvil <strong>Nutrition Clubs</strong>, con qué finalidad y qué derechos tienes sobre ellos. Al usar la aplicación aceptas lo aquí descrito.</p>
+
+<h2>1. Responsable del tratamiento</h2>
+<p>El responsable del tratamiento es el desarrollador de la aplicación, contactable en <a href="mailto:jairosoliz99@gmail.com">jairosoliz99@gmail.com</a>. Cualquier consulta, solicitud de acceso o de eliminación de datos debe dirigirse a esa dirección.</p>
+
+<h2>2. Qué datos recopilamos</h2>
+<p>La aplicación requiere crear una cuenta. Estos son los datos que se tratan y para qué:</p>
+
+<div class="wrap">
+<table>
+  <thead>
+    <tr><th>Dato</th><th>Cuándo se recoge</th><th>Para qué</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Nombre, correo electrónico y contraseña</td>
+      <td>Al registrarte</td>
+      <td>Crear y autenticar tu cuenta, y verificar tu correo</td>
+    </tr>
+    <tr>
+      <td>Teléfono, fecha de nacimiento, foto de perfil y enlaces a redes sociales</td>
+      <td>Opcional, al completar tu perfil</td>
+      <td>Mostrar tu perfil dentro del club y permitir que el anfitrión te contacte</td>
+    </tr>
+    <tr>
+      <td>Datos de membresía: club, número de socio, nivel y puntos acumulados</td>
+      <td>Al unirte a un club</td>
+      <td>Gestionar tu membresía y tu tarjeta de fidelidad</td>
+    </tr>
+    <tr>
+      <td>Registros de asistencia (fecha y hora)</td>
+      <td>Al escanear el código QR del club</td>
+      <td>Registrar tu asistencia y calcular tu progreso</td>
+    </tr>
+    <tr>
+      <td>Pedidos de productos y su importe</td>
+      <td>Al hacer un pedido en el club</td>
+      <td>Gestionar el pedido y los reportes de venta del anfitrión</td>
+    </tr>
+    <tr>
+      <td>Ubicación aproximada y precisa (GPS)</td>
+      <td>Solo en primer plano y solo en dos momentos: al escanear el QR de asistencia y al mostrar clubes cercanos en el mapa</td>
+      <td>Comprobar que estás en el club al registrar asistencia y ordenar los clubes por cercanía</td>
+    </tr>
+    <tr>
+      <td>Cámara</td>
+      <td>Al abrir el escáner de códigos QR</td>
+      <td>Leer el código QR. Las imágenes de la cámara se procesan en el dispositivo y <strong>no se almacenan ni se envían</strong></td>
+    </tr>
+    <tr>
+      <td>Fotos de tu galería</td>
+      <td>Solo si eliges una imagen para tu perfil o para tu club</td>
+      <td>Mostrar esa imagen en la aplicación</td>
+    </tr>
+    <tr>
+      <td>Datos de contacto de prospectos (nombre y teléfono)</td>
+      <td>Solo si eres anfitrión y los registras</td>
+      <td>Seguimiento de prospectos del club</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>La aplicación <strong>no</strong> recopila datos de salud, no rastrea tu ubicación en segundo plano, no accede a tus contactos y no incluye publicidad ni herramientas de analítica o rastreo de terceros.</p>
+
+<h2>3. Dónde se guardan tus datos</h2>
+<ul>
+  <li><strong>En tu dispositivo:</strong> una copia local (base de datos SQLite) para que la aplicación funcione sin conexión. Se elimina al desinstalar la aplicación.</li>
+  <li><strong>En nuestro servidor:</strong> los datos se envían a nuestra API en <code>clubs-api.onrender.com</code>, alojada en la infraestructura de Render.</li>
+  <li><strong>Token de sesión:</strong> el token de autenticación (JWT) se guarda cifrado en el almacenamiento seguro del sistema operativo (Keystore en Android), nunca en la base de datos local.</li>
+</ul>
+
+<h2>4. Con quién se comparten</h2>
+<p>No vendemos tus datos ni los cedemos a terceros con fines comerciales o publicitarios. Tus datos solo son visibles para:</p>
+<ul>
+  <li>Tú, desde tu propia cuenta.</li>
+  <li>El anfitrión del club al que perteneces, limitado a los datos necesarios para gestionar tu membresía, asistencia y pedidos.</li>
+  <li>Nuestro proveedor de alojamiento (Render), que actúa únicamente como encargado del tratamiento.</li>
+</ul>
+<p>También podremos revelar información si una autoridad competente lo exige legalmente.</p>
+
+<h2>5. Seguridad</h2>
+<p>Toda la comunicación entre la aplicación y el servidor viaja cifrada mediante HTTPS/TLS. Las sesiones se gestionan con tokens JWT almacenados en el almacenamiento seguro del dispositivo. Ninguna medida es infalible, pero aplicamos las salvaguardas razonables para proteger tu información.</p>
+
+<h2>6. Conservación y eliminación de datos</h2>
+<p>Conservamos tus datos mientras tu cuenta esté activa. Puedes solicitar la eliminación de tu cuenta y de los datos asociados escribiendo a <a href="mailto:jairosoliz99@gmail.com">jairosoliz99@gmail.com</a> desde el correo con el que te registraste, indicando en el asunto «Eliminar cuenta — Nutrition Clubs». Atenderemos la solicitud en un plazo máximo de 30 días. Podremos conservar registros agregados o anonimizados que ya no permitan identificarte.</p>
+
+<h2>7. Tus derechos</h2>
+<p>Puedes solicitar en cualquier momento el acceso, la rectificación, la eliminación o la portabilidad de tus datos, así como retirar tu consentimiento, escribiendo a la dirección indicada arriba. También puedes revocar los permisos de ubicación, cámara y fotos desde los ajustes de tu dispositivo; la aplicación seguirá siendo utilizable, aunque las funciones que dependen de ellos dejarán de estar disponibles.</p>
+
+<h2>8. Menores de edad</h2>
+<p>La aplicación está dirigida a personas mayores de 18 años. No recopilamos deliberadamente datos de menores. Si detectamos que se ha creado una cuenta de un menor, la eliminaremos.</p>
+
+<h2>9. Cambios en esta política</h2>
+<p>Si modificamos esta política, actualizaremos la fecha del encabezado y publicaremos la nueva versión en esta misma dirección. Te recomendamos revisarla periódicamente.</p>
+
+<h2>10. Contacto</h2>
+<p>Para cualquier duda sobre esta política o sobre el tratamiento de tus datos: <a href="mailto:jairosoliz99@gmail.com">jairosoliz99@gmail.com</a></p>
+
+</body>
+</html>
