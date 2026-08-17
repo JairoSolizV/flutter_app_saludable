@@ -17,7 +17,8 @@ abstract class MembresiaRemoteDataSource {
       {required int clubId,
       required String activationPayload,
       int? referidoPorMembresiaId,
-      String? comoConocio});
+      String? comoConocio,
+      required bool esClientePreferenteODistribuidor});
   Future<List<ClubMembership>> getMembresiasPorUsuario(int usuarioId);
   Future<List<Attendance>> getAsistencias(int membresiaId);
   Future<AsistenciaResponse> registrarAsistencia({
@@ -79,12 +80,14 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
       {required int clubId,
       required String activationPayload,
       int? referidoPorMembresiaId,
-      String? comoConocio}) async {
+      String? comoConocio,
+      required bool esClientePreferenteODistribuidor}) async {
     try {
       final body = {
         'activationPayload': activationPayload.trim(),
         'referidoPor': referidoPorMembresiaId?.toString(),
         'comoConocio': comoConocio,
+        'esClientePreferenteODistribuidor': esClientePreferenteODistribuidor,
       };
 
       final response = await _client.post(

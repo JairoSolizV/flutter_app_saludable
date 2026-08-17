@@ -32,6 +32,7 @@ class _FakeMembresiaRemoteDataSource implements MembresiaRemoteDataSource {
     required String activationPayload,
     int? referidoPorMembresiaId,
     String? comoConocio,
+    required bool esClientePreferenteODistribuidor,
   }) =>
       throw UnimplementedError();
 

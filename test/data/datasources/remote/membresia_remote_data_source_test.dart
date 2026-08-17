@@ -103,16 +103,29 @@ void main() {
   });
 
   group('activarSocio', () {
-    test('éxito hace POST', async_(() async {
+    test('éxito hace POST con boolean esClientePreferenteODistribuidor',
+        async_(() async {
       adapter.stub('POST', '/clubes/1/socios/activar', statusCode: 201, data: {});
-      await ds.activarSocio(clubId: 1, activationPayload: 'ACT:1');
+      await ds.activarSocio(
+        clubId: 1,
+        activationPayload: 'ACT:1',
+        esClientePreferenteODistribuidor: false,
+      );
       expect(adapter.requests, hasLength(1));
+
+      final sent = adapter.requests.single.data as Map;
+      expect(sent['esClientePreferenteODistribuidor'], isFalse);
+      expect(sent['esClientePreferenteODistribuidor'], isA<bool>());
     }));
 
     test('error se mapea', async_(() async {
       adapter.stub('POST', '/clubes/1/socios/activar', statusCode: 500, data: {});
       await expectLater(
-        () => ds.activarSocio(clubId: 1, activationPayload: 'ACT:1'),
+        () => ds.activarSocio(
+          clubId: 1,
+          activationPayload: 'ACT:1',
+          esClientePreferenteODistribuidor: false,
+        ),
         throwsA(isA<AppException>()),
       );
     }));
