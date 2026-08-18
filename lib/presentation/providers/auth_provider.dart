@@ -49,8 +49,8 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
         _sessionOwner = sessionOwner,
         _sessionStateResetter = sessionStateResetter {
     _googleAuthService = GoogleAuthService(
-      // Si tienes un Web Client ID generado, puedes pasarlo aquí.
-      // webClientId: 'AQUI_TU_WEB_CLIENT_ID', 
+      // Web Client ID para el backend
+      webClientId: '812612197014-t4ud108qj177tpoh5in0qf6hiv1rqo4h.apps.googleusercontent.com', 
     );
   }
 
