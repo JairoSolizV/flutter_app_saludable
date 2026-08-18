@@ -177,6 +177,55 @@ class _LoginScreenState extends State<LoginScreen> {
                         }
                       ),
                       const SizedBox(height: 16),
+                      const Row(
+                        children: [
+                          Expanded(child: Divider()),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Text('O', style: TextStyle(color: Colors.grey)),
+                          ),
+                          Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Consumer<AuthProvider>(
+                        builder: (context, auth, _) {
+                          return SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: OutlinedButton.icon(
+                              onPressed: auth.isLoading ? null : () async {
+                                final success = await auth.loginWithGoogle();
+                                if (success && context.mounted) {
+                                  await auth.syncProfile();
+                                  final user = auth.currentUser;
+                                  if (user != null) {
+                                    Provider.of<UserProvider>(context, listen: false).setUser(user);
+                                    if (user.role == 'host') {
+                                       context.go('/host-dashboard');
+                                    } else if (user.role == 'basic_user') {
+                                       context.go('/basic-home');
+                                    } else {
+                                       context.go('/member-home');
+                                    }
+                                  }
+                                }
+                              },
+                              icon: Image.asset(
+                                'assets/images/google_logo.png', // Necesitaremos este asset
+                                height: 24,
+                                errorBuilder: (context, error, stackTrace) => const Icon(Icons.g_mobiledata, size: 24),
+                              ),
+                              label: const Text('Iniciar con Google', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Colors.grey),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                          );
+                        }
+                      ),
+                      const SizedBox(height: 16),
                       TextButton(
                         onPressed: () => context.push('/register'),
                         child: const Text('¿No tienes cuenta? Regístrate aquí', style: TextStyle(color: AppTheme.primaryColor)),

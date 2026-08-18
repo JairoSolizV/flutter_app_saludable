@@ -17,7 +17,9 @@ class ApiClient {
   })  : _sessionExpirationHandler = sessionExpirationHandler,
         _dio = dio ??
             Dio(BaseOptions(
+              // URL de Producción
               baseUrl: 'https://clubs-api.onrender.com/api',
+              // baseUrl: 'http://10.0.2.2:8080/api', // Local emulador
               connectTimeout: const Duration(seconds: 60),
               receiveTimeout: const Duration(seconds: 60),
               headers: {

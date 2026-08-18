@@ -37,6 +37,7 @@ class _HostMemberRegistrationScreenState
   bool _isLoadingMembers = true;
   List<ClubMembership> _members = [];
   ClubMembership? _selectedReferral;
+  bool? _esClientePreferenteODistribuidor;
 
   @override
   void initState() {
@@ -158,6 +159,65 @@ class _HostMemberRegistrationScreenState
                   prefixIcon: Icon(Icons.question_answer_outlined),
                 ),
               ),
+              const SizedBox(height: 16),
+              FormField<bool>(
+                validator: (_) {
+                  if (_esClientePreferenteODistribuidor == null) {
+                    return 'Debe responder esta declaración para continuar';
+                  }
+                  return null;
+                },
+                builder: (field) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '¿Usted, su cónyuge o pareja de vida actualmente es cliente preferente o distribuidor independiente de Herbalife?',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<bool>(
+                          emptySelectionAllowed: true,
+                          showSelectedIcon: false,
+                          segments: const [
+                            ButtonSegment<bool>(
+                              value: true,
+                              label: Text('SÍ'),
+                            ),
+                            ButtonSegment<bool>(
+                              value: false,
+                              label: Text('NO'),
+                            ),
+                          ],
+                          selected: _esClientePreferenteODistribuidor == null
+                              ? <bool>{}
+                              : {_esClientePreferenteODistribuidor!},
+                          onSelectionChanged: (selection) {
+                            setState(() {
+                              _esClientePreferenteODistribuidor =
+                                  selection.isEmpty ? null : selection.first;
+                            });
+                            field.didChange(_esClientePreferenteODistribuidor);
+                          },
+                        ),
+                      ),
+                      if (field.hasError) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          field.errorText!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                },
+              ),
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
@@ -188,6 +248,29 @@ class _HostMemberRegistrationScreenState
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_esClientePreferenteODistribuidor == null) {
+      return;
+    }
+
+    if (_esClientePreferenteODistribuidor == true) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('No se puede activar'),
+          content: const Text(
+            'Un cliente preferente o distribuidor independiente de Herbalife no puede registrarse como socio.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -203,6 +286,7 @@ class _HostMemberRegistrationScreenState
         activationPayload: widget.qrPayload,
         referidoPorMembresiaId: _selectedReferral?.id,
         comoConocio: _conocioCtrl.text,
+        esClientePreferenteODistribuidor: _esClientePreferenteODistribuidor!,
       )
           .timeout(const Duration(seconds: 15), onTimeout: () {
         throw Exception('Tiempo de espera agotado. Verifica tu conexión.');

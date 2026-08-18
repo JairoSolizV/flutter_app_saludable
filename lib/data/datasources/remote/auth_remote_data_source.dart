@@ -7,6 +7,7 @@ import '../../../domain/entities/user.dart';
 
 abstract class AuthRemoteDataSource {
   Future<User> login(String email, String password);
+  Future<User> loginWithGoogle(String idToken);
   Future<User> register(String nombre, String apellido, String email,
       String password, String telefono,
       {int? rolId});
@@ -50,6 +51,20 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       return _parseAuthResponse(response);
     } on DioException catch (e) {
       throw ErrorMapper.fromDio(e, fallback: 'Credenciales inválidas');
+    }
+  }
+
+  @override
+  Future<User> loginWithGoogle(String idToken) async {
+    try {
+      // Envía el idToken de Google al backend para validación y autenticación.
+      // El backend valida el token con Google, busca/crea el usuario y devuelve JWT propio.
+      final response = await _client.post('/auth/google', data: {
+        'idToken': idToken,
+      });
+      return _parseAuthResponse(response);
+    } on DioException catch (e) {
+      throw ErrorMapper.fromDio(e, fallback: 'Error al iniciar sesión con Google');
     }
   }
 

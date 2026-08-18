@@ -34,6 +34,14 @@ class FakeAuthRemoteDataSource implements AuthRemoteDataSource {
   }
 
   @override
+  Future<User> loginWithGoogle(String idToken) async {
+    if (loginError != null) {
+      throw loginError!;
+    }
+    return loginResult!;
+  }
+
+  @override
   Future<User> register(
     String nombre,
     String apellido,
