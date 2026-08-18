@@ -13,6 +13,7 @@ import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/user_repository.dart';
 import '../../data/datasources/remote/auth_remote_data_source.dart';
+import '../../core/auth/google_auth_service.dart';
 
 class AuthProvider extends ChangeNotifier implements SessionScopedState {
   final AuthRemoteDataSource _remoteDataSource;
@@ -22,6 +23,8 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
   final SessionExpirationHandler? _sessionExpirationHandler;
   final SessionOwner? _sessionOwner;
   final SessionStateResetter? _sessionStateResetter;
+  
+  late final GoogleAuthService _googleAuthService;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -44,7 +47,12 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
             ),
         _sessionExpirationHandler = sessionExpirationHandler,
         _sessionOwner = sessionOwner,
-        _sessionStateResetter = sessionStateResetter;
+        _sessionStateResetter = sessionStateResetter {
+    _googleAuthService = GoogleAuthService(
+      // Si tienes un Web Client ID generado, puedes pasarlo aquí.
+      // webClientId: 'AQUI_TU_WEB_CLIENT_ID', 
+    );
+  }
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -151,6 +159,36 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
 
   Future<bool> login(String email, String password) async {
     return _authenticate(() => _remoteDataSource.login(email, password));
+  }
+
+  Future<bool> loginWithGoogle() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final idToken = await _googleAuthService.signIn();
+      if (idToken == null) {
+        // El usuario canceló
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+      
+      // Enviamos el token al backend para su validación
+      final user = await _remoteDataSource.loginWithGoogle(idToken);
+      logDebug('[DEBUG AUTH_PROVIDER] Usuario autenticado con Google id=${user.id}');
+      await _persistAuthenticatedSession(user);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      logDebug('[DEBUG AUTH_PROVIDER] Error en loginWithGoogle: $e');
+      _errorMessage = _toPublicError(e);
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<bool> register(
