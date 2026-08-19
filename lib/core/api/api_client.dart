@@ -17,9 +17,9 @@ class ApiClient {
   })  : _sessionExpirationHandler = sessionExpirationHandler,
         _dio = dio ??
             Dio(BaseOptions(
-              // URL de Pruebas Locales (Celular físico)
-              baseUrl: 'http://10.26.11.98:9090/api',
-              // baseUrl: 'https://clubs-api.onrender.com/api', // Producción
+              // URL de Producción
+              baseUrl: 'https://clubs-api.onrender.com/api',
+              // baseUrl: 'http://10.26.11.98:9090/api', // Local Wi-Fi
               connectTimeout: const Duration(seconds: 60),
               receiveTimeout: const Duration(seconds: 60),
               headers: {
