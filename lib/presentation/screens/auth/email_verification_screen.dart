@@ -311,64 +311,62 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                         );
                       },
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: List.generate(6, (index) {
-                          return Container(
-                            width: 46,
-                            height: 56,
-                            margin: EdgeInsets.only(
-                              left: index == 0 ? 0 : 6,
-                              right: index == 5 ? 0 : 6,
-                            ),
-                            child: RawKeyboardListener(
-                              focusNode: FocusNode(),
-                              onKey: (event) => _onKeyPressed(index, event),
-                              child: TextField(
-                                controller: _controllers[index],
-                                focusNode: _focusNodes[index],
-                                textAlign: TextAlign.center,
-                                keyboardType: TextInputType.number,
-                                maxLength: 1,
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.primaryColor,
+                          return Flexible(
+                            child: Container(
+                              height: 56,
+                              margin: const EdgeInsets.symmetric(horizontal: 2),
+                              child: RawKeyboardListener(
+                                focusNode: FocusNode(),
+                                onKey: (event) => _onKeyPressed(index, event),
+                                child: TextField(
+                                  controller: _controllers[index],
+                                  focusNode: _focusNodes[index],
+                                  textAlign: TextAlign.center,
+                                  keyboardType: TextInputType.number,
+                                  maxLength: 1,
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primaryColor,
+                                  ),
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
+                                  decoration: InputDecoration(
+                                    counterText: '',
+                                    filled: true,
+                                    fillColor: _controllers[index].text.isNotEmpty
+                                        ? AppTheme.primaryLighter.withOpacity(0.5)
+                                        : Colors.grey.shade50,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(
+                                        color: AppTheme.primaryColor,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color: _controllers[index].text.isNotEmpty
+                                            ? AppTheme.primaryLight
+                                            : Colors.grey.shade300,
+                                      ),
+                                    ),
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(vertical: 14),
+                                  ),
+                                  onChanged: (value) =>
+                                      _onDigitChanged(index, value),
                                 ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                decoration: InputDecoration(
-                                  counterText: '',
-                                  filled: true,
-                                  fillColor: _controllers[index].text.isNotEmpty
-                                      ? AppTheme.primaryLighter.withOpacity(0.5)
-                                      : Colors.grey.shade50,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade300,
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(
-                                      color: AppTheme.primaryColor,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: _controllers[index].text.isNotEmpty
-                                          ? AppTheme.primaryLight
-                                          : Colors.grey.shade300,
-                                    ),
-                                  ),
-                                  contentPadding:
-                                      const EdgeInsets.symmetric(vertical: 14),
-                                ),
-                                onChanged: (value) =>
-                                    _onDigitChanged(index, value),
                               ),
                             ),
                           );
