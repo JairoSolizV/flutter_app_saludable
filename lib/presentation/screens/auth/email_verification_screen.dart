@@ -13,7 +13,8 @@ class EmailVerificationScreen extends StatefulWidget {
   const EmailVerificationScreen({super.key, required this.email});
 
   @override
-  State<EmailVerificationScreen> createState() => _EmailVerificationScreenState();
+  State<EmailVerificationScreen> createState() =>
+      _EmailVerificationScreenState();
 }
 
 class _EmailVerificationScreenState extends State<EmailVerificationScreen>
@@ -21,6 +22,10 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
   final List<TextEditingController> _controllers =
       List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
+  // El KeyboardListener necesita su propio FocusNode. Antes se construía uno
+  // nuevo en cada build (`FocusNode()` inline) y nunca se liberaba.
+  final List<FocusNode> _keyboardFocusNodes =
+      List.generate(6, (_) => FocusNode());
 
   Timer? _resendTimer;
   int _resendCooldown = 0;
@@ -57,6 +62,9 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
     for (final f in _focusNodes) {
       f.dispose();
     }
+    for (final f in _keyboardFocusNodes) {
+      f.dispose();
+    }
     _resendTimer?.cancel();
     _shakeController.dispose();
     super.dispose();
@@ -81,8 +89,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
     }
   }
 
-  void _onKeyPressed(int index, RawKeyEvent event) {
-    if (event is RawKeyDownEvent &&
+  void _onKeyPressed(int index, KeyEvent event) {
+    if (event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.backspace &&
         _controllers[index].text.isEmpty &&
         index > 0) {
@@ -199,7 +207,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
           ),
           backgroundColor: AppTheme.info,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     } else {
@@ -208,7 +217,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
           content: Text(auth.errorMessage ?? 'Error al reenviar código'),
           backgroundColor: AppTheme.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     }
@@ -242,13 +252,18 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
         ),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.symmetric(
+              horizontal: MediaQuery.sizeOf(context).width < 400 ? 16 : 24,
+              vertical: 24,
+            ),
             child: Card(
               elevation: 8,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20)),
               child: Padding(
-                padding: const EdgeInsets.all(32),
+                padding: EdgeInsets.all(
+                  MediaQuery.sizeOf(context).width < 400 ? 20 : 32,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -303,76 +318,98 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                     AnimatedBuilder(
                       animation: _shakeAnimation,
                       builder: (context, child) {
-                        final shakeOffset =
-                            _shakeAnimation.value * 10 * ((_shakeController.value * 6).toInt().isOdd ? 1 : -1);
+                        final shakeOffset = _shakeAnimation.value *
+                            10 *
+                            ((_shakeController.value * 6).toInt().isOdd
+                                ? 1
+                                : -1);
                         return Transform.translate(
                           offset: Offset(shakeOffset, 0),
                           child: child,
                         );
                       },
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(6, (index) {
-                          return Container(
-                            width: 46,
-                            height: 56,
-                            margin: EdgeInsets.only(
-                              left: index == 0 ? 0 : 6,
-                              right: index == 5 ? 0 : 6,
-                            ),
-                            child: RawKeyboardListener(
-                              focusNode: FocusNode(),
-                              onKey: (event) => _onKeyPressed(index, event),
-                              child: TextField(
-                                controller: _controllers[index],
-                                focusNode: _focusNodes[index],
-                                textAlign: TextAlign.center,
-                                keyboardType: TextInputType.number,
-                                maxLength: 1,
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.primaryColor,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          // Antes las casillas eran fijas (46px + 12 de margen
+                          // cada una = 336px) y desbordaban en cualquier pantalla
+                          // estrecha. Ahora se reparte el ancho disponible: se
+                          // limita el máximo para que no se deformen en tablets,
+                          // pero nunca se fuerza un mínimo, así jamás desborda.
+                          const gap = 8.0;
+                          final boxWidth =
+                              ((constraints.maxWidth - gap * 5) / 6)
+                                  .clamp(0.0, 52.0);
+                          final boxHeight = boxWidth * 1.22;
+                          final fontSize = (boxWidth * 0.52).clamp(14.0, 24.0);
+
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(6, (index) {
+                              return Container(
+                                width: boxWidth,
+                                height: boxHeight,
+                                margin: EdgeInsets.only(
+                                  left: index == 0 ? 0 : gap,
                                 ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                decoration: InputDecoration(
-                                  counterText: '',
-                                  filled: true,
-                                  fillColor: _controllers[index].text.isNotEmpty
-                                      ? AppTheme.primaryLighter.withOpacity(0.5)
-                                      : Colors.grey.shade50,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade300,
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(
+                                child: KeyboardListener(
+                                  focusNode: _keyboardFocusNodes[index],
+                                  onKeyEvent: (event) =>
+                                      _onKeyPressed(index, event),
+                                  child: TextField(
+                                    controller: _controllers[index],
+                                    focusNode: _focusNodes[index],
+                                    textAlign: TextAlign.center,
+                                    keyboardType: TextInputType.number,
+                                    maxLength: 1,
+                                    style: TextStyle(
+                                      fontSize: fontSize,
+                                      fontWeight: FontWeight.bold,
                                       color: AppTheme.primaryColor,
-                                      width: 2,
                                     ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: _controllers[index].text.isNotEmpty
-                                          ? AppTheme.primaryLight
-                                          : Colors.grey.shade300,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                    ],
+                                    decoration: InputDecoration(
+                                      counterText: '',
+                                      filled: true,
+                                      fillColor:
+                                          _controllers[index].text.isNotEmpty
+                                              ? AppTheme.primaryLighter
+                                                  .withValues(alpha: 0.5)
+                                              : Colors.grey.shade50,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(
+                                          color: Colors.grey.shade300,
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: AppTheme.primaryColor,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(
+                                          color: _controllers[index]
+                                                  .text
+                                                  .isNotEmpty
+                                              ? AppTheme.primaryLight
+                                              : Colors.grey.shade300,
+                                        ),
+                                      ),
+                                      contentPadding: EdgeInsets.zero,
                                     ),
+                                    onChanged: (value) =>
+                                        _onDigitChanged(index, value),
                                   ),
-                                  contentPadding:
-                                      const EdgeInsets.symmetric(vertical: 14),
                                 ),
-                                onChanged: (value) =>
-                                    _onDigitChanged(index, value),
-                              ),
-                            ),
+                              );
+                            }),
                           );
-                        }),
+                        },
                       ),
                     ),
 
@@ -386,10 +423,10 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 10),
                           decoration: BoxDecoration(
-                            color: AppTheme.error.withOpacity(0.1),
+                            color: AppTheme.error.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                                color: AppTheme.error.withOpacity(0.3)),
+                                color: AppTheme.error.withValues(alpha: 0.3)),
                           ),
                           child: Row(
                             children: [
@@ -450,13 +487,19 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                     Row(
                       children: [
                         Expanded(child: Divider(color: Colors.grey.shade300)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            '¿No recibiste el código?',
-                            style: TextStyle(
-                              color: Colors.grey.shade500,
-                              fontSize: 13,
+                        // Flexible para que el texto se ajuste en vez de
+                        // desbordar cuando el usuario tiene el tamaño de letra
+                        // del sistema ampliado por accesibilidad.
+                        Flexible(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              '¿No recibiste el código?',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.grey.shade500,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                         ),
@@ -496,10 +539,10 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 10),
                       decoration: BoxDecoration(
-                        color: AppTheme.warning.withOpacity(0.08),
+                        color: AppTheme.warning.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                            color: AppTheme.warning.withOpacity(0.2)),
+                            color: AppTheme.warning.withValues(alpha: 0.2)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -507,11 +550,13 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                           Icon(Icons.timer_outlined,
                               color: AppTheme.warning, size: 16),
                           const SizedBox(width: 6),
-                          Text(
-                            'El código expira en 15 minutos',
-                            style: TextStyle(
-                              color: Colors.orange.shade800,
-                              fontSize: 12,
+                          Flexible(
+                            child: Text(
+                              'El código expira en 15 minutos',
+                              style: TextStyle(
+                                color: Colors.orange.shade800,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                         ],
