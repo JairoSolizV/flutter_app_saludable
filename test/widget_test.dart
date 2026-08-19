@@ -19,7 +19,7 @@ void main() {
         GoRoute(
           path: '/',
           builder: (_, __) => const Scaffold(
-            body: Text('Nutrilife Club'),
+            body: Text('Expande'),
           ),
         ),
       ],
@@ -30,7 +30,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Nutrilife Club'), findsOneWidget);
+    expect(find.text('Expande'), findsOneWidget);
     expect(find.byType(MaterialApp), findsOneWidget);
   });
 }
