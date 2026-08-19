@@ -59,8 +59,12 @@ void main() {
       ),
     );
 
-    expect(find.text('Nutrilife Club'), findsOneWidget);
-    expect(find.text('Club de Nutrición'), findsOneWidget);
+    expect(find.text('Expande'), findsOneWidget);
+    expect(
+      find.text('Asistencia por QR, pedidos y puntos de socio'),
+      findsOneWidget,
+    );
+    expect(find.byType(Image), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
 
     // Completa el Future.delayed(2s) del splash.
