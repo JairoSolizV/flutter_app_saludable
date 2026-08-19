@@ -29,10 +29,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _checkingEmail = false;
   String? _emailValidationError;
 
+  static const _emailTakenMessage = 'Este correo ya está registrado';
+
   @override
   void initState() {
     super.initState();
     _emailFocusNode.addListener(_onEmailFocusChange);
+    // AuthProvider.errorMessage es global y sobrevive a la navegación: si venimos
+    // de un login fallido, el mensaje rojo se arrastraría hasta esta pantalla.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Provider.of<AuthProvider>(context, listen: false).clearError();
+    });
   }
 
   @override
@@ -50,6 +58,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _onEmailFocusChange() {
     if (!_emailFocusNode.hasFocus) {
       _checkEmailAvailability();
+    }
+  }
+
+  /// Descarta el error global de AuthProvider en cuanto el usuario edita algo.
+  void _clearAuthError() {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (auth.errorMessage != null) {
+      auth.clearError();
     }
   }
 
@@ -72,16 +88,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final exists = await Provider.of<AuthProvider>(context, listen: false).checkEmailExists(email);
 
-    if (mounted) {
-      setState(() {
-        _checkingEmail = false;
-        if (exists) {
-          _emailValidationError = 'Este correo ya está registrado';
-        } else {
-          _emailValidationError = null;
-        }
-      });
-    }
+    if (!mounted) return;
+
+    // Si el usuario corrigió el correo mientras la petición estaba en vuelo,
+    // la respuesta corresponde a otro correo y no debe pintarse.
+    final isStale = _emailCtrl.text.trim() != email;
+
+    setState(() {
+      _checkingEmail = false;
+      if (!isStale) {
+        _emailValidationError = exists ? _emailTakenMessage : null;
+      }
+    });
   }
 
   @override
@@ -138,6 +156,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         controller: _firstNameCtrl,
                         decoration: const InputDecoration(labelText: 'Nombre', prefixIcon: Icon(Icons.person), border: OutlineInputBorder()),
                         validator: Validators.validateName,
+                        onChanged: (_) => _clearAuthError(),
                       ),
                       const SizedBox(height: 16),
                       
@@ -145,6 +164,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         controller: _lastNameCtrl,
                         decoration: const InputDecoration(labelText: 'Apellido', prefixIcon: Icon(Icons.person_outline), border: OutlineInputBorder()),
                         validator: Validators.validateName,
+                        onChanged: (_) => _clearAuthError(),
                       ),
                       const SizedBox(height: 16),
 
@@ -171,7 +191,56 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           if (formatError != null) return formatError;
                           return _emailValidationError;
                         },
+                        onChanged: (_) {
+                          _clearAuthError();
+                          // El aviso anterior ya no aplica al correo que se está escribiendo.
+                          if (_emailValidationError != null) {
+                            setState(() => _emailValidationError = null);
+                          }
+                        },
                       ),
+
+                      // El validator del campo solo se pinta tras validate(), que no
+                      // llega a ejecutarse mientras el botón está deshabilitado: sin este
+                      // aviso el usuario ve el botón gris y ninguna explicación.
+                      if (_emailValidationError != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.error_outline, size: 18, color: Colors.red.shade700),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _emailValidationError!,
+                                      style: TextStyle(color: Colors.red.shade700, fontSize: 13),
+                                    ),
+                                    if (_emailValidationError == _emailTakenMessage)
+                                      GestureDetector(
+                                        onTap: () => context.go('/login'),
+                                        child: const Padding(
+                                          padding: EdgeInsets.only(top: 2),
+                                          child: Text(
+                                            'Inicia sesión con este correo',
+                                            style: TextStyle(
+                                              color: AppTheme.primaryColor,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              decoration: TextDecoration.underline,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       const SizedBox(height: 16),
 
                       TextFormField(
@@ -179,6 +248,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         decoration: const InputDecoration(labelText: 'Teléfono', prefixIcon: Icon(Icons.phone), border: OutlineInputBorder()),
                         validator: Validators.validateBolivianPhone,
                         keyboardType: TextInputType.phone,
+                        onChanged: (_) => _clearAuthError(),
                       ),
                       const SizedBox(height: 16),
 
@@ -187,6 +257,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         obscureText: true,
                         decoration: const InputDecoration(labelText: 'Contraseña', prefixIcon: Icon(Icons.lock), border: OutlineInputBorder()),
                         validator: Validators.validatePassword,
+                        onChanged: (_) => _clearAuthError(),
                       ),
                       
                       const SizedBox(height: 16),
