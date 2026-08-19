@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/presentation/providers/auth_provider.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -52,28 +51,31 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 150,
-              height: 150,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.eco, size: 80, color: Colors.white),
+            // El logo es apaisado (709x444) y trae el fondo blanco horneado en el
+            // JPEG: se fija solo el ancho para respetar su proporción, y encaja
+            // con el fondo blanco del Scaffold.
+            Image.asset(
+              'assets/images/expande_logo.jpg',
+              width: 240,
+              fit: BoxFit.contain,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             const Text(
-              'Nutrilife Club',
+              'Expande',
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 32,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF333333),
+                color: Color(0xFF14284B),
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Club de Nutrición',
-              style: TextStyle(color: Colors.grey),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 48),
+              child: Text(
+                'Asistencia por QR, pedidos y puntos de socio',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 14),
+              ),
             ),
           ],
         ),
