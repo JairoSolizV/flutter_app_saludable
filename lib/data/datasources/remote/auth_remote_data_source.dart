@@ -14,7 +14,7 @@ abstract class AuthRemoteDataSource {
   Future<User> updateUser(User user);
   Future<User> getMe();
   Future<bool> checkEmailExists(String email);
-  Future<bool> verifyEmail(String email, String code);
+  Future<User?> verifyEmail(String email, String code);
   Future<bool> resendVerificationCode(String email);
 }
 
@@ -236,16 +236,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<bool> verifyEmail(String email, String code) async {
+  Future<User?> verifyEmail(String email, String code) async {
     try {
       final response = await _client.post('/auth/verify-email', data: {
         'email': email,
         'code': code,
       });
-      if (response.statusCode == 200) {
-        return response.data['verified'] == true;
+      if (response.statusCode == 200 && response.data['verified'] == true) {
+        return _parseAuthResponse(response);
       }
-      return false;
+      return null;
     } on DioException catch (e) {
       throw ErrorMapper.fromDio(e, fallback: 'Error al verificar el código');
     }

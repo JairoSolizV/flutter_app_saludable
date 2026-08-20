@@ -141,7 +141,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
   void _showSuccessAndNavigate() {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final user = auth.currentUser;
-    if (user != null) {
+    if (user != null && mounted) {
       Provider.of<UserProvider>(context, listen: false).setUser(user);
     }
 

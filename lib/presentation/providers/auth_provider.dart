@@ -215,8 +215,8 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
       );
       logDebug('[DEBUG AUTH_PROVIDER] Usuario registrado id=${user.id}');
 
-      await _persistAuthenticatedSession(user);
-
+      // YA NO persistimos la sesión aquí porque el usuario aún no está verificado.
+      // Solo indicamos que requiere verificación.
       _requiresVerification = true;
       _isLoading = false;
       notifyListeners();
@@ -244,18 +244,22 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     notifyListeners();
 
     try {
-      final verified = await _remoteDataSource.verifyEmail(email, code);
+      final user = await _remoteDataSource.verifyEmail(email, code);
 
-      if (verified) {
+      if (user != null) {
         _requiresVerification = false;
         logDebug('[DEBUG AUTH_PROVIDER] Correo verificado exitosamente');
+        await _persistAuthenticatedSession(user);
+        
+        _isLoading = false;
+        notifyListeners();
+        return true;
       } else {
         _errorMessage = 'Código inválido o expirado. Intenta de nuevo.';
+        _isLoading = false;
+        notifyListeners();
+        return false;
       }
-
-      _isLoading = false;
-      notifyListeners();
-      return verified;
     } catch (e) {
       _errorMessage = _toPublicError(e);
       _isLoading = false;
