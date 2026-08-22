@@ -26,6 +26,19 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>GIDClientID</key>
+	<string>812612197014-up7cbqcmid5j7tb59jh8qtdf8l9mnkfe.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.812612197014-up7cbqcmid5j7tb59jh8qtdf8l9mnkfe</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Necesitamos acceso a la cámara para escanear el código QR de asistencia del anfitrión.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
