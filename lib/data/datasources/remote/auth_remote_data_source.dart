@@ -146,19 +146,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     if (response.statusCode == 200 || response.statusCode == 201) {
       final data = response.data;
       final token = data['token'];
-
-      logDebug('[DEBUG AUTH_REMOTE] Parsing auth response:');
-      logDebug('[DEBUG AUTH_REMOTE]   - Status: ${response.statusCode}');
-      logDebug(
-        '[DEBUG AUTH_REMOTE]   - Token presente: ${token != null}',
-      );
+      final tokenPresent =
+          token is String ? token.isNotEmpty : token != null;
 
       // Asegurar que userData esté definido.
       // A veces viene en data['usuario'], a veces en data directamente.
       final userData = data['usuario'] ?? data;
-
-      // DEBUG: Print raw userData
-      logDebug('[DEBUG AUTH_REMOTE] Raw userData from backend: $userData');
 
       String role = 'member';
 
@@ -180,6 +173,19 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         rolIdVal = userData['rolId'];
         rolNombreVal = userData['rolNombre'];
       }
+
+      // Sin JWT / secretos: solo metadatos seguros para depuración.
+      logDebug('[DEBUG AUTH_REMOTE] Auth response:');
+      logDebug('[DEBUG AUTH_REMOTE]   - Status: ${response.statusCode}');
+      logDebug('[DEBUG AUTH_REMOTE]   - token presente: $tokenPresent');
+      logDebug(
+        '[DEBUG AUTH_REMOTE]   - userId: ${userData['userId'] ?? userData['id']}',
+      );
+      logDebug('[DEBUG AUTH_REMOTE]   - email: ${userData['email']}');
+      logDebug('[DEBUG AUTH_REMOTE]   - rolNombre: $rolNombreVal');
+      logDebug(
+        '[DEBUG AUTH_REMOTE]   - requiresVerification: ${data['requiresVerification']}',
+      );
 
       final int? rolId =
           rolIdVal is int ? rolIdVal : int.tryParse(rolIdVal?.toString() ?? '');
