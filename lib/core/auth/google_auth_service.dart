@@ -2,8 +2,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 
+/// Client ID de la app iOS (GIDClientID). No usar como audience del backend.
+const String kGoogleIosClientId =
+    '812612197014-up7cbqcmid5j7tb59jh8qtdf8l9mnkfe.apps.googleusercontent.com';
+
 /// Web OAuth Client ID: audience del idToken que valida el backend.
-/// No usar el Client ID de iOS/Android como [serverClientId].
+/// Debe coincidir con GIDServerClientID en Info.plist.
 const String kGoogleWebClientId =
     '812612197014-t4ud108qj177tpoh5in0qf6hiv1rqo4h.apps.googleusercontent.com';
 
@@ -12,6 +16,7 @@ class GoogleAuthService {
 
   GoogleAuthService({String? webClientId})
       : _googleSignIn = GoogleSignIn(
+          clientId: kGoogleIosClientId,
           // serverClientId debe ser el Web Client ID para que Google
           // emita un idToken cuyo `aud` coincida con el backend.
           serverClientId: webClientId ?? kGoogleWebClientId,

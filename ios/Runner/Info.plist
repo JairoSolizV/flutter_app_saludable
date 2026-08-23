@@ -28,6 +28,8 @@
 	<true/>
 	<key>GIDClientID</key>
 	<string>812612197014-up7cbqcmid5j7tb59jh8qtdf8l9mnkfe.apps.googleusercontent.com</string>
+	<key>GIDServerClientID</key>
+	<string>812612197014-t4ud108qj177tpoh5in0qf6hiv1rqo4h.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
