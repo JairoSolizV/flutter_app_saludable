@@ -455,7 +455,7 @@ void main() {
       ds = AuthRemoteDataSourceImpl(_buildDio(adapter));
     });
 
-    test('login parsea usuario, token y rol host', async_(() async {
+    test('login parsea usuario, token y rol host por nombre', async_(() async {
       adapter.stub('POST', '/auth/login', data: {
         'token': 'jwt-123',
         'usuario': {
@@ -463,7 +463,7 @@ void main() {
           'nombre': 'Ana',
           'apellido': 'Gomez',
           'email': 'ana@test.com',
-          'rolId': 1,
+          'rolNombre': 'ADMIN',
         },
       });
 
@@ -475,7 +475,7 @@ void main() {
       expect(user.role, 'host');
     }));
 
-    test('login parsea rol basic_user', async_(() async {
+    test('login parsea rol basic_user por nombre', async_(() async {
       adapter.stub('POST', '/auth/login', data: {
         'token': 'jwt-456',
         'usuario': {
@@ -483,7 +483,7 @@ void main() {
           'nombre': 'Beto',
           'apellido': 'Lopez',
           'email': 'beto@test.com',
-          'rolId': 4,
+          'rolNombre': 'USUARIO_BASICO',
         },
       });
 
@@ -492,13 +492,13 @@ void main() {
       expect(user.role, 'basic_user');
     }));
 
-    test('getMe parsea usuario sin envoltorio "usuario"', async_(() async {
+    test('getMe parsea rol por objeto anidado (ignora id)', async_(() async {
       adapter.stub('GET', '/auth/me', data: {
         'id': 3,
         'nombre': 'Carla',
         'apellido': 'Diaz',
         'email': 'carla@test.com',
-        'rolId': 99,
+        'rol': {'id': 99, 'nombre': 'SOCIO'},
         'token': 'jwt-789',
       });
 

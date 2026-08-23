@@ -98,7 +98,7 @@ void main() {
   });
 
   group('login', () {
-    test('éxito con rol Map anidado (admin) devuelve host', async_(() async {
+    test('ADMIN anidado en rol Map → host', async_(() async {
       adapter.stub('POST', '/auth/login', data: {
         'token': 'tok123',
         'usuario': {
@@ -117,20 +117,33 @@ void main() {
       expect(user.phone, '123');
     }));
 
-    test('rolId 4 mapea a basic_user', async_(() async {
+    test('ANFITRION → host', async_(() async {
       adapter.stub('POST', '/auth/login', data: {
         'token': 'tok',
-        'id': 2,
-        'nombre': 'Beto',
-        'apellido': 'Diaz',
-        'email': 'beto@test.com',
-        'rolId': 4,
+        'id': 10,
+        'nombre': 'Host',
+        'apellido': 'User',
+        'email': 'host@test.com',
+        'rolNombre': 'ANFITRION',
       });
-      final user = await ds.login('beto@test.com', 'pass');
-      expect(user.role, 'basic_user');
+      final user = await ds.login('host@test.com', 'pass');
+      expect(user.role, 'host');
     }));
 
-    test('rolNombre string USUARIO_BASICO mapea a basic_user', async_(() async {
+    test('SOCIO → member', async_(() async {
+      adapter.stub('POST', '/auth/login', data: {
+        'token': 'tok',
+        'id': 11,
+        'nombre': 'Socio',
+        'apellido': 'User',
+        'email': 'socio@test.com',
+        'rolNombre': 'SOCIO',
+      });
+      final user = await ds.login('socio@test.com', 'pass');
+      expect(user.role, 'member');
+    }));
+
+    test('USUARIO_BASICO → basic_user', async_(() async {
       adapter.stub('POST', '/auth/login', data: {
         'token': 'tok',
         'id': 3,
@@ -143,7 +156,54 @@ void main() {
       expect(user.role, 'basic_user');
     }));
 
-    test('sin datos de rol reconocidos mantiene member por defecto',
+    test('rolId arbitrario + rolNombre SOCIO → member (ignora id)',
+        async_(() async {
+      adapter.stub('POST', '/auth/login', data: {
+        'token': 'tok',
+        'id': 99,
+        'nombre': 'Id',
+        'apellido': 'Libre',
+        'email': 'idlibre@test.com',
+        'rolId': 99,
+        'rolNombre': 'SOCIO',
+      });
+      final user = await ds.login('idlibre@test.com', 'pass');
+      expect(user.role, 'member');
+    }));
+
+    test('/me-style rol Map: id irrelevante, nombre ANFITRION → host',
+        async_(() async {
+      adapter.stub('POST', '/auth/login', data: {
+        'token': 'tok',
+        'id': 12,
+        'nombre': 'Me',
+        'apellido': 'Style',
+        'email': 'me@test.com',
+        'rol': {'id': 999, 'nombre': 'ANFITRION'},
+      });
+      final user = await ds.login('me@test.com', 'pass');
+      expect(user.role, 'host');
+    }));
+
+    test('solo rolId sin nombre lanza UNKNOWN_ROLE', async_(() async {
+      adapter.stub('POST', '/auth/login', data: {
+        'token': 'tok',
+        'id': 2,
+        'nombre': 'Beto',
+        'apellido': 'Diaz',
+        'email': 'beto@test.com',
+        'rolId': 4,
+      });
+      await expectLater(
+        () => ds.login('beto@test.com', 'pass'),
+        throwsA(
+          isA<ServerException>()
+              .having((e) => e.code, 'code', 'UNKNOWN_ROLE'),
+        ),
+      );
+    }));
+
+    test('sin datos de rol lanza UNKNOWN_ROLE (no cae a member)',
         async_(() async {
       adapter.stub('POST', '/auth/login', data: {
         'token': 'tok',
@@ -152,8 +212,31 @@ void main() {
         'apellido': 'Lopez',
         'email': 'dan@test.com',
       });
-      final user = await ds.login('dan@test.com', 'pass');
-      expect(user.role, 'member');
+      await expectLater(
+        () => ds.login('dan@test.com', 'pass'),
+        throwsA(
+          isA<ServerException>()
+              .having((e) => e.code, 'code', 'UNKNOWN_ROLE'),
+        ),
+      );
+    }));
+
+    test('rol desconocido lanza UNKNOWN_ROLE', async_(() async {
+      adapter.stub('POST', '/auth/login', data: {
+        'token': 'tok',
+        'id': 5,
+        'nombre': 'X',
+        'apellido': 'Y',
+        'email': 'xy@test.com',
+        'rolNombre': 'SUPER_ADMIN',
+      });
+      await expectLater(
+        () => ds.login('xy@test.com', 'pass'),
+        throwsA(
+          isA<ServerException>()
+              .having((e) => e.code, 'code', 'UNKNOWN_ROLE'),
+        ),
+      );
     }));
 
     test('redesSociales como String se parsea como instagram',
@@ -164,6 +247,7 @@ void main() {
         'nombre': 'Eva',
         'apellido': 'Mora',
         'email': 'eva@test.com',
+        'rolNombre': 'SOCIO',
         'redesSociales': '@eva',
       });
       final user = await ds.login('eva@test.com', 'pass');
@@ -228,6 +312,29 @@ void main() {
     }));
   });
 
+  group('mapBackendRoleToAppRole', () {
+    test('ADMIN → host', () {
+      expect(AuthRemoteDataSourceImpl.mapBackendRoleToAppRole('ADMIN'), 'host');
+    });
+
+    test('ANFITRION → host', () {
+      expect(
+          AuthRemoteDataSourceImpl.mapBackendRoleToAppRole('ANFITRION'), 'host');
+    });
+
+    test('SOCIO → member', () {
+      expect(
+          AuthRemoteDataSourceImpl.mapBackendRoleToAppRole('SOCIO'), 'member');
+    });
+
+    test('USUARIO_BASICO → basic_user', () {
+      expect(
+        AuthRemoteDataSourceImpl.mapBackendRoleToAppRole('USUARIO_BASICO'),
+        'basic_user',
+      );
+    });
+  });
+
   group('register', () {
     test('éxito hace POST con rolId cuando se provee', async_(() async {
       adapter.stub('POST', '/auth/register', statusCode: 201, data: {
@@ -236,6 +343,7 @@ void main() {
         'nombre': 'Fer',
         'apellido': 'Gomez',
         'email': 'fer@test.com',
+        'rolNombre': 'USUARIO_BASICO',
       });
       final user = await ds.register(
         'Fer',
@@ -246,6 +354,7 @@ void main() {
         rolId: 2,
       );
       expect(user.id, '6');
+      expect(user.role, 'basic_user');
 
       final sentBody = adapter.requests.last.data as Map;
       expect(sentBody['rolId'], 2);
@@ -268,6 +377,7 @@ void main() {
         'nombre': 'Gina Torres',
         'apellido': '',
         'email': 'gina@test.com',
+        'rolNombre': 'SOCIO',
       });
       final updated = await ds.updateUser(User(
         id: '7',
@@ -276,6 +386,7 @@ void main() {
         role: 'member',
       ));
       expect(updated.id, '7');
+      expect(updated.role, 'member');
     }));
 
     test('status distinto de 200 devuelve el usuario local sin parsear',
@@ -310,16 +421,19 @@ void main() {
   });
 
   group('getMe', () {
-    test('200 parsea el usuario actual', async_(() async {
+    test('200 parsea el usuario actual por nombre de rol anidado',
+        async_(() async {
       adapter.stub('GET', '/auth/me', data: {
         'token': 'tok',
         'id': 11,
         'nombre': 'Ka',
         'apellido': 'Ren',
         'email': 'ka@test.com',
+        'rol': {'id': 2, 'nombre': 'SOCIO'},
       });
       final user = await ds.getMe();
       expect(user.id, '11');
+      expect(user.role, 'member');
     }));
 
     test('error se mapea', async_(() async {
@@ -329,14 +443,25 @@ void main() {
   });
 
   group('verifyEmail', () {
-    test('200 con verified true', async_(() async {
-      adapter.stub('POST', '/auth/verify-email', data: {'verified': true});
-      expect(await ds.verifyEmail('a@a.com', '123456'), isTrue);
+    test('200 con verified true parsea usuario por rolNombre', async_(() async {
+      adapter.stub('POST', '/auth/verify-email', data: {
+        'verified': true,
+        'token': 'jwt-otp',
+        'userId': 20,
+        'nombre': 'Otp',
+        'apellido': 'User',
+        'email': 'a@a.com',
+        'rolNombre': 'USUARIO_BASICO',
+      });
+      final user = await ds.verifyEmail('a@a.com', '123456');
+      expect(user, isNotNull);
+      expect(user!.role, 'basic_user');
+      expect(user.token, 'jwt-otp');
     }));
 
     test('200 con verified false', async_(() async {
       adapter.stub('POST', '/auth/verify-email', data: {'verified': false});
-      expect(await ds.verifyEmail('a@a.com', '000000'), isFalse);
+      expect(await ds.verifyEmail('a@a.com', '000000'), isNull);
     }));
 
     test('error se mapea', async_(() async {

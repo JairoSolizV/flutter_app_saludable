@@ -153,25 +153,19 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       // A veces viene en data['usuario'], a veces en data directamente.
       final userData = data['usuario'] ?? data;
 
-      String role = 'member';
-
-      // Lógica robusta para Rol
-      dynamic rolIdVal;
+      // Lógica robusta para Rol: nombre semántico (login/Google/OTP) o
+      // objeto anidado en /me. El id de BD nunca decide el rol Flutter.
       String? rolNombreVal;
 
       if (userData.containsKey('rol')) {
         final rolData = userData['rol'];
         if (rolData is Map) {
-          rolIdVal = rolData['id'];
-          rolNombreVal = rolData['nombre'];
-        } else if (rolData is int) {
-          rolIdVal = rolData;
+          rolNombreVal = rolData['nombre']?.toString();
         } else if (rolData is String) {
           rolNombreVal = rolData;
         }
       } else {
-        rolIdVal = userData['rolId'];
-        rolNombreVal = userData['rolNombre'];
+        rolNombreVal = userData['rolNombre']?.toString();
       }
 
       // Sin JWT / secretos: solo metadatos seguros para depuración.
@@ -187,23 +181,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         '[DEBUG AUTH_REMOTE]   - requiresVerification: ${data['requiresVerification']}',
       );
 
-      final int? rolId =
-          rolIdVal is int ? rolIdVal : int.tryParse(rolIdVal?.toString() ?? '');
-
-      if (rolId != null) {
-        if (rolId == 1 || rolId == 3) {
-          role = 'host';
-        } else if (rolId == 4) {
-          role = 'basic_user';
-        }
-      } else if (rolNombreVal != null) {
-        final upperRol = rolNombreVal.toUpperCase();
-        if (upperRol.contains('ADMIN') || upperRol == 'ANFITRION') {
-          role = 'host';
-        } else if (upperRol == 'USUARIO_BASICO' || upperRol == 'BASIC_USER') {
-          role = 'basic_user';
-        }
-      }
+      final role = mapBackendRoleToAppRole(rolNombreVal);
 
       final user = User(
         id: (userData['userId'] ?? userData['id']).toString(),
@@ -226,6 +204,35 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'Error de autenticación',
         statusCode: response.statusCode,
       );
+    }
+  }
+
+  /// Mapea el nombre de rol del backend al rol de la app.
+  /// No usa ids de BD (1/2/3/4); solo nombres semánticos.
+  @visibleForTesting
+  static String mapBackendRoleToAppRole(String? rolNombre) {
+    final normalized = rolNombre?.trim().toUpperCase();
+    if (normalized == null || normalized.isEmpty) {
+      throw ServerException(
+        'Rol de usuario ausente en la respuesta del servidor',
+        code: 'UNKNOWN_ROLE',
+      );
+    }
+
+    switch (normalized) {
+      case 'ADMIN':
+      case 'ANFITRION':
+        return 'host';
+      case 'SOCIO':
+        return 'member';
+      case 'USUARIO_BASICO':
+      case 'BASIC_USER':
+        return 'basic_user';
+      default:
+        throw ServerException(
+          'Rol de usuario no reconocido',
+          code: 'UNKNOWN_ROLE',
+        );
     }
   }
 
