@@ -16,7 +16,8 @@ class _FakeAuthRemoteDataSource implements AuthRemoteDataSource {
   bool emailExists = false;
   Object? checkEmailError;
 
-  bool verifyResult = true;
+  bool verifySuccess = true;
+  User? verifyUserResult;
   Object? verifyError;
 
   bool resendResult = true;
@@ -88,9 +89,17 @@ class _FakeAuthRemoteDataSource implements AuthRemoteDataSource {
   }
 
   @override
-  Future<bool> verifyEmail(String email, String code) async {
+  Future<User?> verifyEmail(String email, String code) async {
     if (verifyError != null) throw verifyError!;
-    return verifyResult;
+    if (!verifySuccess) return null;
+    return verifyUserResult ??
+        User(
+          id: '99',
+          name: 'Verified User',
+          email: email,
+          role: 'basic_user',
+          token: 'fake.jwt.token.value',
+        );
   }
 }
 
@@ -154,7 +163,7 @@ void main() {
       await auth.register('N', 'A', 'n@a.com', 'secretpw', '70000000');
       expect(auth.requiresVerification, isTrue);
 
-      remote.verifyResult = true;
+      remote.verifySuccess = true;
       final ok = await auth.verifyEmail('n@a.com', '1234');
 
       expect(ok, isTrue);
@@ -164,7 +173,7 @@ void main() {
 
     test('verifyEmail fallido conserva mensaje de código inválido',
         () async {
-      remote.verifyResult = false;
+      remote.verifySuccess = false;
       final ok = await auth.verifyEmail('n@a.com', '0000');
 
       expect(ok, isFalse);
@@ -202,6 +211,36 @@ void main() {
 
       expect(ok, isFalse);
       expect(auth.errorMessage, contains('inválidas'));
+      expect(auth.currentUser, isNull);
+      expect(tokenStore.getToken(), isNull);
+    });
+
+    test('login con email no verificado marca requiresVerification sin sesión',
+        () async {
+      remote.loginError = EmailNotVerifiedException(
+        'Debes verificar tu correo para continuar.',
+      );
+
+      final ok = await auth.login('pendiente@test.com', 'secretpw');
+
+      expect(ok, isFalse);
+      expect(auth.requiresVerification, isTrue);
+      expect(auth.errorMessage, contains('verificar'));
+      expect(auth.currentUser, isNull);
+      expect(tokenStore.getToken(), isNull);
+    });
+
+    test('login con ForbiddenException genérico no marca requiresVerification',
+        () async {
+      remote.loginError = ForbiddenException(
+        'Usuario deshabilitado. Contacte al administrador.',
+      );
+
+      final ok = await auth.login('off@test.com', 'secretpw');
+
+      expect(ok, isFalse);
+      expect(auth.requiresVerification, isFalse);
+      expect(auth.errorMessage, contains('deshabilitado'));
       expect(auth.currentUser, isNull);
       expect(tokenStore.getToken(), isNull);
     });

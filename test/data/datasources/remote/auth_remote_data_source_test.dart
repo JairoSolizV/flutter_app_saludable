@@ -178,6 +178,47 @@ void main() {
       );
     }));
 
+    test('403 EMAIL_NOT_VERIFIED lanza EmailNotVerifiedException',
+        async_(() async {
+      adapter.stub('POST', '/auth/login', statusCode: 403, data: {
+        'success': false,
+        'error': 'EMAIL_NOT_VERIFIED',
+        'message': 'Debes verificar tu correo para continuar.',
+      });
+      await expectLater(
+        () => ds.login('pendiente@test.com', 'secret'),
+        throwsA(
+          isA<EmailNotVerifiedException>()
+              .having((e) => e.code, 'code', 'EMAIL_NOT_VERIFIED')
+              .having(
+                (e) => e.message,
+                'message',
+                contains('verificar'),
+              ),
+        ),
+      );
+    }));
+
+    test('403 deshabilitado genérico lanza ForbiddenException sin código OTP',
+        async_(() async {
+      adapter.stub('POST', '/auth/login', statusCode: 403, data: {
+        'success': false,
+        'message': 'Usuario deshabilitado. Contacte al administrador.',
+      });
+      await expectLater(
+        () => ds.login('off@test.com', 'secret'),
+        throwsA(
+          isA<ForbiddenException>()
+              .having((e) => e is EmailNotVerifiedException, 'is OTP', isFalse)
+              .having(
+                (e) => e.message,
+                'message',
+                contains('deshabilitado'),
+              ),
+        ),
+      );
+    }));
+
     test('status distinto de 200/201 lanza ServerException', async_(() async {
       adapter.stub('POST', '/auth/login', statusCode: 202, data: {'id': 1});
       await expectLater(

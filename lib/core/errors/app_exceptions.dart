@@ -67,6 +67,15 @@ class ForbiddenException extends AppException {
   });
 }
 
+/// Credenciales correctas, pero el correo no está verificado (OTP pendiente).
+class EmailNotVerifiedException extends ForbiddenException {
+  static const String errorCode = 'EMAIL_NOT_VERIFIED';
+
+  EmailNotVerifiedException([
+    super.message = 'Debes verificar tu correo para continuar.',
+  ]) : super(statusCode: 403, code: errorCode);
+}
+
 class NotFoundException extends AppException {
   NotFoundException(
     super.message, {

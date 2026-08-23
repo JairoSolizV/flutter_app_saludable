@@ -143,8 +143,18 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: ElevatedButton(
                               onPressed: auth.isLoading ? null : () async {
                                 if (_formKey.currentState!.validate()) {
-                                  final success = await auth.login(_emailCtrl.text, _passCtrl.text);
-                                  if (success && context.mounted) {
+                                  final email = _emailCtrl.text.trim();
+                                  final success = await auth.login(email, _passCtrl.text);
+                                  if (!context.mounted) return;
+
+                                  if (auth.requiresVerification) {
+                                    context.go('/verify-email', extra: {
+                                      'email': email,
+                                    });
+                                    return;
+                                  }
+
+                                  if (success) {
                                     // Sync profile to get complete user data (including telefono)
                                     // Login doesn't return telefono, but /auth/me does
                                     await auth.syncProfile();

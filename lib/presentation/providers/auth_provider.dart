@@ -157,7 +157,35 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
   }
 
   Future<bool> login(String email, String password) async {
-    return _authenticate(() => _remoteDataSource.login(email, password));
+    _isLoading = true;
+    _errorMessage = null;
+    _requiresVerification = false;
+    notifyListeners();
+
+    try {
+      final user = await _remoteDataSource.login(email, password);
+      logDebug('[DEBUG AUTH_PROVIDER] Usuario autenticado id=${user.id}');
+      await _persistAuthenticatedSession(user);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on EmailNotVerifiedException catch (e) {
+      // Sin JWT ni sesión: el usuario debe completar OTP.
+      _requiresVerification = true;
+      _errorMessage = e.message;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      if (shouldPresentErrorToUser(e)) {
+        _errorMessage = _toPublicError(e);
+      } else {
+        _errorMessage = null;
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<bool> loginWithGoogle() async {

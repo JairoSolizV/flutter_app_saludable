@@ -73,6 +73,11 @@ class ErrorMapper {
           cause: e.type,
         );
       case 403:
+        if (parsed.code == EmailNotVerifiedException.errorCode) {
+          return EmailNotVerifiedException(
+            message ?? 'Debes verificar tu correo para continuar.',
+          );
+        }
         return ForbiddenException(
           message ?? _forbidden,
           code: parsed.code,

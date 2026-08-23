@@ -59,6 +59,30 @@ void main() {
   });
 
   group('ErrorMapper.fromDio - códigos HTTP adicionales', () {
+    test('403 EMAIL_NOT_VERIFIED → EmailNotVerifiedException', () {
+      final mapped = ErrorMapper.fromDio(
+        httpError(status: 403, data: {
+          'success': false,
+          'error': 'EMAIL_NOT_VERIFIED',
+          'message': 'Debes verificar tu correo para continuar.',
+        }),
+      );
+      expect(mapped, isA<EmailNotVerifiedException>());
+      expect(mapped.code, EmailNotVerifiedException.errorCode);
+      expect(mapped.message, contains('verificar'));
+    });
+
+    test('403 genérico → ForbiddenException (no OTP)', () {
+      final mapped = ErrorMapper.fromDio(
+        httpError(status: 403, data: {
+          'success': false,
+          'message': 'Usuario deshabilitado. Contacte al administrador.',
+        }),
+      );
+      expect(mapped, isA<ForbiddenException>());
+      expect(mapped, isNot(isA<EmailNotVerifiedException>()));
+    });
+
     test('429 → RateLimitException', () {
       final mapped = ErrorMapper.fromDio(
         httpError(status: 429, data: {'message': 'Demasiadas solicitudes'}),
