@@ -26,21 +26,31 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     // Sesión válida solo con perfil + token coherentes (AuthProvider).
-    if (user == null || user.role == 'guest') {
-      context.go('/guest-home');
+    if (user != null && user.role != 'guest') {
+      switch (user.role) {
+        case 'host':
+          context.go('/host-dashboard');
+          break;
+        case 'basic_user':
+          context.go('/basic-home');
+          break;
+        default:
+          context.go('/member-home');
+      }
       return;
     }
 
-    switch (user.role) {
-      case 'host':
-        context.go('/host-dashboard');
-        break;
-      case 'basic_user':
-        context.go('/basic-home');
-        break;
-      default:
-        context.go('/member-home');
+    final route = await auth.resolveColdStartRoute();
+    if (!mounted) return;
+
+    if (route == '/verify-email') {
+      final pendingEmail = await auth.getPendingVerificationEmail();
+      if (!mounted) return;
+      context.go('/verify-email', extra: {'email': pendingEmail ?? ''});
+      return;
     }
+
+    context.go('/login');
   }
 
   @override

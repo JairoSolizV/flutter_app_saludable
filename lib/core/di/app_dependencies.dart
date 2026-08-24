@@ -5,6 +5,8 @@ import 'package:flutter_app_saludable/core/auth/session_owner.dart';
 import 'package:flutter_app_saludable/core/auth/session_state_resetter.dart';
 import 'package:flutter_app_saludable/core/auth/session_token_migrator.dart';
 import 'package:flutter_app_saludable/core/auth/token_store.dart';
+import 'package:flutter_app_saludable/core/auth/pending_verification_store.dart';
+import 'package:flutter_app_saludable/core/auth/sqlite_pending_verification_store.dart';
 import 'package:flutter_app_saludable/core/database/database_helper.dart';
 import 'package:flutter_app_saludable/core/services/connectivity_service.dart';
 import 'package:flutter_app_saludable/core/services/sync_service.dart';
@@ -37,6 +39,7 @@ class AppDependencies {
   const AppDependencies({
     required this.dbHelper,
     required this.userRepository,
+    required this.pendingVerificationStore,
     required this.tokenStore,
     required this.sessionOwner,
     required this.sessionStateResetter,
@@ -65,6 +68,7 @@ class AppDependencies {
 
   final DatabaseHelper dbHelper;
   final LocalUserRepository userRepository;
+  final PendingVerificationStore pendingVerificationStore;
   final TokenStore tokenStore;
   final SessionOwner sessionOwner;
   final SessionStateResetter sessionStateResetter;
@@ -114,6 +118,7 @@ class AppDependencies {
   }) async {
     final db = dbHelper ?? DatabaseHelper();
     final users = LocalUserRepository(db);
+    final pendingVerificationStore = SqlitePendingVerificationStore(db);
     final tokens = tokenStore ?? SecureTokenStore();
     final owner = SessionOwner();
     final resetter = SessionStateResetter();
@@ -171,6 +176,7 @@ class AppDependencies {
     return AppDependencies(
       dbHelper: db,
       userRepository: users,
+      pendingVerificationStore: pendingVerificationStore,
       tokenStore: tokens,
       sessionOwner: owner,
       sessionStateResetter: resetter,

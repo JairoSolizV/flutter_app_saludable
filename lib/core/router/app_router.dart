@@ -76,8 +76,8 @@ final appRouter = GoRouter(
       path: '/verify-email',
       builder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
-        final email = extra?['email'] as String? ?? '';
-        return EmailVerificationScreen(email: email);
+        final extraEmail = extra?['email'] as String?;
+        return EmailVerificationScreen(email: extraEmail);
       },
     ),
     // Rutas de Invitado con Shell (BottomNav)

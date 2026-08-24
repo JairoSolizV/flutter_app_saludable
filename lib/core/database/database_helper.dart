@@ -36,7 +36,7 @@ class DatabaseHelper {
         join(await getDatabasesPath(), 'nutrilife_club.db');
     return await openDatabase(
       path,
-      version: 11,
+      version: 12,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -110,8 +110,12 @@ class DatabaseHelper {
 
     await _ensureOrderIndexes(db);
 
-    // NO insertar datos de seed - los productos deben venir del backend
-    // await _seedData(db);
+    await db.execute('''
+      CREATE TABLE app_settings(
+        key TEXT PRIMARY KEY,
+        value TEXT
+      )
+    ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -217,6 +221,18 @@ class DatabaseHelper {
         await _ensureOrderIndexes(db);
       } catch (e) {
         logDebug("Error migrando índices de orders/order_items: $e");
+      }
+    }
+    if (oldVersion < 12) {
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS app_settings(
+            key TEXT PRIMARY KEY,
+            value TEXT
+          )
+        ''');
+      } catch (e) {
+        logDebug("Error migrando app_settings: $e");
       }
     }
   }

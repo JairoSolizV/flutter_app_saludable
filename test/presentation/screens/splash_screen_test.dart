@@ -17,6 +17,14 @@ GoRouter _buildRouter() {
         builder: (_, __) => const SplashScreen(),
       ),
       GoRoute(
+        path: '/login',
+        builder: (_, __) => const Scaffold(body: Text('Login')),
+      ),
+      GoRoute(
+        path: '/verify-email',
+        builder: (_, __) => const Scaffold(body: Text('Verify Email')),
+      ),
+      GoRoute(
         path: '/guest-home',
         builder: (_, __) => const Scaffold(body: Text('Guest Home')),
       ),
@@ -37,7 +45,7 @@ GoRouter _buildRouter() {
 }
 
 void main() {
-  testWidgets('muestra el splash y navega a guest-home sin sesión previa',
+  testWidgets('muestra el splash y navega a login sin sesión ni pending',
       (tester) async {
     late AppDependencies deps;
     await tester.runAsync(() async {
@@ -51,6 +59,7 @@ void main() {
           deps.authRemoteDataSource,
           deps.userRepository,
           deps.tokenStore,
+          pendingVerificationStore: deps.pendingVerificationStore,
           sessionExpirationHandler: deps.sessionExpirationHandler,
           sessionOwner: deps.sessionOwner,
           sessionStateResetter: deps.sessionStateResetter,
@@ -67,19 +76,53 @@ void main() {
     expect(find.byType(Image), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
 
-    // Completa el Future.delayed(2s) del splash.
     await tester.pump(const Duration(seconds: 3));
 
-    // bootstrapSession usa sqflite (async real): alternar runAsync + pump
-    // hasta que GoRouter navegue a guest-home.
     for (var i = 0; i < 50; i++) {
-      if (find.text('Guest Home').evaluate().isNotEmpty) break;
+      if (find.text('Login').evaluate().isNotEmpty) break;
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 20)),
       );
       await tester.pump();
     }
 
-    expect(find.text('Guest Home'), findsOneWidget);
+    expect(find.text('Login'), findsOneWidget);
+  });
+
+  testWidgets('navega a verify-email si hay pending email sin sesión',
+      (tester) async {
+    late AppDependencies deps;
+    await tester.runAsync(() async {
+      deps = await buildTestDependencies();
+      await deps.pendingVerificationStore.save('cold@test.com');
+    });
+    addTearDown(deps.dispose);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => AuthProvider(
+          deps.authRemoteDataSource,
+          deps.userRepository,
+          deps.tokenStore,
+          pendingVerificationStore: deps.pendingVerificationStore,
+          sessionExpirationHandler: deps.sessionExpirationHandler,
+          sessionOwner: deps.sessionOwner,
+          sessionStateResetter: deps.sessionStateResetter,
+        ),
+        child: MaterialApp.router(routerConfig: _buildRouter()),
+      ),
+    );
+
+    await tester.pump(const Duration(seconds: 3));
+
+    for (var i = 0; i < 50; i++) {
+      if (find.text('Verify Email').evaluate().isNotEmpty) break;
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump();
+    }
+
+    expect(find.text('Verify Email'), findsOneWidget);
   });
 }

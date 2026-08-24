@@ -23,6 +23,7 @@ import 'package:flutter_app_saludable/data/datasources/remote/support_remote_dat
 import 'package:flutter_app_saludable/data/datasources/remote/ventas_diarias_report_data_source.dart';
 import 'package:flutter_app_saludable/data/repositories/local_order_repository.dart';
 import 'package:flutter_app_saludable/data/repositories/local_product_repository.dart';
+import 'package:flutter_app_saludable/core/auth/sqlite_pending_verification_store.dart';
 import 'package:flutter_app_saludable/data/repositories/local_user_repository.dart';
 
 import '../core/auth/in_memory_secure_storage_gateway.dart';
@@ -51,6 +52,7 @@ Future<AppDependencies> buildTestDependencies() async {
   return AppDependencies(
     dbHelper: db,
     userRepository: users,
+    pendingVerificationStore: SqlitePendingVerificationStore(db),
     tokenStore: tokens,
     sessionOwner: owner,
     sessionStateResetter: resetter,

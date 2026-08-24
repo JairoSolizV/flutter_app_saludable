@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_saludable/core/auth/pending_verification_store.dart';
 import 'package:flutter_app_saludable/core/auth/secure_storage_exception.dart';
 import 'package:flutter_app_saludable/core/auth/session_expiration_handler.dart';
 import 'package:flutter_app_saludable/core/auth/session_owner.dart';
@@ -15,6 +16,7 @@ import '../../domain/entities/user.dart';
 import '../../domain/repositories/user_repository.dart';
 import '../../data/datasources/remote/auth_remote_data_source.dart';
 import '../../core/auth/google_auth_service.dart';
+import '../../core/auth/sqlite_pending_verification_store.dart';
 
 class AuthProvider extends ChangeNotifier implements SessionScopedState {
   final AuthRemoteDataSource _remoteDataSource;
@@ -24,6 +26,7 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
   final SessionExpirationHandler? _sessionExpirationHandler;
   final SessionOwner? _sessionOwner;
   final SessionStateResetter? _sessionStateResetter;
+  final PendingVerificationStore _pendingVerificationStore;
   
   late final GoogleAuthService _googleAuthService;
 
@@ -37,11 +40,14 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     this._remoteDataSource,
     this._localRepository,
     this._tokenStore, {
+    PendingVerificationStore? pendingVerificationStore,
     SessionTokenMigrator? sessionMigrator,
     SessionExpirationHandler? sessionExpirationHandler,
     SessionOwner? sessionOwner,
     SessionStateResetter? sessionStateResetter,
-  })  : _sessionMigrator = sessionMigrator ??
+  })  : _pendingVerificationStore =
+            pendingVerificationStore ?? InMemoryPendingVerificationStore(),
+        _sessionMigrator = sessionMigrator ??
             SessionTokenMigrator(
               tokenStore: _tokenStore,
               userRepository: _localRepository,
@@ -82,6 +88,26 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
   void clearVerificationFlag() {
     _requiresVerification = false;
     notifyListeners();
+  }
+
+  /// Email normalizado pendiente de OTP (persistido localmente).
+  Future<String?> getPendingVerificationEmail() =>
+      _pendingVerificationStore.read();
+
+  Future<void> clearPendingVerificationEmail() =>
+      _pendingVerificationStore.clear();
+
+  /// Ruta inicial tras cold start sin sesión autenticada válida.
+  Future<String> resolveColdStartRoute() async {
+    final pending = await _pendingVerificationStore.read();
+    if (pending != null && pending.isNotEmpty) {
+      return '/verify-email';
+    }
+    return '/login';
+  }
+
+  Future<void> _savePendingVerificationEmail(String email) async {
+    await _pendingVerificationStore.save(email);
   }
 
   String _toPublicError(Object e) => ErrorMapper.publicMessage(e);
@@ -143,6 +169,7 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     _setSessionOwner(profile.id);
     _sessionExpirationHandler?.markActive();
     SessionFeedback.resetExpiredMessageGate();
+    await _pendingVerificationStore.clear();
     notifyListeners();
     return _currentUser;
   }
@@ -163,8 +190,8 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     _requiresVerification = false;
     notifyListeners();
 
+    final normalizedEmail = Validators.normalizeEmail(email);
     try {
-      final normalizedEmail = Validators.normalizeEmail(email);
       final user = await _remoteDataSource.login(normalizedEmail, password);
       logDebug('[DEBUG AUTH_PROVIDER] Usuario autenticado id=${user.id}');
       await _persistAuthenticatedSession(user);
@@ -173,6 +200,7 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
       return true;
     } on EmailNotVerifiedException catch (e) {
       // Sin JWT ni sesión: el usuario debe completar OTP.
+      await _savePendingVerificationEmail(normalizedEmail);
       _requiresVerification = true;
       _errorMessage = e.message;
       _isLoading = false;
@@ -234,10 +262,11 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     notifyListeners();
 
     try {
+      final normalizedEmail = Validators.normalizeEmail(email);
       final user = await _remoteDataSource.register(
         nombre,
         apellido,
-        Validators.normalizeEmail(email),
+        normalizedEmail,
         password,
         telefono,
         rolId: rolId,
@@ -245,7 +274,8 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
       logDebug('[DEBUG AUTH_PROVIDER] Usuario registrado id=${user.id}');
 
       // YA NO persistimos la sesión aquí porque el usuario aún no está verificado.
-      // Solo indicamos que requiere verificación.
+      // Solo indicamos que requiere verificación y recordamos el email para cold start.
+      await _savePendingVerificationEmail(normalizedEmail);
       _requiresVerification = true;
       _isLoading = false;
       notifyListeners();
@@ -274,14 +304,16 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     notifyListeners();
 
     try {
+      final normalizedEmail = Validators.normalizeEmail(email);
       final user = await _remoteDataSource.verifyEmail(
-        Validators.normalizeEmail(email),
+        normalizedEmail,
         code,
       );
 
       if (user != null) {
         _requiresVerification = false;
         logDebug('[DEBUG AUTH_PROVIDER] Correo verificado exitosamente');
+        await _pendingVerificationStore.clear();
         await _persistAuthenticatedSession(user);
         
         _isLoading = false;
@@ -307,8 +339,10 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     notifyListeners();
 
     try {
+      final normalizedEmail = Validators.normalizeEmail(email);
+      await _savePendingVerificationEmail(normalizedEmail);
       final success = await _remoteDataSource
-          .resendVerificationCode(Validators.normalizeEmail(email));
+          .resendVerificationCode(normalizedEmail);
       _isLoading = false;
       notifyListeners();
       return success;
@@ -354,6 +388,7 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     // Limpia estado en memoria del usuario anterior antes de activar B.
     await _clearScopedSessionProviders();
 
+    await _pendingVerificationStore.clear();
     await _tokenStore.saveToken(jwt);
 
     logDebug('[DEBUG AUTH_PROVIDER] Limpiando perfil local previo...');

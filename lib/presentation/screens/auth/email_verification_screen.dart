@@ -8,9 +8,10 @@ import '../../providers/user_provider.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class EmailVerificationScreen extends StatefulWidget {
-  final String email;
+  /// Email desde GoRouter extra; si falta (cold start), se lee del store local.
+  final String? email;
 
-  const EmailVerificationScreen({super.key, required this.email});
+  const EmailVerificationScreen({super.key, this.email});
 
   @override
   State<EmailVerificationScreen> createState() =>
@@ -32,6 +33,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
   bool _isVerifying = false;
   String? _errorMessage;
   bool _codeComplete = false;
+  String? _resolvedEmail;
+  bool _loadingEmail = true;
 
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
@@ -39,9 +42,12 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
   @override
   void initState() {
     super.initState();
-    // Focus the first field after build
+    _resolveEmail();
+    // Focus the first field after email is known
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focusNodes[0].requestFocus();
+      if (_resolvedEmail != null && _resolvedEmail!.isNotEmpty) {
+        _focusNodes[0].requestFocus();
+      }
     });
 
     // Shake animation for error feedback
@@ -53,6 +59,27 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
       CurvedAnimation(parent: _shakeController, curve: Curves.elasticIn),
     );
   }
+
+  Future<void> _resolveEmail() async {
+    final fromExtra = widget.email?.trim();
+    if (fromExtra != null && fromExtra.isNotEmpty) {
+      setState(() {
+        _resolvedEmail = fromExtra;
+        _loadingEmail = false;
+      });
+      return;
+    }
+
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final stored = await auth.getPendingVerificationEmail();
+    if (!mounted) return;
+    setState(() {
+      _resolvedEmail = stored ?? '';
+      _loadingEmail = false;
+    });
+  }
+
+  String get _email => _resolvedEmail ?? '';
 
   @override
   void dispose() {
@@ -100,7 +127,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
   }
 
   Future<void> _verifyCode() async {
-    if (_isVerifying) return;
+    if (_isVerifying || _email.isEmpty) return;
 
     final code = _fullCode;
     if (code.length != 6) {
@@ -114,7 +141,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
     });
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final verified = await auth.verifyEmail(widget.email, code);
+    final verified = await auth.verifyEmail(_email, code);
 
     if (!mounted) return;
 
@@ -187,10 +214,10 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
   }
 
   Future<void> _resendCode() async {
-    if (_resendCooldown > 0) return;
+    if (_resendCooldown > 0 || _email.isEmpty) return;
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final success = await auth.resendCode(widget.email);
+    final success = await auth.resendCode(_email);
 
     if (!mounted) return;
 
@@ -226,6 +253,37 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_loadingEmail) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_email.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Verificar correo')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'No encontramos un correo pendiente de verificación.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => context.go('/login'),
+                  child: const Text('Ir a iniciar sesión'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -233,11 +291,16 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
+          onPressed: () async {
             if (context.canPop()) {
               context.pop();
-            } else {
-              context.go('/register');
+              return;
+            }
+            final auth = Provider.of<AuthProvider>(context, listen: false);
+            await auth.clearPendingVerificationEmail();
+            auth.clearVerificationFlag();
+            if (context.mounted) {
+              context.go('/login');
             }
           },
         ),
@@ -303,7 +366,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      widget.email,
+                      _email,
                       style: const TextStyle(
                         color: AppTheme.primaryColor,
                         fontWeight: FontWeight.w600,

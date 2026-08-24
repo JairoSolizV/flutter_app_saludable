@@ -175,6 +175,7 @@ class _NutriLifeAppState extends State<NutriLifeApp> {
             deps.authRemoteDataSource,
             deps.userRepository,
             deps.tokenStore,
+            pendingVerificationStore: deps.pendingVerificationStore,
             sessionExpirationHandler: deps.sessionExpirationHandler,
             sessionOwner: deps.sessionOwner,
             sessionStateResetter: resetter,
