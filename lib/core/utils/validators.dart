@@ -1,4 +1,7 @@
 class Validators {
+  /// Regla de auth: trim de espacios exteriores + lowercase.
+  static String normalizeEmail(String email) => email.trim().toLowerCase();
+
   static String? validateName(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Este campo es obligatorio';
@@ -18,9 +21,11 @@ class Validators {
     if (value == null || value.trim().isEmpty) {
       return 'El correo es obligatorio';
     }
-    // Regex estándar básica para email
-    final emailExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    if (!emailExp.hasMatch(value)) {
+    final email = normalizeEmail(value);
+    // Formato razonable: local@dominio.tld — acepta +, puntos y TLD largos.
+    // No intenta comprobar si la casilla existe.
+    final emailExp = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]{2,}$');
+    if (!emailExp.hasMatch(email)) {
       return 'Ingresa un correo válido';
     }
     return null;

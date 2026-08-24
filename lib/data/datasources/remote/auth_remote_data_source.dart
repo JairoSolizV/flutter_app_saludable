@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/utils/app_logger.dart';
+import 'package:flutter_app_saludable/core/utils/validators.dart';
 import '../../../domain/entities/user.dart';
 
 abstract class AuthRemoteDataSource {
@@ -29,8 +30,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<bool> checkEmailExists(String email) async {
     try {
-      final response = await _client
-          .get('/auth/check-email', queryParameters: {'email': email});
+      final normalized = Validators.normalizeEmail(email);
+      final response = await _client.get(
+        '/auth/check-email',
+        queryParameters: {'email': normalized},
+      );
       if (response.statusCode == 200) {
         return response.data['exists'] == true;
       }
@@ -45,7 +49,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<User> login(String email, String password) async {
     try {
       final response = await _client.post('/auth/login', data: {
-        'email': email,
+        'email': Validators.normalizeEmail(email),
         'password': password,
       });
       return _parseAuthResponse(response);
@@ -76,7 +80,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final Map<String, dynamic> data = {
         'nombre': nombre,
         'apellido': apellido,
-        'email': email,
+        'email': Validators.normalizeEmail(email),
         'password': password,
         'telefono': telefono,
       };
@@ -252,7 +256,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<User?> verifyEmail(String email, String code) async {
     try {
       final response = await _client.post('/auth/verify-email', data: {
-        'email': email,
+        'email': Validators.normalizeEmail(email),
         'code': code,
       });
       if (response.statusCode == 200 && response.data['verified'] == true) {
@@ -268,7 +272,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<bool> resendVerificationCode(String email) async {
     try {
       final response = await _client.post('/auth/resend-code', data: {
-        'email': email,
+        'email': Validators.normalizeEmail(email),
       });
       if (response.statusCode == 200) {
         return response.data['success'] == true;

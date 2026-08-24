@@ -10,6 +10,7 @@ import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/ui/session_feedback.dart';
 import 'package:flutter_app_saludable/core/utils/app_logger.dart';
+import 'package:flutter_app_saludable/core/utils/validators.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/user_repository.dart';
 import '../../data/datasources/remote/auth_remote_data_source.dart';
@@ -163,7 +164,8 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     notifyListeners();
 
     try {
-      final user = await _remoteDataSource.login(email, password);
+      final normalizedEmail = Validators.normalizeEmail(email);
+      final user = await _remoteDataSource.login(normalizedEmail, password);
       logDebug('[DEBUG AUTH_PROVIDER] Usuario autenticado id=${user.id}');
       await _persistAuthenticatedSession(user);
       _isLoading = false;
@@ -235,7 +237,7 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
       final user = await _remoteDataSource.register(
         nombre,
         apellido,
-        email,
+        Validators.normalizeEmail(email),
         password,
         telefono,
         rolId: rolId,
@@ -258,7 +260,8 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
 
   Future<bool> checkEmailExists(String email) async {
     try {
-      return await _remoteDataSource.checkEmailExists(email);
+      return await _remoteDataSource
+          .checkEmailExists(Validators.normalizeEmail(email));
     } catch (_) {
       logDebug('[DEBUG AUTH_PROVIDER] Error checking email existence');
       return false;
@@ -271,7 +274,10 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     notifyListeners();
 
     try {
-      final user = await _remoteDataSource.verifyEmail(email, code);
+      final user = await _remoteDataSource.verifyEmail(
+        Validators.normalizeEmail(email),
+        code,
+      );
 
       if (user != null) {
         _requiresVerification = false;
@@ -301,7 +307,8 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     notifyListeners();
 
     try {
-      final success = await _remoteDataSource.resendVerificationCode(email);
+      final success = await _remoteDataSource
+          .resendVerificationCode(Validators.normalizeEmail(email));
       _isLoading = false;
       notifyListeners();
       return success;

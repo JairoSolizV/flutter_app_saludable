@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/validators.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -143,7 +144,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: ElevatedButton(
                               onPressed: auth.isLoading ? null : () async {
                                 if (_formKey.currentState!.validate()) {
-                                  final email = _emailCtrl.text.trim();
+                                  final email =
+                                      Validators.normalizeEmail(_emailCtrl.text);
                                   final success = await auth.login(email, _passCtrl.text);
                                   if (!context.mounted) return;
 

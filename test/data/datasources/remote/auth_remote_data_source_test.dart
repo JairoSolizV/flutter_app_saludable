@@ -88,6 +88,14 @@ void main() {
       expect(await ds.checkEmailExists('a@a.com'), isFalse);
     }));
 
+    test('normaliza email en query (trim + lowercase)', async_(() async {
+      adapter.stub('GET', '/auth/check-email', data: {'exists': false});
+      await ds.checkEmailExists('  SOCIO1@DEMO.COM  ');
+      final emailParam =
+          adapter.requests.last.uri.queryParameters['email'];
+      expect(emailParam, 'socio1@demo.com');
+    }));
+
     test('error se mapea a AppException', async_(() async {
       adapter.stub('GET', '/auth/check-email', statusCode: 500, data: {});
       await expectLater(
@@ -98,6 +106,20 @@ void main() {
   });
 
   group('login', () {
+    test('normaliza email antes del POST', async_(() async {
+      adapter.stub('POST', '/auth/login', data: {
+        'token': 'tok',
+        'id': 1,
+        'nombre': 'Socio',
+        'apellido': 'Uno',
+        'email': 'socio1@demo.com',
+        'rolNombre': 'SOCIO',
+      });
+      await ds.login('  SOCIO1@DEMO.COM  ', 'secret');
+      final body = adapter.requests.last.data as Map;
+      expect(body['email'], 'socio1@demo.com');
+    }));
+
     test('ADMIN anidado en rol Map → host', async_(() async {
       adapter.stub('POST', '/auth/login', data: {
         'token': 'tok123',
@@ -459,6 +481,21 @@ void main() {
       expect(user.token, 'jwt-otp');
     }));
 
+    test('normaliza email en el body', async_(() async {
+      adapter.stub('POST', '/auth/verify-email', data: {
+        'verified': true,
+        'token': 'jwt',
+        'userId': 1,
+        'nombre': 'A',
+        'apellido': 'B',
+        'email': 'socio1@demo.com',
+        'rolNombre': 'SOCIO',
+      });
+      await ds.verifyEmail('  SOCIO1@DEMO.COM  ', '123456');
+      final body = adapter.requests.last.data as Map;
+      expect(body['email'], 'socio1@demo.com');
+    }));
+
     test('200 con verified false', async_(() async {
       adapter.stub('POST', '/auth/verify-email', data: {'verified': false});
       expect(await ds.verifyEmail('a@a.com', '000000'), isNull);
@@ -477,6 +514,13 @@ void main() {
     test('200 con success true', async_(() async {
       adapter.stub('POST', '/auth/resend-code', data: {'success': true});
       expect(await ds.resendVerificationCode('a@a.com'), isTrue);
+    }));
+
+    test('normaliza email en el body', async_(() async {
+      adapter.stub('POST', '/auth/resend-code', data: {'success': true});
+      await ds.resendVerificationCode('  SOCIO1@DEMO.COM  ');
+      final body = adapter.requests.last.data as Map;
+      expect(body['email'], 'socio1@demo.com');
     }));
 
     test('200 con success false', async_(() async {

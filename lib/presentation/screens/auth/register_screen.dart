@@ -70,9 +70,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _checkEmailAvailability() async {
-    final email = _emailCtrl.text.trim();
+    final email = Validators.normalizeEmail(_emailCtrl.text);
     if (email.isEmpty) return;
-    
+
     final formatError = Validators.validateEmail(email);
     if (formatError != null) {
       setState(() {
@@ -92,7 +92,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     // Si el usuario corrigió el correo mientras la petición estaba en vuelo,
     // la respuesta corresponde a otro correo y no debe pintarse.
-    final isStale = _emailCtrl.text.trim() != email;
+    final isStale =
+        Validators.normalizeEmail(_emailCtrl.text) != email;
 
     setState(() {
       _checkingEmail = false;
@@ -326,10 +327,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     }
                                   }
 
+                                  final email =
+                                      Validators.normalizeEmail(_emailCtrl.text);
                                   final success = await auth.register(
                                       _firstNameCtrl.text,
                                       _lastNameCtrl.text,
-                                      _emailCtrl.text.trim(),
+                                      email,
                                       _passCtrl.text,
                                       phoneToSend,
                                       rolId: 4 // 4 = USUARIO_BASICO
@@ -339,7 +342,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     // Redirigir a verificación de correo
                                     if (auth.requiresVerification) {
                                       context.go('/verify-email', extra: {
-                                        'email': _emailCtrl.text.trim(),
+                                        'email': email,
                                       });
                                     } else {
                                       final user = auth.currentUser;

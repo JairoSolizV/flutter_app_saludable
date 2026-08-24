@@ -33,6 +33,15 @@ void main() {
     });
   });
 
+  group('Validators.normalizeEmail', () {
+    test('trim + lowercase', () {
+      expect(
+        Validators.normalizeEmail('  SOCIO1@DEMO.COM  '),
+        'socio1@demo.com',
+      );
+    });
+  });
+
   group('Validators.validateEmail', () {
     test('null es inválido', () {
       expect(Validators.validateEmail(null), isNotNull);
@@ -44,18 +53,43 @@ void main() {
 
     test('sin @ es inválido', () {
       expect(Validators.validateEmail('correo.sin.arroba.com'), isNotNull);
+      expect(Validators.validateEmail('usuario'), isNotNull);
     });
 
     test('sin dominio es inválido', () {
       expect(Validators.validateEmail('correo@'), isNotNull);
+      expect(Validators.validateEmail('usuario@'), isNotNull);
     });
 
-    test('con espacios es inválido', () {
+    test('sin parte local es inválido', () {
+      expect(Validators.validateEmail('@gmail.com'), isNotNull);
+    });
+
+    test('con espacios en el local es inválido', () {
       expect(Validators.validateEmail('correo raro@dominio.com'), isNotNull);
+      expect(Validators.validateEmail('usuario gmail@gmail.com'), isNotNull);
     });
 
     test('correo simple válido', () {
       expect(Validators.validateEmail('usuario@dominio.com'), isNull);
+      expect(Validators.validateEmail('usuario@gmail.com'), isNull);
+    });
+
+    test('correo con puntos en local válido', () {
+      expect(Validators.validateEmail('usuario.nombre@gmail.com'), isNull);
+    });
+
+    test('correo con + alias válido', () {
+      expect(Validators.validateEmail('usuario+alias@gmail.com'), isNull);
+      expect(Validators.validateEmail('evis96568+prueba@gmail.com'), isNull);
+    });
+
+    test('mayúsculas se aceptan (se validan normalizadas)', () {
+      expect(Validators.validateEmail('USUARIO@GMAIL.COM'), isNull);
+    });
+
+    test('TLD largo válido', () {
+      expect(Validators.validateEmail('usuario@dominio.technology'), isNull);
     });
 
     test('correo con subdominio y puntos válido', () {
