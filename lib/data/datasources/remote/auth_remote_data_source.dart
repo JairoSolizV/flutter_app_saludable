@@ -225,6 +225,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
     switch (normalized) {
       case 'ADMIN':
+        throw AdminMobileNotSupportedException();
       case 'ANFITRION':
         return 'host';
       case 'SOCIO':

@@ -120,7 +120,8 @@ void main() {
       expect(body['email'], 'socio1@demo.com');
     }));
 
-    test('ADMIN anidado en rol Map → host', async_(() async {
+    test('ADMIN anidado en rol Map lanza ADMIN_MOBILE_NOT_SUPPORTED',
+        async_(() async {
       adapter.stub('POST', '/auth/login', data: {
         'token': 'tok123',
         'usuario': {
@@ -132,11 +133,13 @@ void main() {
           'telefono': '123',
         },
       });
-      final user = await ds.login('ana@test.com', 'pass');
-      expect(user.role, 'host');
-      expect(user.name, 'Ana Perez');
-      expect(user.token, 'tok123');
-      expect(user.phone, '123');
+      await expectLater(
+        () => ds.login('ana@test.com', 'pass'),
+        throwsA(
+          isA<AdminMobileNotSupportedException>()
+              .having((e) => e.code, 'code', 'ADMIN_MOBILE_NOT_SUPPORTED'),
+        ),
+      );
     }));
 
     test('ANFITRION → host', async_(() async {
@@ -335,8 +338,14 @@ void main() {
   });
 
   group('mapBackendRoleToAppRole', () {
-    test('ADMIN → host', () {
-      expect(AuthRemoteDataSourceImpl.mapBackendRoleToAppRole('ADMIN'), 'host');
+    test('ADMIN lanza ADMIN_MOBILE_NOT_SUPPORTED', () {
+      expect(
+        () => AuthRemoteDataSourceImpl.mapBackendRoleToAppRole('ADMIN'),
+        throwsA(
+          isA<AdminMobileNotSupportedException>()
+              .having((e) => e.code, 'code', 'ADMIN_MOBILE_NOT_SUPPORTED'),
+        ),
+      );
     });
 
     test('ANFITRION → host', () {
@@ -353,6 +362,15 @@ void main() {
       expect(
         AuthRemoteDataSourceImpl.mapBackendRoleToAppRole('USUARIO_BASICO'),
         'basic_user',
+      );
+    });
+
+    test('rol desconocido lanza UNKNOWN_ROLE', () {
+      expect(
+        () => AuthRemoteDataSourceImpl.mapBackendRoleToAppRole('SUPER_ADMIN'),
+        throwsA(
+          isA<ServerException>().having((e) => e.code, 'code', 'UNKNOWN_ROLE'),
+        ),
       );
     });
   });

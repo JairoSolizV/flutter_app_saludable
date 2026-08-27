@@ -455,7 +455,7 @@ void main() {
       ds = AuthRemoteDataSourceImpl(_buildDio(adapter));
     });
 
-    test('login parsea usuario, token y rol host por nombre', async_(() async {
+    test('login con ADMIN lanza ADMIN_MOBILE_NOT_SUPPORTED', async_(() async {
       adapter.stub('POST', '/auth/login', data: {
         'token': 'jwt-123',
         'usuario': {
@@ -464,6 +464,24 @@ void main() {
           'apellido': 'Gomez',
           'email': 'ana@test.com',
           'rolNombre': 'ADMIN',
+        },
+      });
+
+      await expectLater(
+        () => ds.login('ana@test.com', 'secret123'),
+        throwsA(isA<AdminMobileNotSupportedException>()),
+      );
+    }));
+
+    test('login parsea rol ANFITRION como host', async_(() async {
+      adapter.stub('POST', '/auth/login', data: {
+        'token': 'jwt-123',
+        'usuario': {
+          'id': 1,
+          'nombre': 'Ana',
+          'apellido': 'Gomez',
+          'email': 'ana@test.com',
+          'rolNombre': 'ANFITRION',
         },
       });
 

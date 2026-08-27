@@ -165,6 +165,15 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     }
 
     _currentUser = profile.copyWith(token: token);
+
+    try {
+      await _remoteDataSource.getMe();
+    } on AdminMobileNotSupportedException catch (e) {
+      return _clearSessionForUnsupportedAdmin(e.message);
+    } catch (_) {
+      // Sin red u otro fallo: conservar sesión local restaurada.
+    }
+
     _sessionReady = true;
     _sessionStatus = SessionStatus.active;
     _setSessionOwner(profile.id);
@@ -181,6 +190,36 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     _sessionStatus = SessionStatus.guest;
     _setSessionOwner(null);
     _sessionExpirationHandler?.markGuest();
+    notifyListeners();
+    return null;
+  }
+
+  /// Limpia sesión móvil cuando el backend reporta rol ADMIN.
+  Future<User?> _clearSessionForUnsupportedAdmin(String message) async {
+    logDebug('[AUTH] Rol ADMIN no soportado en móvil; limpiando sesión');
+    _setSessionOwner(null);
+    _currentUser = null;
+    _requiresVerification = false;
+    _sessionReady = true;
+    _sessionStatus = SessionStatus.guest;
+    _sessionExpirationHandler?.markGuest();
+    _errorMessage = message;
+
+    try {
+      if (_tokenStore.isInitialized) {
+        await _tokenStore.clearToken();
+      }
+    } catch (_) {
+      logDebug('[AUTH] No se pudo limpiar token tras bloqueo ADMIN');
+    }
+
+    try {
+      await _localRepository.logout();
+    } catch (_) {
+      logDebug('[AUTH] No se pudo limpiar perfil tras bloqueo ADMIN');
+    }
+
+    await _clearScopedSessionProviders();
     notifyListeners();
     return null;
   }
@@ -421,6 +460,8 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
       notifyListeners();
 
       logDebug('[DEBUG AUTH_PROVIDER] syncProfile completed successfully');
+    } on AdminMobileNotSupportedException catch (e) {
+      await _clearSessionForUnsupportedAdmin(e.message);
     } catch (_) {
       logDebug('[DEBUG AUTH_PROVIDER] Error syncing profile');
     }

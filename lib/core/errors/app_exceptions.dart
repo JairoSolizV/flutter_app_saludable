@@ -129,6 +129,17 @@ class ServerException extends AppException {
   });
 }
 
+/// Rol backend ADMIN: la app móvil no expone panel administrativo.
+class AdminMobileNotSupportedException extends AppException {
+  static const String errorCode = 'ADMIN_MOBILE_NOT_SUPPORTED';
+  static const String defaultMessage =
+      'La app móvil no está disponible para administradores. Usa el panel web.';
+
+  AdminMobileNotSupportedException([
+    super.message = defaultMessage,
+  ]) : super(code: errorCode);
+}
+
 class StorageException extends AppException {
   StorageException(super.message, {super.cause, super.handledGlobally});
 }
