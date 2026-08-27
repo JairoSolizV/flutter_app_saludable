@@ -119,6 +119,40 @@ void main() {
     });
   });
 
+  group('Validators.validatePasswordConfirmation', () {
+    test('vacío devuelve mensaje de confirmación obligatoria', () {
+      expect(
+        Validators.validatePasswordConfirmation('', 'Password123'),
+        'Confirma tu contraseña.',
+      );
+      expect(
+        Validators.validatePasswordConfirmation(null, 'Password123'),
+        'Confirma tu contraseña.',
+      );
+    });
+
+    test('no coincide devuelve mensaje de mismatch', () {
+      expect(
+        Validators.validatePasswordConfirmation('Otra1234', 'Password123'),
+        'Las contraseñas no coinciden.',
+      );
+    });
+
+    test('coincidencia exacta válida', () {
+      expect(
+        Validators.validatePasswordConfirmation('Password123', 'Password123'),
+        isNull,
+      );
+    });
+
+    test('espacio final invalida la coincidencia exacta', () {
+      expect(
+        Validators.validatePasswordConfirmation('Password123 ', 'Password123'),
+        'Las contraseñas no coinciden.',
+      );
+    });
+  });
+
   group('Validators.validateBolivianPhone', () {
     test('null es inválido', () {
       expect(Validators.validateBolivianPhone(null), isNotNull);

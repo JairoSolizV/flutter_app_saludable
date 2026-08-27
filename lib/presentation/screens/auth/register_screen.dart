@@ -17,11 +17,14 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+  final _confirmPassCtrl = TextEditingController();
   final _firstNameCtrl = TextEditingController();
   final _lastNameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   
   final _emailFocusNode = FocusNode();
+  final _passFocusNode = FocusNode();
+  final _confirmPassFocusNode = FocusNode();
   final _formKey = GlobalKey<FormState>();
 
   bool _acceptTerms = false;
@@ -49,9 +52,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailFocusNode.dispose();
     _emailCtrl.dispose();
     _passCtrl.dispose();
+    _confirmPassCtrl.dispose();
     _firstNameCtrl.dispose();
     _lastNameCtrl.dispose();
     _phoneCtrl.dispose();
+    _passFocusNode.dispose();
+    _confirmPassFocusNode.dispose();
     super.dispose();
   }
 
@@ -255,9 +261,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       TextFormField(
                         controller: _passCtrl,
+                        focusNode: _passFocusNode,
                         obscureText: true,
-                        decoration: const InputDecoration(labelText: 'Contraseña', prefixIcon: Icon(Icons.lock), border: OutlineInputBorder()),
+                        autofillHints: const [AutofillHints.newPassword],
+                        textInputAction: TextInputAction.next,
+                        onFieldSubmitted: (_) =>
+                            FocusScope.of(context).requestFocus(_confirmPassFocusNode),
+                        decoration: const InputDecoration(
+                          labelText: 'Contraseña',
+                          prefixIcon: Icon(Icons.lock),
+                          border: OutlineInputBorder(),
+                        ),
                         validator: Validators.validatePassword,
+                        onChanged: (_) {
+                          _clearAuthError();
+                          if (_confirmPassCtrl.text.isNotEmpty) {
+                            _formKey.currentState?.validate();
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _confirmPassCtrl,
+                        focusNode: _confirmPassFocusNode,
+                        obscureText: true,
+                        autofillHints: const [AutofillHints.newPassword],
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) {
+                          if (_acceptTerms &&
+                              _acceptPrivacy &&
+                              !_checkingEmail &&
+                              _emailValidationError == null) {
+                            FocusScope.of(context).unfocus();
+                          }
+                        },
+                        decoration: const InputDecoration(
+                          labelText: 'Confirmar contraseña',
+                          prefixIcon: Icon(Icons.lock_outline),
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) =>
+                            Validators.validatePasswordConfirmation(
+                          value,
+                          _passCtrl.text,
+                        ),
                         onChanged: (_) => _clearAuthError(),
                       ),
                       

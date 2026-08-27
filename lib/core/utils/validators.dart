@@ -41,6 +41,20 @@ class Validators {
     return null;
   }
 
+  /// Compara [confirmation] con [password] de forma exacta (sin trim ni normalizar).
+  static String? validatePasswordConfirmation(
+    String? confirmation,
+    String password,
+  ) {
+    if (confirmation == null || confirmation.isEmpty) {
+      return 'Confirma tu contraseña.';
+    }
+    if (confirmation != password) {
+      return 'Las contraseñas no coinciden.';
+    }
+    return null;
+  }
+
   static String? validateBolivianPhone(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'El teléfono es obligatorio';
