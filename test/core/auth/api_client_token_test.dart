@@ -96,6 +96,10 @@ void main() {
       expect(
           adapter.lastOptions!.headers.containsKey('Authorization'), isFalse);
 
+      await apiClient.client.post('/auth/google', data: {'idToken': 'x'});
+      expect(
+          adapter.lastOptions!.headers.containsKey('Authorization'), isFalse);
+
       await apiClient.client.get('/public/clubes');
       expect(
           adapter.lastOptions!.headers.containsKey('Authorization'), isFalse);

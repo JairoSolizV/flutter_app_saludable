@@ -100,9 +100,21 @@ void main() {
       expect(PublicApiPaths.isPublic('/auth/login/'), isTrue);
       expect(PublicApiPaths.isPublic('/auth/login?x=1'), isTrue);
       expect(PublicApiPaths.isPublic('/api/auth/login'), isTrue);
+      expect(PublicApiPaths.isPublic('/auth/register'), isTrue);
+      expect(PublicApiPaths.isPublic('/auth/register-basico'), isTrue);
+      expect(PublicApiPaths.isPublic('/auth/check-email'), isTrue);
+      expect(PublicApiPaths.isPublic('/auth/verify-email'), isTrue);
+      expect(PublicApiPaths.isPublic('/auth/resend-code'), isTrue);
+      expect(PublicApiPaths.isPublic('/auth/google'), isTrue);
       expect(
         PublicApiPaths.isPublic(
           'https://clubs-api.onrender.com/api/auth/login',
+        ),
+        isTrue,
+      );
+      expect(
+        PublicApiPaths.isPublic(
+          'https://clubs-api.onrender.com/api/auth/google',
         ),
         isTrue,
       );
@@ -184,6 +196,23 @@ void main() {
       expect(
           adapter.lastOptions!.headers.containsKey('Authorization'), isFalse);
       expect(adapter.lastOptions!.extra[kRequestIsPublic], isTrue);
+
+      await apiClient.client.post('/auth/google', data: {'idToken': 'x'});
+      expect(
+          adapter.lastOptions!.headers.containsKey('Authorization'), isFalse);
+      expect(adapter.lastOptions!.extra[kRequestIsPublic], isTrue);
+    });
+
+    test('endpoint protegido sí lleva Authorization con token en store',
+        () async {
+      await tokenStore.saveToken(fakeJwt);
+      adapter.statusCode = 200;
+      await apiClient.client.get('/clubes');
+      expect(
+        adapter.lastOptions!.headers['Authorization'],
+        'Bearer $fakeJwt',
+      );
+      expect(adapter.lastOptions!.extra[kRequestIsPublic], isFalse);
     });
 
     test('extra no puede forzar ruta protegida como pública', () async {

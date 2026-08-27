@@ -16,6 +16,7 @@ class PublicApiPaths {
     '/auth/check-email',
     '/auth/verify-email',
     '/auth/resend-code',
+    '/auth/google',
   ];
 
   /// True si [path] es un endpoint público (login, registro, `/public/**`, etc.).
