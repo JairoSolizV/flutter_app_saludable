@@ -31,6 +31,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _acceptPrivacy = false;
   bool _checkingEmail = false;
   String? _emailValidationError;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   static const _emailTakenMessage = 'Este correo ya está registrado';
 
@@ -262,15 +264,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       TextFormField(
                         controller: _passCtrl,
                         focusNode: _passFocusNode,
-                        obscureText: true,
+                        obscureText: _obscurePassword,
                         autofillHints: const [AutofillHints.newPassword],
                         textInputAction: TextInputAction.next,
                         onFieldSubmitted: (_) =>
                             FocusScope.of(context).requestFocus(_confirmPassFocusNode),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Contraseña',
-                          prefixIcon: Icon(Icons.lock),
-                          border: OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.lock),
+                          border: const OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
                         ),
                         validator: Validators.validatePassword,
                         onChanged: (_) {
@@ -284,7 +298,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       TextFormField(
                         controller: _confirmPassCtrl,
                         focusNode: _confirmPassFocusNode,
-                        obscureText: true,
+                        obscureText: _obscureConfirmPassword,
                         autofillHints: const [AutofillHints.newPassword],
                         textInputAction: TextInputAction.done,
                         onFieldSubmitted: (_) {
@@ -295,10 +309,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             FocusScope.of(context).unfocus();
                           }
                         },
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Confirmar contraseña',
-                          prefixIcon: Icon(Icons.lock_outline),
-                          border: OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          border: const OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureConfirmPassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscureConfirmPassword =
+                                    !_obscureConfirmPassword;
+                              });
+                            },
+                          ),
                         ),
                         validator: (value) =>
                             Validators.validatePasswordConfirmation(

@@ -198,4 +198,76 @@ void main() {
       expect(find.byType(TextFormField), findsNWidgets(6));
     });
   });
+
+  group('RegisterScreen UI-AUTH-002', () {
+    Finder passwordField(WidgetTester tester) =>
+        find.byType(TextFormField).at(4);
+
+    Finder confirmPasswordField(WidgetTester tester) =>
+        find.byType(TextFormField).at(5);
+
+    Finder visibilityButtonFor(WidgetTester tester, Finder field) =>
+        find.descendant(of: field, matching: find.byType(IconButton));
+
+    bool isObscured(WidgetTester tester, Finder field) {
+      final editable = tester.widget<EditableText>(
+        find.descendant(of: field, matching: find.byType(EditableText)),
+      );
+      return editable.obscureText;
+    }
+
+    testWidgets('password inicia oculta y toggle alterna', (tester) async {
+      await _pumpRegisterScreen(tester);
+      final field = passwordField(tester);
+
+      expect(isObscured(tester, field), isTrue);
+      await tester.tap(visibilityButtonFor(tester, field));
+      await tester.pump();
+      expect(isObscured(tester, field), isFalse);
+      await tester.tap(visibilityButtonFor(tester, field));
+      await tester.pump();
+      expect(isObscured(tester, field), isTrue);
+    });
+
+    testWidgets('confirm password toggle es independiente', (tester) async {
+      await _pumpRegisterScreen(tester);
+      final pass = passwordField(tester);
+      final confirm = confirmPasswordField(tester);
+
+      expect(isObscured(tester, pass), isTrue);
+      expect(isObscured(tester, confirm), isTrue);
+
+      await tester.tap(visibilityButtonFor(tester, pass));
+      await tester.pump();
+      expect(isObscured(tester, pass), isFalse);
+      expect(isObscured(tester, confirm), isTrue);
+
+      await tester.tap(visibilityButtonFor(tester, confirm));
+      await tester.pump();
+      expect(isObscured(tester, pass), isFalse);
+      expect(isObscured(tester, confirm), isFalse);
+    });
+
+    testWidgets('toggle ojo no altera el texto de password', (tester) async {
+      await _pumpRegisterScreen(tester);
+      final field = passwordField(tester);
+
+      await tester.enterText(field, 'Password123');
+      await tester.tap(visibilityButtonFor(tester, field));
+      await tester.pump();
+
+      expect(find.text('Password123'), findsOneWidget);
+    });
+
+    testWidgets('registro con passwords iguales sigue enviando solo password',
+        (tester) async {
+      final remote = await _pumpRegisterScreen(tester);
+      await _fillRegisterForm(tester);
+      await _acceptTerms(tester);
+      await _tapRegister(tester);
+
+      expect(remote.registerCalls, 1);
+      expect(remote.lastPassword, 'Password123');
+    });
+  });
 }

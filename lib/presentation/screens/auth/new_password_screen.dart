@@ -20,6 +20,8 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
   final _passFocusNode = FocusNode();
   final _confirmPassFocusNode = FocusNode();
   bool _showTokenInvalidActions = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void initState() {
@@ -131,15 +133,27 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                       TextFormField(
                         controller: _passCtrl,
                         focusNode: _passFocusNode,
-                        obscureText: true,
+                        obscureText: _obscurePassword,
                         autofillHints: const [AutofillHints.newPassword],
                         textInputAction: TextInputAction.next,
                         onFieldSubmitted: (_) =>
                             FocusScope.of(context).requestFocus(_confirmPassFocusNode),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Nueva contraseña',
-                          prefixIcon: Icon(Icons.lock),
-                          border: OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.lock),
+                          border: const OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
                         ),
                         validator: Validators.validatePassword,
                         onChanged: (_) {
@@ -158,13 +172,26 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                       TextFormField(
                         controller: _confirmPassCtrl,
                         focusNode: _confirmPassFocusNode,
-                        obscureText: true,
+                        obscureText: _obscureConfirmPassword,
                         autofillHints: const [AutofillHints.newPassword],
                         textInputAction: TextInputAction.done,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Confirmar contraseña',
-                          prefixIcon: Icon(Icons.lock_outline),
-                          border: OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          border: const OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureConfirmPassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscureConfirmPassword =
+                                    !_obscureConfirmPassword;
+                              });
+                            },
+                          ),
                         ),
                         validator: (value) =>
                             Validators.validatePasswordConfirmation(
