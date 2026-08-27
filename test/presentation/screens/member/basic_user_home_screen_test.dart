@@ -3,6 +3,7 @@ import 'package:flutter_app_saludable/core/di/app_dependencies.dart';
 import 'package:flutter_app_saludable/domain/entities/user.dart';
 import 'package:flutter_app_saludable/presentation/providers/user_provider.dart';
 import 'package:flutter_app_saludable/presentation/screens/member/basic_user_home_screen.dart';
+import 'package:flutter_app_saludable/presentation/widgets/socio_steps_stepper.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -96,5 +97,31 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Perfil Básico'), findsOneWidget);
+  });
+
+  testWidgets('muestra el paso a paso para ser socio', (tester) async {
+    await tester.pumpWidget(_buildApp(deps));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cómo convertirte en socio'), findsOneWidget);
+    expect(find.byType(SocioStepsStepper), findsOneWidget);
+  });
+
+  testWidgets('el stepper de la home es navegable', (tester) async {
+    await tester.pumpWidget(_buildApp(deps));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.widgetWithText(ElevatedButton, 'Siguiente'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Siguiente'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<Stepper>(find.byType(Stepper)).currentStep,
+      1,
+    );
   });
 }

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../providers/user_provider.dart';
+import '../../widgets/socio_steps_stepper.dart';
 
 class BasicUserHomeScreen extends StatelessWidget {
   const BasicUserHomeScreen({super.key});
@@ -92,6 +93,24 @@ class BasicUserHomeScreen extends StatelessWidget {
                 ],
               ),
             ),
+
+            const SizedBox(height: 30),
+
+            const Text(
+              'Cómo convertirte en socio',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF333333),
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Seguí estos 3 pasos',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            const SocioStepsStepper(),
 
             const SizedBox(height: 30),
           ],
