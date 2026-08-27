@@ -28,7 +28,7 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
   final SessionStateResetter? _sessionStateResetter;
   final PendingVerificationStore _pendingVerificationStore;
   
-  late final GoogleAuthService _googleAuthService;
+  final GoogleAuthService _googleAuthService;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -45,6 +45,7 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     SessionExpirationHandler? sessionExpirationHandler,
     SessionOwner? sessionOwner,
     SessionStateResetter? sessionStateResetter,
+    GoogleAuthService? googleAuthService,
   })  : _pendingVerificationStore =
             pendingVerificationStore ?? InMemoryPendingVerificationStore(),
         _sessionMigrator = sessionMigrator ??
@@ -54,11 +55,11 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
             ),
         _sessionExpirationHandler = sessionExpirationHandler,
         _sessionOwner = sessionOwner,
-        _sessionStateResetter = sessionStateResetter {
-    _googleAuthService = GoogleAuthService(
-      webClientId: kGoogleWebClientId,
-    );
-  }
+        _sessionStateResetter = sessionStateResetter,
+        _googleAuthService = googleAuthService ??
+            GoogleAuthService(
+              webClientId: kGoogleWebClientId,
+            );
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -507,6 +508,12 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     _isLoading = false;
     _sessionStatus = SessionStatus.guest;
     _sessionExpirationHandler?.markLoggedOut();
+
+    try {
+      await _googleAuthService.signOut();
+    } catch (e) {
+      logDebug('[AUTH] logout() - Google signOut falló (ignorado): $e');
+    }
 
     Object? tokenError;
     Object? profileError;
