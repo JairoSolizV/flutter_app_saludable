@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app_saludable/core/di/app_dependencies.dart';
 import 'package:flutter_app_saludable/presentation/providers/auth_provider.dart';
+import 'package:flutter_app_saludable/presentation/providers/user_provider.dart';
 import 'package:flutter_app_saludable/presentation/screens/splash_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -54,16 +55,23 @@ void main() {
     addTearDown(deps.dispose);
 
     await tester.pumpWidget(
-      ChangeNotifierProvider(
-        create: (_) => AuthProvider(
-          deps.authRemoteDataSource,
-          deps.userRepository,
-          deps.tokenStore,
-          pendingVerificationStore: deps.pendingVerificationStore,
-          sessionExpirationHandler: deps.sessionExpirationHandler,
-          sessionOwner: deps.sessionOwner,
-          sessionStateResetter: deps.sessionStateResetter,
-        ),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(
+            create: (_) => AuthProvider(
+              deps.authRemoteDataSource,
+              deps.userRepository,
+              deps.tokenStore,
+              pendingVerificationStore: deps.pendingVerificationStore,
+              sessionExpirationHandler: deps.sessionExpirationHandler,
+              sessionOwner: deps.sessionOwner,
+              sessionStateResetter: deps.sessionStateResetter,
+            ),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => UserProvider(deps.userRepository),
+          ),
+        ],
         child: MaterialApp.router(routerConfig: _buildRouter()),
       ),
     );
@@ -99,16 +107,23 @@ void main() {
     addTearDown(deps.dispose);
 
     await tester.pumpWidget(
-      ChangeNotifierProvider(
-        create: (_) => AuthProvider(
-          deps.authRemoteDataSource,
-          deps.userRepository,
-          deps.tokenStore,
-          pendingVerificationStore: deps.pendingVerificationStore,
-          sessionExpirationHandler: deps.sessionExpirationHandler,
-          sessionOwner: deps.sessionOwner,
-          sessionStateResetter: deps.sessionStateResetter,
-        ),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(
+            create: (_) => AuthProvider(
+              deps.authRemoteDataSource,
+              deps.userRepository,
+              deps.tokenStore,
+              pendingVerificationStore: deps.pendingVerificationStore,
+              sessionExpirationHandler: deps.sessionExpirationHandler,
+              sessionOwner: deps.sessionOwner,
+              sessionStateResetter: deps.sessionStateResetter,
+            ),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => UserProvider(deps.userRepository),
+          ),
+        ],
         child: MaterialApp.router(routerConfig: _buildRouter()),
       ),
     );

@@ -1,7 +1,25 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_app_saludable/domain/entities/user.dart';
 import 'package:flutter_app_saludable/presentation/providers/auth_provider.dart';
+import 'package:flutter_app_saludable/presentation/providers/user_provider.dart';
+
+/// Hidrata [UserProvider] desde SQLite tras un bootstrap auth exitoso.
+///
+/// Usa [UserProvider.loadUser] para no copiar JWT a memoria del provider de UI.
+/// Si SQLite no responde, cae al perfil de bootstrap sin token.
+@visibleForTesting
+Future<void> hydrateUserProviderAfterBootstrap(
+  UserProvider userProvider,
+  User authenticatedUser,
+) async {
+  await userProvider.loadUser(authenticatedUser.id);
+  if (userProvider.currentUser == null) {
+    userProvider.setUser(authenticatedUser.withoutToken());
+  }
+}
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -27,6 +45,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
     // Sesión válida solo con perfil + token coherentes (AuthProvider).
     if (user != null && user.role != 'guest') {
+      final userProvider = context.read<UserProvider>();
+      await hydrateUserProviderAfterBootstrap(userProvider, user);
+      if (!mounted) return;
+
       switch (user.role) {
         case 'host':
           context.go('/host-dashboard');

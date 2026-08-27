@@ -101,7 +101,44 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
     }
 
     if (user == null) {
-      return const Scaffold(body: Center(child: Text("Error: Usuario no encontrado")));
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Error: Usuario no encontrado',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final auth =
+                        Provider.of<AuthProvider>(context, listen: false);
+                    final userProv =
+                        Provider.of<UserProvider>(context, listen: false);
+
+                    await auth.logout();
+                    userProv.logout();
+
+                    if (context.mounted) {
+                      context.go('/guest-home');
+                    }
+                  },
+                  icon: const Icon(LucideIcons.logOut),
+                  label: const Text('Cerrar sesión'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red[50],
+                    foregroundColor: Colors.red,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
     return Scaffold(
