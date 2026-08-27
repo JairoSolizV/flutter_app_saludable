@@ -119,10 +119,6 @@ final appRouter = GoRouter(
           builder: (context, state) => const BasicUserHomeScreen(),
         ),
         GoRoute(
-          path: '/basic-map',
-          builder: (context, state) => const GuestMapScreen(),
-        ),
-        GoRoute(
           path: '/basic-profile',
           builder: (context, state) => const BasicUserProfileScreen(),
           routes: [
