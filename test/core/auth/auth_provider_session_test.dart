@@ -44,7 +44,17 @@ class FakeAuthRemoteDataSource implements AuthRemoteDataSource {
   Future<User> updateUser(User user) async => user;
 
   @override
-  Future<bool> verifyEmail(String email, String code) async => true;
+  Future<User?> verifyEmail(String email, String code) async => null;
+
+  @override
+  Future<void> requestPasswordReset(String email) async {}
+
+  @override
+  Future<String> verifyPasswordResetCode(String email, String code) async =>
+      'reset-token-stub';
+
+  @override
+  Future<void> resetPassword(String resetToken, String password) async {}
 }
 
 void main() {
