@@ -7,6 +7,9 @@ import '../../presentation/screens/splash_screen.dart';
 import '../../presentation/screens/auth/login_screen.dart';
 import '../../presentation/screens/auth/register_screen.dart'; // Add import
 import '../../presentation/screens/auth/email_verification_screen.dart'; // Verificación email
+import '../../presentation/screens/auth/forgot_password_screen.dart';
+import '../../presentation/screens/auth/reset_password_code_screen.dart';
+import '../../presentation/screens/auth/new_password_screen.dart';
 import '../../presentation/screens/screen_selector.dart';
 import '../../presentation/screens/guest/guest_home_screen.dart';
 import '../../presentation/screens/guest/guest_flavor_catalog.dart';
@@ -79,6 +82,22 @@ final appRouter = GoRouter(
         final extraEmail = extra?['email'] as String?;
         return EmailVerificationScreen(email: extraEmail);
       },
+    ),
+    GoRoute(
+      path: '/forgot-password',
+      builder: (context, state) => const ForgotPasswordScreen(),
+    ),
+    GoRoute(
+      path: '/reset-password-code',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        final email = extra?['email'] as String?;
+        return ResetPasswordCodeScreen(email: email);
+      },
+    ),
+    GoRoute(
+      path: '/new-password',
+      builder: (context, state) => const NewPasswordScreen(),
     ),
     // Rutas de Invitado con Shell (BottomNav)
     ShellRoute(

@@ -99,6 +99,27 @@ class ValidationException extends AppException {
   final Map<String, String>? fieldErrors;
 }
 
+/// OTP de recuperación inválido, expirado o bloqueado.
+class ResetCodeInvalidException extends ValidationException {
+  static const String errorCode = 'RESET_CODE_INVALID';
+  static const String defaultMessage = 'Código inválido o expirado.';
+
+  ResetCodeInvalidException([
+    super.message = defaultMessage,
+  ]) : super(statusCode: 400, code: errorCode);
+}
+
+/// Token de reset inválido, expirado o ya utilizado.
+class ResetTokenInvalidException extends ValidationException {
+  static const String errorCode = 'RESET_TOKEN_INVALID';
+  static const String defaultMessage =
+      'El enlace de recuperación es inválido o expiró. Solicita un nuevo código.';
+
+  ResetTokenInvalidException([
+    super.message = defaultMessage,
+  ]) : super(statusCode: 400, code: errorCode);
+}
+
 class ConflictException extends AppException {
   ConflictException(
     super.message, {

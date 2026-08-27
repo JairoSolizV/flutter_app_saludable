@@ -54,6 +54,16 @@ class ErrorMapper {
     switch (status) {
       case 400:
       case 422:
+        if (parsed.code == ResetCodeInvalidException.errorCode) {
+          return ResetCodeInvalidException(
+            message ?? ResetCodeInvalidException.defaultMessage,
+          );
+        }
+        if (parsed.code == ResetTokenInvalidException.errorCode) {
+          return ResetTokenInvalidException(
+            message ?? ResetTokenInvalidException.defaultMessage,
+          );
+        }
         return ValidationException(
           message ?? _validation,
           statusCode: status,

@@ -44,6 +44,16 @@ class _FakeAuthRemoteDataSource implements AuthRemoteDataSource {
 
   @override
   Future<User?> verifyEmail(String email, String code) async => loginResult;
+
+  @override
+  Future<void> requestPasswordReset(String email) async {}
+
+  @override
+  Future<String> verifyPasswordResetCode(String email, String code) async =>
+      'reset-token-stub';
+
+  @override
+  Future<void> resetPassword(String resetToken, String password) async {}
 }
 
 void main() {

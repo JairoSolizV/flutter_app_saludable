@@ -16,6 +16,9 @@ class PublicApiPaths {
     '/auth/check-email',
     '/auth/verify-email',
     '/auth/resend-code',
+    '/auth/forgot-password',
+    '/auth/verify-reset-code',
+    '/auth/reset-password',
     '/auth/google',
   ];
 

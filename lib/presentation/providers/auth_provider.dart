@@ -35,6 +35,11 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
   bool _requiresVerification = false;
   bool _sessionReady = false;
   SessionStatus _sessionStatus = SessionStatus.unknown;
+  String? _passwordResetToken;
+
+  /// Mensaje público anti-enumeración (alineado con backend).
+  static const String passwordResetRequestMessage =
+      'Si el correo está registrado, recibirás un código para restablecer tu contraseña.';
 
   AuthProvider(
     this._remoteDataSource,
@@ -70,6 +75,19 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
   User? _currentUser;
   User? get currentUser => _currentUser;
 
+  /// True si hay un resetToken opaco pendiente en memoria (no persistido).
+  bool get canCompletePasswordReset =>
+      _passwordResetToken != null && _passwordResetToken!.isNotEmpty;
+
+  /// Código funcional del último error en flujo de reset (p. ej. RESET_TOKEN_INVALID).
+  String? get passwordResetErrorCode => _passwordResetErrorCode;
+  String? _passwordResetErrorCode;
+
+  void clearPasswordResetState() {
+    _passwordResetToken = null;
+    _passwordResetErrorCode = null;
+  }
+
   @override
   Future<void> clearSessionState() async {
     _currentUser = null;
@@ -77,6 +95,7 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     _errorMessage = null;
     _requiresVerification = false;
     _sessionReady = true;
+    clearPasswordResetState();
     // status lo fija quien invoca (expired vs guest)
     notifyListeners();
   }
@@ -394,6 +413,89 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     }
   }
 
+  Future<bool> requestPasswordReset(String email) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _passwordResetErrorCode = null;
+    notifyListeners();
+
+    try {
+      await _remoteDataSource
+          .requestPasswordReset(Validators.normalizeEmail(email));
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = _toPublicError(e);
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> verifyPasswordResetCode(String email, String code) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _passwordResetErrorCode = null;
+    notifyListeners();
+
+    try {
+      final token = await _remoteDataSource.verifyPasswordResetCode(
+        Validators.normalizeEmail(email),
+        code,
+      );
+      _passwordResetToken = token;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on ResetCodeInvalidException {
+      _errorMessage = ResetCodeInvalidException.defaultMessage;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = _toPublicError(e);
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> completePasswordReset(String password) async {
+    final token = _passwordResetToken;
+    if (token == null || token.isEmpty) {
+      _errorMessage = ResetTokenInvalidException.defaultMessage;
+      _passwordResetErrorCode = ResetTokenInvalidException.errorCode;
+      notifyListeners();
+      return false;
+    }
+
+    _isLoading = true;
+    _errorMessage = null;
+    _passwordResetErrorCode = null;
+    notifyListeners();
+
+    try {
+      await _remoteDataSource.resetPassword(token, password);
+      clearPasswordResetState();
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on ResetTokenInvalidException catch (e) {
+      clearPasswordResetState();
+      _errorMessage = e.message;
+      _passwordResetErrorCode = ResetTokenInvalidException.errorCode;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = _toPublicError(e);
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> _authenticate(Future<User> Function() authMethod) async {
     _isLoading = true;
     _errorMessage = null;
@@ -549,6 +651,7 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     _isLoading = false;
     _sessionStatus = SessionStatus.guest;
     _sessionExpirationHandler?.markLoggedOut();
+    clearPasswordResetState();
 
     try {
       await _googleAuthService.signOut();

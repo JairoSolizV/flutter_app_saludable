@@ -105,6 +105,9 @@ void main() {
       expect(PublicApiPaths.isPublic('/auth/check-email'), isTrue);
       expect(PublicApiPaths.isPublic('/auth/verify-email'), isTrue);
       expect(PublicApiPaths.isPublic('/auth/resend-code'), isTrue);
+      expect(PublicApiPaths.isPublic('/auth/forgot-password'), isTrue);
+      expect(PublicApiPaths.isPublic('/auth/verify-reset-code'), isTrue);
+      expect(PublicApiPaths.isPublic('/auth/reset-password'), isTrue);
       expect(PublicApiPaths.isPublic('/auth/google'), isTrue);
       expect(
         PublicApiPaths.isPublic(
@@ -201,6 +204,17 @@ void main() {
       expect(
           adapter.lastOptions!.headers.containsKey('Authorization'), isFalse);
       expect(adapter.lastOptions!.extra[kRequestIsPublic], isTrue);
+
+      for (final path in [
+        '/auth/forgot-password',
+        '/auth/verify-reset-code',
+        '/auth/reset-password',
+      ]) {
+        await apiClient.client.post(path, data: {});
+        expect(
+            adapter.lastOptions!.headers.containsKey('Authorization'), isFalse);
+        expect(adapter.lastOptions!.extra[kRequestIsPublic], isTrue);
+      }
     });
 
     test('endpoint protegido sí lleva Authorization con token en store',

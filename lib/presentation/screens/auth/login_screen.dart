@@ -103,7 +103,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           }
                         },
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => context.push('/forgot-password'),
+                          child: const Text(
+                            '¿Olvidaste tu contraseña?',
+                            style: TextStyle(color: AppTheme.primaryColor),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       Consumer<AuthProvider>(
                         builder: (context, auth, _) {
                             if (auth.errorMessage != null) {

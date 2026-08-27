@@ -17,6 +17,9 @@ abstract class AuthRemoteDataSource {
   Future<bool> checkEmailExists(String email);
   Future<User?> verifyEmail(String email, String code);
   Future<bool> resendVerificationCode(String email);
+  Future<void> requestPasswordReset(String email);
+  Future<String> verifyPasswordResetCode(String email, String code);
+  Future<void> resetPassword(String resetToken, String password);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -281,6 +284,69 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       return false;
     } on DioException catch (e) {
       throw ErrorMapper.fromDio(e, fallback: 'Error al reenviar el código');
+    }
+  }
+
+  @override
+  Future<void> requestPasswordReset(String email) async {
+    try {
+      final response = await _client.post('/auth/forgot-password', data: {
+        'email': Validators.normalizeEmail(email),
+      });
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return;
+      }
+      throw ServerException(
+        'No se pudo solicitar la recuperación de contraseña',
+        statusCode: response.statusCode,
+      );
+    } on DioException catch (e) {
+      throw ErrorMapper.fromDio(
+        e,
+        fallback: 'No se pudo solicitar la recuperación de contraseña',
+      );
+    }
+  }
+
+  @override
+  Future<String> verifyPasswordResetCode(String email, String code) async {
+    try {
+      final response = await _client.post('/auth/verify-reset-code', data: {
+        'email': Validators.normalizeEmail(email),
+        'code': code,
+      });
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final token = response.data['resetToken'];
+        if (token is String && token.trim().isNotEmpty) {
+          return token.trim();
+        }
+        throw ValidationException('Respuesta inválida del servidor');
+      }
+      throw ResetCodeInvalidException();
+    } on DioException catch (e) {
+      throw ErrorMapper.fromDio(
+        e,
+        fallback: ResetCodeInvalidException.defaultMessage,
+      );
+    }
+  }
+
+  @override
+  Future<void> resetPassword(String resetToken, String password) async {
+    try {
+      final response = await _client.post('/auth/reset-password', data: {
+        'resetToken': resetToken,
+        'password': password,
+      });
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return;
+      }
+      throw ResetTokenInvalidException();
+    } on DioException catch (e) {
+      throw ErrorMapper.fromDio(
+        e,
+        fallback: ResetTokenInvalidException.defaultMessage,
+      );
     }
   }
 }

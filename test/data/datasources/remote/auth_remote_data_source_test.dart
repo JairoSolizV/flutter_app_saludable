@@ -554,4 +554,64 @@ void main() {
       );
     }));
   });
+
+  group('password reset endpoints', () {
+    test('requestPasswordReset normaliza email y acepta 200 genérico', async_(() async {
+      adapter.stub('POST', '/auth/forgot-password', data: {
+        'success': true,
+        'message':
+            'Si el correo está registrado, recibirás un código para restablecer tu contraseña.',
+      });
+      await ds.requestPasswordReset('  USER@TEST.COM  ');
+      final body = adapter.requests.last.data as Map;
+      expect(body['email'], 'user@test.com');
+    }));
+
+    test('verifyPasswordResetCode devuelve resetToken', async_(() async {
+      adapter.stub('POST', '/auth/verify-reset-code', data: {
+        'success': true,
+        'resetToken': 'opaque-token-value',
+      });
+      final token =
+          await ds.verifyPasswordResetCode('user@test.com', '123456');
+      expect(token, 'opaque-token-value');
+    }));
+
+    test('verifyPasswordResetCode 400 mapea RESET_CODE_INVALID', async_(() async {
+      adapter.stub('POST', '/auth/verify-reset-code', statusCode: 400, data: {
+        'success': false,
+        'error': 'RESET_CODE_INVALID',
+        'message': 'Código inválido o expirado.',
+      });
+      await expectLater(
+        () => ds.verifyPasswordResetCode('user@test.com', '000000'),
+        throwsA(isA<ResetCodeInvalidException>()),
+      );
+    }));
+
+    test('resetPassword envía solo resetToken y password', async_(() async {
+      adapter.stub('POST', '/auth/reset-password', data: {
+        'success': true,
+        'message': 'Contraseña actualizada correctamente.',
+      });
+      await ds.resetPassword('opaque-token', 'NewPass123!');
+      final body = adapter.requests.last.data as Map;
+      expect(body['resetToken'], 'opaque-token');
+      expect(body['password'], 'NewPass123!');
+      expect(body.containsKey('confirmPassword'), isFalse);
+    }));
+
+    test('resetPassword 400 mapea RESET_TOKEN_INVALID', async_(() async {
+      adapter.stub('POST', '/auth/reset-password', statusCode: 400, data: {
+        'success': false,
+        'error': 'RESET_TOKEN_INVALID',
+        'message':
+            'El enlace de recuperación es inválido o expiró. Solicita un nuevo código.',
+      });
+      await expectLater(
+        () => ds.resetPassword('bad', 'NewPass123!'),
+        throwsA(isA<ResetTokenInvalidException>()),
+      );
+    }));
+  });
 }
