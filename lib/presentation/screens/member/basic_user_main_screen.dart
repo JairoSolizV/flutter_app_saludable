@@ -13,17 +13,8 @@ class BasicUserMainScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Determine current index based on route location
     final String location = GoRouterState.of(context).uri.toString();
-    
-    int currentIndex = 0;
-    if (location.startsWith('/basic-map')) {
-      currentIndex = 1;
-    } else if (location.startsWith('/basic-profile')) {
-      currentIndex = 2;
-    } else {
-      currentIndex = 0;
-    }
+    final int currentIndex = location.startsWith('/basic-profile') ? 1 : 0;
 
     return Scaffold(
       body: child,
@@ -40,9 +31,6 @@ class BasicUserMainScreen extends StatelessWidget {
               context.go('/basic-home');
               break;
             case 1:
-              context.go('/basic-map');
-              break;
-            case 2:
               context.go('/basic-profile');
               break;
           }
@@ -51,10 +39,6 @@ class BasicUserMainScreen extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Icon(LucideIcons.home),
             label: 'Inicio',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(LucideIcons.mapPin),
-            label: 'Mapa',
           ),
           BottomNavigationBarItem(
             icon: Icon(LucideIcons.user),
