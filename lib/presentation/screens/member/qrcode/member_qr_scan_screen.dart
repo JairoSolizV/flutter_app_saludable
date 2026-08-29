@@ -11,7 +11,68 @@ import '../../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../providers/user_provider.dart';
+import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+
+/// Extra de navegación al catálogo del club de la membresía (no el del QR).
+Map<String, dynamic> comboRequiredOrderExtra(ClubMembership membership) {
+  return {
+    'clubId': membership.clubId,
+    'clubNombre': membership.clubNombre,
+  };
+}
+
+/// Diálogo de negocio cuando POST /asistencias/registrar responde COMBO_REQUIRED.
+class ComboRequiredAttendanceDialog extends StatelessWidget {
+  const ComboRequiredAttendanceDialog({super.key});
+
+  static const String title = 'Combo requerido';
+  static const String body =
+      'Para registrar tu asistencia necesitas tener un combo entregado hoy. '
+      'Puedes realizar tu pedido en el club de tu membresía.';
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text(title),
+      content: const Text(body),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Entendido'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primaryColor,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Hacer pedido'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Muestra el diálogo COMBO_REQUIRED y, si el socio acepta, abre el catálogo
+/// del club de su membresía.
+Future<void> handleComboRequiredAttendance({
+  required BuildContext context,
+  required ClubMembership membership,
+}) async {
+  final goToOrder = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => const ComboRequiredAttendanceDialog(),
+  );
+  if (!context.mounted) return;
+  if (goToOrder == true) {
+    context.push(
+      '/member-orders/new/club-products',
+      extra: comboRequiredOrderExtra(membership),
+    );
+  }
+}
 
 class MemberQrScanScreen extends StatefulWidget {
   const MemberQrScanScreen({super.key});
@@ -233,27 +294,33 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
         elevation: 0,
         actions: [
           IconButton(
-            icon: ValueListenableBuilder(
-              valueListenable: cameraController.torchState,
+            icon: ValueListenableBuilder<MobileScannerState>(
+              valueListenable: cameraController,
               builder: (context, state, child) {
-                switch (state) {
+                switch (state.torchState) {
                   case TorchState.off:
+                  case TorchState.unavailable:
                     return const Icon(Icons.flash_off, color: Colors.grey);
                   case TorchState.on:
                     return const Icon(Icons.flash_on, color: Colors.yellow);
+                  case TorchState.auto:
+                    return const Icon(Icons.flash_auto, color: Colors.yellow);
                 }
               },
             ),
             onPressed: () => cameraController.toggleTorch(),
           ),
           IconButton(
-            icon: ValueListenableBuilder(
-              valueListenable: cameraController.cameraFacingState,
+            icon: ValueListenableBuilder<MobileScannerState>(
+              valueListenable: cameraController,
               builder: (context, state, child) {
-                switch (state) {
+                switch (state.cameraDirection) {
                   case CameraFacing.front:
                     return const Icon(Icons.camera_front);
                   case CameraFacing.back:
+                    return const Icon(Icons.camera_rear);
+                  case CameraFacing.external:
+                  case CameraFacing.unknown:
                     return const Icon(Icons.camera_rear);
                 }
               },
@@ -355,6 +422,7 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
       // La validación de distancia es opcional y puede ser removida si se desea
       const double maxDistanceMeters = 40.0;
       if (distance > maxDistanceMeters) {
+        if (!mounted) return;
         // Mostrar advertencia pero permitir continuar (asistencias globales)
         final shouldContinue = await showDialog<bool>(
           context: context,
@@ -401,12 +469,23 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
       final membership = membresias.first;
 
       // 7. Registrar Asistencia
-      final asistenciaResponse = await membresiaDataSource.registrarAsistencia(
-        membresiaId: membership.id,
-        clubId: clubId, // Club del QR escaneado (cualquier club activo)
-        latitud: userLat,
-        longitud: userLng,
-      );
+      late final AsistenciaResponse asistenciaResponse;
+      try {
+        asistenciaResponse = await membresiaDataSource.registrarAsistencia(
+          membresiaId: membership.id,
+          clubId: clubId, // Club del QR escaneado (cualquier club activo)
+          latitud: userLat,
+          longitud: userLng,
+        );
+      } on ComboRequiredException {
+        if (!mounted) return;
+        await handleComboRequiredAttendance(
+          context: context,
+          membership: membership,
+        );
+        if (mounted) setState(() => _isProcessing = false);
+        return;
+      }
 
       if (!mounted) return;
 

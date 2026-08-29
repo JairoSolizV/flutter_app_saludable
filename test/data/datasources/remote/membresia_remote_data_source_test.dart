@@ -237,6 +237,50 @@ void main() {
         throwsA(isA<AppException>()),
       );
     }));
+
+    test('400 COMBO_REQUIRED se mapea a ComboRequiredException', async_(() async {
+      adapter.stub('POST', '/asistencias/registrar', statusCode: 400, data: {
+        'error': 'COMBO_REQUIRED',
+        'message':
+            'El socio no ha consumido ningún Combo antes de registrar asistencia.',
+      });
+      await expectLater(
+        () => ds.registrarAsistencia(
+          membresiaId: 1,
+          clubId: 2,
+          latitud: 0,
+          longitud: 0,
+        ),
+        throwsA(
+          isA<ComboRequiredException>().having(
+            (e) => e.message,
+            'message',
+            contains('Combo'),
+          ),
+        ),
+      );
+    }));
+
+    test('400 genérico no es ComboRequiredException', async_(() async {
+      adapter.stub('POST', '/asistencias/registrar', statusCode: 400, data: {
+        'success': false,
+        'message': 'Ya existe una asistencia registrada para este socio hoy.',
+      });
+      await expectLater(
+        () => ds.registrarAsistencia(
+          membresiaId: 1,
+          clubId: 2,
+          latitud: 0,
+          longitud: 0,
+        ),
+        throwsA(
+          allOf(
+            isA<ValidationException>(),
+            isNot(isA<ComboRequiredException>()),
+          ),
+        ),
+      );
+    }));
   });
 
   group('registrarAsistenciaManual', () {

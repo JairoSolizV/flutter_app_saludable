@@ -127,6 +127,64 @@ void main() {
     });
   });
 
+  group('ErrorMapper.fromDio - COMBO_REQUIRED', () {
+    test('400 + error COMBO_REQUIRED → ComboRequiredException', () {
+      const backendMessage =
+          'El socio no ha consumido ningún Combo antes de registrar asistencia.';
+      final mapped = ErrorMapper.fromDio(
+        httpError(status: 400, data: {
+          'error': 'COMBO_REQUIRED',
+          'message': backendMessage,
+        }),
+      );
+
+      expect(mapped, isA<ComboRequiredException>());
+      expect(mapped.code, ComboRequiredException.errorCode);
+      expect(mapped.statusCode, 400);
+      expect(mapped.message, backendMessage);
+    });
+
+    test('400 + code COMBO_REQUIRED conserva el message del backend', () {
+      const backendMessage = 'Debes consumir un combo entregado hoy.';
+      final mapped = ErrorMapper.fromDio(
+        httpError(status: 400, data: {
+          'code': 'COMBO_REQUIRED',
+          'message': backendMessage,
+        }),
+      );
+
+      expect(mapped, isA<ComboRequiredException>());
+      expect(mapped.message, backendMessage);
+    });
+
+    test('otro 400 no se convierte a ComboRequiredException', () {
+      final mapped = ErrorMapper.fromDio(
+        httpError(status: 400, data: {
+          'success': false,
+          'message':
+              'Ya existe una asistencia registrada para este socio hoy.',
+        }),
+      );
+
+      expect(mapped, isA<ValidationException>());
+      expect(mapped, isNot(isA<ComboRequiredException>()));
+      expect(mapped.code, isNull);
+      expect(mapped.message, contains('asistencia registrada'));
+    });
+
+    test('RESET_CODE_INVALID sigue siendo ResetCodeInvalidException', () {
+      final mapped = ErrorMapper.fromDio(
+        httpError(status: 400, data: {
+          'error': 'RESET_CODE_INVALID',
+          'message': 'Código inválido o expirado.',
+        }),
+      );
+
+      expect(mapped, isA<ResetCodeInvalidException>());
+      expect(mapped, isNot(isA<ComboRequiredException>()));
+    });
+  });
+
   group('ErrorMapper.sanitizePublicMessage - datos sensibles', () {
     test('oculta mensajes con Bearer token', () {
       final result = ErrorMapper.sanitizePublicMessage(

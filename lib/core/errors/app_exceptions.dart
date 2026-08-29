@@ -120,6 +120,17 @@ class ResetTokenInvalidException extends ValidationException {
   ]) : super(statusCode: 400, code: errorCode);
 }
 
+/// El socio debe tener un combo ENTREGADO hoy antes de registrar asistencia.
+class ComboRequiredException extends ValidationException {
+  static const String errorCode = 'COMBO_REQUIRED';
+  static const String defaultMessage =
+      'El socio no ha consumido ningún Combo antes de registrar asistencia.';
+
+  ComboRequiredException([
+    super.message = defaultMessage,
+  ]) : super(statusCode: 400, code: errorCode);
+}
+
 class ConflictException extends AppException {
   ConflictException(
     super.message, {

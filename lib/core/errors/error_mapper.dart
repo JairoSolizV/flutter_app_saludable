@@ -64,6 +64,11 @@ class ErrorMapper {
             message ?? ResetTokenInvalidException.defaultMessage,
           );
         }
+        if (parsed.code == ComboRequiredException.errorCode) {
+          return ComboRequiredException(
+            message ?? ComboRequiredException.defaultMessage,
+          );
+        }
         return ValidationException(
           message ?? _validation,
           statusCode: status,
