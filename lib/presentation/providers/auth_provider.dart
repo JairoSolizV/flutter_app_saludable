@@ -186,21 +186,36 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     _currentUser = profile.copyWith(token: token);
 
     try {
-      await _remoteDataSource.getMe();
+      // 200: el perfil remoto es la fuente de verdad (rol, nombre, etc.).
+      final fetchedUser = await _remoteDataSource.getMe();
+      await _persistFetchedProfile(fetchedUser);
     } on AdminMobileNotSupportedException catch (e) {
       return _clearSessionForUnsupportedAdmin(e.message);
     } catch (_) {
       // Sin red u otro fallo: conservar sesión local restaurada.
     }
 
+    final sessionUser = _currentUser;
     _sessionReady = true;
     _sessionStatus = SessionStatus.active;
-    _setSessionOwner(profile.id);
+    _setSessionOwner(sessionUser?.id ?? profile.id);
     _sessionExpirationHandler?.markActive();
     SessionFeedback.resetExpiredMessageGate();
     await _pendingVerificationStore.clear();
     notifyListeners();
-    return _currentUser;
+    return sessionUser;
+  }
+
+  /// Persiste el perfil remoto en SQLite (sin JWT) y actualiza memoria.
+  /// El token de sesión sigue viniendo de [TokenStore], igual que [syncProfile].
+  Future<void> _persistFetchedProfile(User fetchedUser) async {
+    await _localRepository.saveUser(fetchedUser.withoutToken());
+    final sessionToken =
+        _tokenStore.isInitialized ? _tokenStore.getToken() : null;
+    _currentUser = fetchedUser.copyWith(
+      token: sessionToken,
+      clearToken: sessionToken == null,
+    );
   }
 
   User? _finishAsGuest() {
@@ -552,13 +567,7 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
       final fetchedUser = await _remoteDataSource.getMe();
       logDebug('[DEBUG AUTH_PROVIDER] Fetched user id=${fetchedUser.id}');
 
-      await _localRepository.saveUser(fetchedUser.withoutToken());
-
-      final token = _tokenStore.isInitialized ? _tokenStore.getToken() : null;
-      _currentUser = fetchedUser.copyWith(
-        token: token,
-        clearToken: token == null,
-      );
+      await _persistFetchedProfile(fetchedUser);
       notifyListeners();
 
       logDebug('[DEBUG AUTH_PROVIDER] syncProfile completed successfully');

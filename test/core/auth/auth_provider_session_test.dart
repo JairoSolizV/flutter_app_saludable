@@ -1,5 +1,7 @@
 import 'package:flutter_app_saludable/core/auth/secure_token_store.dart';
+import 'package:flutter_app_saludable/core/auth/session_status.dart';
 import 'package:flutter_app_saludable/core/auth/session_token_migrator.dart';
+import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/data/datasources/remote/auth_remote_data_source.dart';
 import 'package:flutter_app_saludable/domain/entities/user.dart';
 import 'package:flutter_app_saludable/presentation/providers/auth_provider.dart';
@@ -11,13 +13,17 @@ import 'in_memory_secure_storage_gateway.dart';
 class FakeAuthRemoteDataSource implements AuthRemoteDataSource {
   User? loginResult;
   User? registerResult;
+  User? getMeResult;
+  Object? getMeError;
 
   @override
   Future<bool> checkEmailExists(String email) async => false;
 
   @override
   Future<User> getMe() async {
-    return User(id: '1', name: 'A B', email: 'a@b.com', role: 'member');
+    if (getMeError != null) throw getMeError!;
+    return getMeResult ??
+        User(id: '1', name: 'A B', email: 'a@b.com', role: 'member');
   }
 
   @override
@@ -150,6 +156,12 @@ void main() {
         role: 'host',
       );
       await tokenStore.saveToken(fakeJwt);
+      remote.getMeResult = User(
+        id: '42',
+        name: 'Test User',
+        email: 'test@example.com',
+        role: 'host',
+      );
 
       final session = await auth.bootstrapSession();
 
@@ -158,7 +170,128 @@ void main() {
       expect(session.token, fakeJwt);
     });
 
-    test('registro guarda token seguro y perfil sin JWT en SQLite', () async {
+    test('MOB-SESSION-002 BASIC local + /auth/me SOCIO persiste y activa SOCIO',
+        () async {
+      users.current = User(
+        id: '10',
+        name: 'Basico Local',
+        email: 'basic@test.com',
+        role: 'basic_user',
+      );
+      await tokenStore.saveToken(fakeJwt);
+      remote.getMeResult = User(
+        id: '10',
+        name: 'Socio Remoto',
+        email: 'basic@test.com',
+        role: 'member',
+      );
+
+      final session = await auth.bootstrapSession();
+
+      expect(session, isNotNull);
+      expect(session!.role, 'member');
+      expect(session.name, 'Socio Remoto');
+      expect(session.token, fakeJwt);
+      expect(auth.currentUser!.role, 'member');
+      expect(auth.sessionStatus, SessionStatus.active);
+      expect(users.current!.role, 'member');
+      expect(users.current!.name, 'Socio Remoto');
+      expect(users.current!.token, isNull);
+      expect(users.saveUserCalls, 1);
+    });
+
+    test('MOB-SESSION-002 SOCIO local + /auth/me SOCIO no cambia el rol',
+        () async {
+      users.current = User(
+        id: '11',
+        name: 'Socio Local',
+        email: 'socio@test.com',
+        role: 'member',
+      );
+      await tokenStore.saveToken(fakeJwt);
+      remote.getMeResult = User(
+        id: '11',
+        name: 'Socio Remoto',
+        email: 'socio@test.com',
+        role: 'member',
+      );
+
+      final session = await auth.bootstrapSession();
+
+      expect(session!.role, 'member');
+      expect(auth.currentUser!.role, 'member');
+      expect(auth.sessionStatus, SessionStatus.active);
+      expect(users.current!.role, 'member');
+    });
+
+    test('MOB-SESSION-002 ANFITRION local + /auth/me ANFITRION sigue host',
+        () async {
+      users.current = User(
+        id: '12',
+        name: 'Host Local',
+        email: 'host@test.com',
+        role: 'host',
+      );
+      await tokenStore.saveToken(fakeJwt);
+      remote.getMeResult = User(
+        id: '12',
+        name: 'Host Remoto',
+        email: 'host@test.com',
+        role: 'host',
+      );
+
+      final session = await auth.bootstrapSession();
+
+      expect(session!.role, 'host');
+      expect(auth.currentUser!.role, 'host');
+      expect(auth.sessionStatus, SessionStatus.active);
+      expect(users.current!.role, 'host');
+    });
+
+    test('MOB-SESSION-002 /auth/me 200 no usa el User local viejo', () async {
+      users.current = User(
+        id: '13',
+        name: 'Nombre Viejo',
+        email: 'viejo@test.com',
+        role: 'basic_user',
+      );
+      await tokenStore.saveToken(fakeJwt);
+      remote.getMeResult = User(
+        id: '13',
+        name: 'Nombre Nuevo',
+        email: 'viejo@test.com',
+        role: 'member',
+      );
+
+      final session = await auth.bootstrapSession();
+
+      expect(session!.role, isNot('basic_user'));
+      expect(session.role, 'member');
+      expect(session.name, 'Nombre Nuevo');
+      expect(auth.currentUser!.name, 'Nombre Nuevo');
+    });
+
+    test('MOB-SESSION-002 /auth/me red conserva perfil y rol locales',
+        () async {
+      users.current = User(
+        id: '14',
+        name: 'Basico Offline',
+        email: 'off@test.com',
+        role: 'basic_user',
+      );
+      await tokenStore.saveToken(fakeJwt);
+      remote.getMeError = NetworkException('Sin conexión');
+
+      final session = await auth.bootstrapSession();
+
+      expect(session, isNotNull);
+      expect(session!.role, 'basic_user');
+      expect(session.name, 'Basico Offline');
+      expect(auth.sessionStatus, SessionStatus.active);
+      expect(users.saveUserCalls, 0);
+    });
+
+    test('registro no persiste sesión y marca verificación pendiente', () async {
       remote.registerResult = userWithToken(role: 'basic_user');
 
       final ok = await auth.register(
@@ -170,8 +303,8 @@ void main() {
       );
 
       expect(ok, isTrue);
-      expect(tokenStore.getToken(), fakeJwt);
-      expect(users.current!.token, isNull);
+      expect(tokenStore.getToken(), isNull);
+      expect(users.current, isNull);
       expect(auth.requiresVerification, isTrue);
     });
   });

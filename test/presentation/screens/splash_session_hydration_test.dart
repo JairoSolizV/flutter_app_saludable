@@ -16,6 +16,7 @@ import '../../core/auth/in_memory_secure_storage_gateway.dart';
 
 class _ConfigurableAuthRemote implements AuthRemoteDataSource {
   Object? getMeError;
+  User? getMeResult;
 
   @override
   Future<bool> checkEmailExists(String email) async => false;
@@ -23,12 +24,13 @@ class _ConfigurableAuthRemote implements AuthRemoteDataSource {
   @override
   Future<User> getMe() async {
     if (getMeError != null) throw getMeError!;
-    return User(
-      id: '30',
-      name: 'Socio Remoto',
-      email: 'socio@test.com',
-      role: 'member',
-    );
+    return getMeResult ??
+        User(
+          id: '30',
+          name: 'Socio Remoto',
+          email: 'socio@test.com',
+          role: 'member',
+        );
   }
 
   @override
@@ -194,7 +196,7 @@ void main() {
       expect(userProvider.currentUser, isNotNull);
       expect(userProvider.currentUser!.id, '30');
       expect(userProvider.currentUser!.token, isNull);
-      expect(users.saveUserCalls, 0);
+      expect(users.saveUserCalls, 1);
     });
 
     test('getMe con error de red conserva sesión y permite hidratar local',
@@ -291,13 +293,13 @@ void main() {
 
     testWidgets('ANFITRION splash hidrata y navega a /host-dashboard',
         (tester) async {
-      final users = FakeUserRepository()
-        ..current = User(
-          id: '7',
-          name: 'Host Local',
-          email: 'host@test.com',
-          role: 'host',
-        );
+      final host = User(
+        id: '7',
+        name: 'Host Local',
+        email: 'host@test.com',
+        role: 'host',
+      );
+      final users = FakeUserRepository()..current = host.withoutToken();
       await tokenStore.saveToken('fake.jwt.token.value');
 
       late UserProvider userProvider;
@@ -307,7 +309,7 @@ void main() {
           providers: [
             ChangeNotifierProvider(
               create: (_) => AuthProvider(
-                _ConfigurableAuthRemote(),
+                _ConfigurableAuthRemote()..getMeResult = host,
                 users,
                 tokenStore,
                 sessionMigrator: SessionTokenMigrator(
@@ -347,13 +349,13 @@ void main() {
 
     testWidgets('USUARIO_BASICO splash hidrata y navega a /basic-home',
         (tester) async {
-      final users = FakeUserRepository()
-        ..current = User(
-          id: '9',
-          name: 'Basico Local',
-          email: 'basic@test.com',
-          role: 'basic_user',
-        );
+      final basic = User(
+        id: '9',
+        name: 'Basico Local',
+        email: 'basic@test.com',
+        role: 'basic_user',
+      );
+      final users = FakeUserRepository()..current = basic.withoutToken();
       await tokenStore.saveToken('fake.jwt.token.value');
 
       late UserProvider userProvider;
@@ -363,7 +365,7 @@ void main() {
           providers: [
             ChangeNotifierProvider(
               create: (_) => AuthProvider(
-                _ConfigurableAuthRemote(),
+                _ConfigurableAuthRemote()..getMeResult = basic,
                 users,
                 tokenStore,
                 sessionMigrator: SessionTokenMigrator(
@@ -398,6 +400,74 @@ void main() {
 
       expect(userProvider.currentUser?.role, 'basic_user');
       expect(userProvider.currentUser?.token, isNull);
+    });
+
+    testWidgets(
+        'MOB-SESSION-002 BASIC local + /auth/me SOCIO Splash va a /member-home',
+        (tester) async {
+      final users = FakeUserRepository()
+        ..current = User(
+          id: '10',
+          name: 'Basico Local',
+          email: 'basic@test.com',
+          role: 'basic_user',
+        );
+      await tokenStore.saveToken('fake.jwt.token.value');
+
+      late UserProvider userProvider;
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(
+              create: (_) => AuthProvider(
+                _ConfigurableAuthRemote()
+                  ..getMeResult = User(
+                    id: '10',
+                    name: 'Socio Fresco',
+                    email: 'basic@test.com',
+                    role: 'member',
+                  ),
+                users,
+                tokenStore,
+                sessionMigrator: SessionTokenMigrator(
+                  tokenStore: tokenStore,
+                  userRepository: users,
+                ),
+              ),
+            ),
+            ChangeNotifierProvider(
+              create: (context) {
+                userProvider = UserProvider(users);
+                return userProvider;
+              },
+            ),
+          ],
+          child: MaterialApp.router(
+            routerConfig: GoRouter(
+              initialLocation: '/',
+              routes: [
+                GoRoute(path: '/', builder: (_, __) => const SplashScreen()),
+                GoRoute(
+                  path: '/member-home',
+                  builder: (_, __) => const Scaffold(body: Text('Member Home')),
+                ),
+                GoRoute(
+                  path: '/basic-home',
+                  builder: (_, __) => const Scaffold(body: Text('Basic Home')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      await _pumpUntilText(tester, 'Member Home');
+
+      expect(find.text('Member Home'), findsOneWidget);
+      expect(find.text('Basic Home'), findsNothing);
+      expect(userProvider.currentUser?.role, 'member');
+      expect(users.current?.role, 'member');
     });
   });
 }
