@@ -19,6 +19,7 @@ import 'package:flutter_app_saludable/presentation/screens/host/products/host_ed
 import 'package:flutter_app_saludable/presentation/screens/host/products/host_product_list_screen.dart';
 import 'package:flutter_app_saludable/presentation/screens/host/products/host_product_proposal_screen.dart';
 import 'package:flutter_app_saludable/presentation/screens/host/products/host_product_review_screen.dart';
+import 'package:flutter_app_saludable/presentation/screens/host/products/host_product_sabores_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -110,10 +111,14 @@ class _FakeComboDs extends ComboRemoteDataSource {
 class _FakeSaborDs extends SaborRemoteDataSource {
   _FakeSaborDs() : super(Dio());
 
+  int getSaboresCalls = 0;
+
   @override
   Future<List<Sabor>> getSaboresDeProductoEnClub(
-          int clubId, int productoId) async =>
-      [];
+          int clubId, int productoId) async {
+    getSaboresCalls++;
+    return [];
+  }
 }
 
 class _FakeProductRemote implements ProductRemoteDataSource {
@@ -143,7 +148,7 @@ class _FakeProductRemote implements ProductRemoteDataSource {
   }) async {}
 
   @override
-  Future<void> updateProduct(Product product) async {}
+  Future<Product> updateProduct(Product product) async => product;
 
   @override
   Future<Product> reenviarProducto(String productId) async =>
@@ -159,9 +164,11 @@ class _FakeProductRemote implements ProductRemoteDataSource {
 Widget _listApp({
   required List<Product> products,
   _FakeProductRepo? repo,
+  _FakeSaborDs? saborDs,
 }) {
   final productRepo = repo ?? _FakeProductRepo();
   productRepo.products = products;
+  final sabor = saborDs ?? _FakeSaborDs();
   final user = User(
     id: '20',
     name: 'Host',
@@ -211,7 +218,7 @@ Widget _listApp({
       ChangeNotifierProvider(create: (_) => ProductProvider(productRepo)),
       Provider<ClubRemoteDataSource>.value(value: _FakeClubDs()),
       Provider<ComboRemoteDataSource>.value(value: _FakeComboDs()),
-      Provider<SaborRemoteDataSource>.value(value: _FakeSaborDs()),
+      Provider<SaborRemoteDataSource>.value(value: sabor),
       Provider<ProductRemoteDataSource>.value(value: _FakeProductRemote()),
     ],
     child: MaterialApp.router(routerConfig: router),
@@ -355,14 +362,16 @@ void main() {
     });
 
     testWidgets(
-        'mientras el toggle está pendiente, tocar la fila no abre sabores',
+        'mientras el toggle está pendiente, tocar la fila no abre detalle ni sabores',
         (tester) async {
       final repo = _FakeProductRepo()..toggleGate = Completer<void>();
+      final sabor = _FakeSaborDs();
       await tester.pumpWidget(_listApp(
         products: [
           _local(id: '6', name: 'Batido Aprobado', estado: 'APROBADO'),
         ],
         repo: repo,
+        saborDs: sabor,
       ));
       await _openPropios(tester);
 
@@ -370,17 +379,20 @@ void main() {
       await tester.pump();
 
       expect(repo.toggleCalls, 1);
-      expect(find.text('Sabores'), findsNothing);
+      expect(find.byType(HostProductSaboresScreen), findsNothing);
+      expect(find.byType(HostProductReviewScreen), findsNothing);
 
       await tester.tap(find.text('Batido Aprobado'));
       await tester.pump();
       await tester.longPress(find.text('Batido Aprobado'));
       await tester.pump();
 
-      expect(find.text('Sabores'), findsNothing);
+      expect(find.byType(HostProductSaboresScreen), findsNothing);
+      expect(find.byType(HostProductReviewScreen), findsNothing);
       expect(find.byType(HostEditProductScreen), findsNothing);
       expect(find.text('Editar Producto'), findsNothing);
       expect(find.text('Mi Menú (Stock)'), findsOneWidget);
+      expect(sabor.getSaboresCalls, 0);
 
       repo.toggleGate!.complete();
       await tester.pumpAndSettle();
@@ -388,8 +400,10 @@ void main() {
       await tester.tap(find.text('Batido Aprobado'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Sabores'), findsOneWidget);
-      expect(find.text('Propuesta de producto'), findsNothing);
+      expect(find.byType(HostProductSaboresScreen), findsNothing);
+      expect(find.byType(HostProductReviewScreen), findsOneWidget);
+      expect(find.text('Estado: APROBADO'), findsOneWidget);
+      expect(sabor.getSaboresCalls, 0);
     });
 
     testWidgets('long-press APROBADO no abre el editor legacy', (tester) async {

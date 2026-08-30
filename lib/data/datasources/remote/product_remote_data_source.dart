@@ -25,7 +25,9 @@ abstract class ProductRemoteDataSource {
     String? imagenUrl,
     List<ProductOptionGroup>? optionGroups,
   });
-  Future<void> updateProduct(Product product);
+  /// PUT /productos/{id}. Devuelve el producto del backend (p. ej. PENDIENTE
+  /// si hubo cambio estructural en un LOCAL APROBADO). No llama /reenviar.
+  Future<Product> updateProduct(Product product);
 
   /// PATCH /productos/{id}/reenviar — solo LOCAL RECHAZADO del propietario.
   Future<Product> reenviarProducto(String productId);
@@ -427,7 +429,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
   }
 
   @override
-  Future<void> updateProduct(Product product) async {
+  Future<Product> updateProduct(Product product) async {
     try {
       final data = <String, dynamic>{
         'nombre': product.name,
@@ -446,7 +448,37 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
             product.optionGroups!.map((g) => g.toApiMap()).toList();
       }
       // Endpoint PUT /api/productos/{id}
-      await _client.put('/productos/${product.id}', data: data);
+      final response =
+          await _client.put('/productos/${product.id}', data: data);
+      if (response.data is Map) {
+        final map = Map<String, dynamic>.from(response.data as Map);
+        if (map.isNotEmpty) {
+          final parsed = Product.fromMap(map);
+          return product.copyWith(
+            name: parsed.name.isNotEmpty ? parsed.name : product.name,
+            description: parsed.description.isNotEmpty
+                ? parsed.description
+                : product.description,
+            ingredientes: parsed.ingredientes ?? product.ingredientes,
+            puntosValor: parsed.puntosValor > 0
+                ? parsed.puntosValor
+                : product.puntosValor,
+            imageUrl: parsed.imageUrl.isNotEmpty
+                ? parsed.imageUrl
+                : product.imageUrl,
+            estadoAprobacion: map['estadoAprobacion'] != null
+                ? parsed.estadoAprobacion
+                : product.estadoAprobacion,
+            optionGroups: parsed.optionGroups ?? product.optionGroups,
+            comentarioRevision:
+                parsed.comentarioRevision ?? product.comentarioRevision,
+            revisadoPorNombre:
+                parsed.revisadoPorNombre ?? product.revisadoPorNombre,
+            revisadoAt: parsed.revisadoAt ?? product.revisadoAt,
+          );
+        }
+      }
+      return product;
     } on DioException catch (e, st) {
       throwDioAsApp(e, fallback: 'Error en productos', stackTrace: st);
     }

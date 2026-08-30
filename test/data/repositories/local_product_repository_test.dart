@@ -51,8 +51,9 @@ class _FakeProductRemoteDataSource implements ProductRemoteDataSource {
   }) async {}
 
   @override
-  Future<void> updateProduct(Product product) async {
+  Future<Product> updateProduct(Product product) async {
     updateCalls++;
+    return product;
   }
 
   @override

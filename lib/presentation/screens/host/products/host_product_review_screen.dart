@@ -39,6 +39,9 @@ class _HostProductReviewScreenState extends State<HostProductReviewScreen> {
     Navigator.of(context).pop(_didChange);
   }
 
+  bool get _canEditApprovedDefinition =>
+      _product.canHostEditDefinition(widget.clubId);
+
   Future<void> _editProposal() async {
     final result = await context.push<Object?>(
       '/host/products/proposal',
@@ -53,6 +56,35 @@ class _HostProductReviewScreenState extends State<HostProductReviewScreen> {
     } else if (result == true) {
       setState(() => _didChange = true);
     }
+  }
+
+  Future<void> _confirmEditApproved() async {
+    if (_isResending) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Editar producto'),
+        content: const Text(
+          'Al guardar cambios en la definición, el producto volverá a revisión.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Continuar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await _editProposal();
   }
 
   Future<void> _confirmResend() async {
@@ -286,6 +318,19 @@ class _HostProductReviewScreenState extends State<HostProductReviewScreen> {
                 ),
               ),
             ],
+            if (_canEditApprovedDefinition) ...[
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  key: const Key('host-edit-approved-product'),
+                  onPressed: _isResending ? null : _confirmEditApproved,
+                  icon: const Icon(LucideIcons.pencil),
+                  label: const Text('Editar producto'),
+                ),
+              ),
+            ],
             if (rejected) ...[
               const SizedBox(height: 32),
               SizedBox(
@@ -382,9 +427,22 @@ class _StatusBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rejected = product.isRechazado;
-    final color = rejected ? Colors.red : Colors.orange;
-    final label = rejected ? 'RECHAZADO' : 'PENDIENTE';
+    final MaterialColor color;
+    final Color textColor;
+    final String label;
+    if (product.isRechazado) {
+      color = Colors.red;
+      textColor = Colors.red.shade900;
+      label = 'RECHAZADO';
+    } else if (product.isPendiente) {
+      color = Colors.orange;
+      textColor = Colors.orange.shade900;
+      label = 'PENDIENTE';
+    } else {
+      color = Colors.green;
+      textColor = Colors.green.shade900;
+      label = 'APROBADO';
+    }
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -396,7 +454,7 @@ class _StatusBanner extends StatelessWidget {
         'Estado: $label',
         style: TextStyle(
           fontWeight: FontWeight.bold,
-          color: rejected ? Colors.red.shade900 : Colors.orange.shade900,
+          color: textColor,
         ),
       ),
     );

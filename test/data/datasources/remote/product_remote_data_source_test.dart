@@ -428,6 +428,29 @@ void main() {
       expect(data.containsKey('gruposOpciones'), isFalse);
     }));
 
+    test('devuelve PENDIENTE si el backend lo indica', async_(() async {
+      adapter.stub('PUT', '/productos/7', statusCode: 200, data: {
+        'id': 7,
+        'nombre': 'Batido',
+        'descripcion': 'D',
+        'tipo': 'LOCAL',
+        'estadoAprobacion': 'PENDIENTE',
+        'ingredientes': 'leche',
+        'puntosValor': 10,
+      });
+      final saved = await ds.updateProduct(Product(
+        id: '7',
+        name: 'Batido',
+        description: 'D',
+        ingredientes: 'leche',
+        puntosValor: 10,
+        tipo: 'LOCAL',
+        estadoAprobacion: 'APROBADO',
+      ));
+      expect(saved.estadoAprobacion, 'PENDIENTE');
+      expect(saved.name, 'Batido');
+    }));
+
     test('error se mapea', async_(() async {
       adapter.stub('PUT', '/productos/1', statusCode: 500, data: {});
       await expectLater(

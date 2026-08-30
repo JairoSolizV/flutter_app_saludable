@@ -165,7 +165,34 @@ void main() {
       expect(p.revisadoPorNombre, isNull);
       expect(p.revisadoAt, isNull);
       expect(p.revisadoPorUsuarioId, isNull);
-      expect(p.shouldOpenHostReview, isFalse);
+      expect(p.shouldOpenHostReview, isTrue);
+      expect(p.canHostEditDefinition(3), isFalse);
+    });
+
+    test('LOCAL APROBADO abre detalle y puede editar si es del club', () {
+      final p = Product(
+        id: '7',
+        name: 'Batido',
+        description: 'x',
+        tipo: 'LOCAL',
+        estadoAprobacion: 'APROBADO',
+        clubCreadorId: 3,
+      );
+      expect(p.shouldOpenHostReview, isTrue);
+      expect(p.canHostEditDefinition(3), isTrue);
+      expect(p.canHostEditDefinition(99), isFalse);
+    });
+
+    test('GLOBAL no permite edición estructural del anfitrión', () {
+      final p = Product(
+        id: '1',
+        name: 'Hub',
+        description: 'x',
+        tipo: 'GLOBAL',
+        estadoAprobacion: 'APROBADO',
+      );
+      expect(p.shouldOpenHostReview, isTrue);
+      expect(p.canHostEditDefinition(3), isFalse);
     });
 
     test('toMap no incluye campos de revisión ni grupos (SQLite)', () {

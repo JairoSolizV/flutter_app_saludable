@@ -12,7 +12,6 @@ import '../../../widgets/product_image.dart';
 import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
-import 'host_product_sabores_screen.dart';
 import 'host_combo_create_screen.dart';
 
 class HostProductListScreen extends StatefulWidget {
@@ -362,29 +361,16 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                       ? null
                       : () async {
                           if (provider.isToggling(product.id)) return;
-                          final estadoAbreRevision = product.shouldOpenHostReview;
-                          if (estadoAbreRevision) {
-                            final changed = await context.push<bool>(
-                              '/host/products/review',
-                              extra: {
-                                'clubId': _clubId!,
-                                'product': product,
-                              },
-                            );
-                            if (changed == true && mounted) {
-                              await _refreshProducts();
-                            }
-                            return;
-                          }
-                          if (!mounted) return;
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => HostProductSaboresScreen(
-                                clubId: _clubId!,
-                                product: product,
-                              ),
-                            ),
+                          final changed = await context.push<bool>(
+                            '/host/products/review',
+                            extra: {
+                              'clubId': _clubId!,
+                              'product': product,
+                            },
                           );
+                          if (changed == true && mounted) {
+                            await _refreshProducts();
+                          }
                         },
                   onLongPress: () {
                     if (provider.isToggling(product.id)) return;

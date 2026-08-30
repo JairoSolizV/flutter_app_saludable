@@ -202,7 +202,7 @@ class _NoopProducts implements ProductRemoteDataSource {
   Future<void> toggleProductAvailability(int clubId, String productId) async {}
 
   @override
-  Future<void> updateProduct(Product product) async {}
+  Future<Product> updateProduct(Product product) async => product;
 
   @override
   Future<Product> reenviarProducto(String productId) async => Product(

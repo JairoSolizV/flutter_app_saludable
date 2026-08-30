@@ -148,7 +148,7 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
               : original.imageUrl,
           optionGroups: builtGroups,
         );
-        await dataSource.updateProduct(updated);
+        final saved = await dataSource.updateProduct(updated);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -156,7 +156,7 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.of(context).pop(updated);
+        Navigator.of(context).pop(saved);
         return;
       }
 

@@ -53,7 +53,7 @@ class _FakeProductRemoteDataSource implements ProductRemoteDataSource {
       throw UnimplementedError();
 
   @override
-  Future<void> updateProduct(Product product) async =>
+  Future<Product> updateProduct(Product product) async =>
       throw UnimplementedError();
 
   @override

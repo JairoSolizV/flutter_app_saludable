@@ -51,6 +51,8 @@ class Product {
 
   bool get isLocal => tipo.toUpperCase() == 'LOCAL';
 
+  bool get isGlobal => tipo.toUpperCase() == 'GLOBAL';
+
   String get estadoNormalizado => estadoAprobacion.toUpperCase();
 
   bool get isRechazado => estadoNormalizado == 'RECHAZADO';
@@ -59,8 +61,12 @@ class Product {
 
   bool get isAprobado => estadoNormalizado == 'APROBADO';
 
-  /// LOCAL en revisión (pendiente o rechazado): detalle, no sabores.
-  bool get shouldOpenHostReview => isLocal && (isRechazado || isPendiente);
+  /// Listado activo del anfitrión: detalle de definición, no sabores legacy.
+  bool get shouldOpenHostReview => isLocal || isGlobal;
+
+  /// LOCAL APROBADO del club del anfitrión: puede editar la definición estructural.
+  bool canHostEditDefinition(int clubId) =>
+      isLocal && isAprobado && clubCreadorId == clubId;
 
   factory Product.fromMap(Map<String, dynamic> map) {
     // Manejar el id correctamente: puede venir como int o String

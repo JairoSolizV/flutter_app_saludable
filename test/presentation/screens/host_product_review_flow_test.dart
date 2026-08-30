@@ -18,6 +18,7 @@ import 'package:flutter_app_saludable/presentation/providers/user_provider.dart'
 import 'package:flutter_app_saludable/presentation/screens/host/products/host_product_list_screen.dart';
 import 'package:flutter_app_saludable/presentation/screens/host/products/host_product_proposal_screen.dart';
 import 'package:flutter_app_saludable/presentation/screens/host/products/host_product_review_screen.dart';
+import 'package:flutter_app_saludable/presentation/screens/host/products/host_product_sabores_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -43,6 +44,23 @@ Product _local({
     revisadoPorNombre: 'Admin Hub',
     revisadoAt: DateTime(2026, 8, 29, 18, 30),
     clubCreadorId: 3,
+    optionGroups: optionGroups,
+  );
+}
+
+Product _global({
+  required String id,
+  required String name,
+  List<ProductOptionGroup>? optionGroups,
+}) {
+  return Product(
+    id: id,
+    name: name,
+    description: 'Desc $name',
+    ingredientes: 'fórmula hub',
+    puntosValor: 8,
+    tipo: 'GLOBAL',
+    estadoAprobacion: 'APROBADO',
     optionGroups: optionGroups,
   );
 }
@@ -142,10 +160,14 @@ class _FakeComboDs extends ComboRemoteDataSource {
 class _FakeSaborDs extends SaborRemoteDataSource {
   _FakeSaborDs() : super(Dio());
 
+  int getSaboresCalls = 0;
+
   @override
   Future<List<Sabor>> getSaboresDeProductoEnClub(
-          int clubId, int productoId) async =>
-      [];
+          int clubId, int productoId) async {
+    getSaboresCalls++;
+    return [];
+  }
 }
 
 class _FakeProductRemote implements ProductRemoteDataSource {
@@ -155,6 +177,7 @@ class _FakeProductRemote implements ProductRemoteDataSource {
   Object? reenviarError;
   int createCalls = 0;
   List<ProductOptionGroup>? lastCreateOptionGroups;
+  Product Function(Product)? updateResult;
 
   @override
   Future<List<Product>> getProducts(
@@ -185,9 +208,11 @@ class _FakeProductRemote implements ProductRemoteDataSource {
   }
 
   @override
-  Future<void> updateProduct(Product product) async {
+  Future<Product> updateProduct(Product product) async {
     updateCalls++;
     lastUpdated = product;
+    if (updateResult != null) return updateResult!(product);
+    return product;
   }
 
   @override
@@ -217,9 +242,11 @@ Widget _listApp({
   required List<Product> products,
   required _FakeProductRemote remote,
   _FakeProductRepo? repo,
+  _FakeSaborDs? saborDs,
 }) {
   final productRepo = repo ?? _FakeProductRepo();
   productRepo.products = products;
+  final sabor = saborDs ?? _FakeSaborDs();
   final user = User(
     id: '20',
     name: 'Host',
@@ -269,7 +296,7 @@ Widget _listApp({
       ChangeNotifierProvider(create: (_) => ProductProvider(productRepo)),
       Provider<ClubRemoteDataSource>.value(value: _FakeClubDs()),
       Provider<ComboRemoteDataSource>.value(value: _FakeComboDs()),
-      Provider<SaborRemoteDataSource>.value(value: _FakeSaborDs()),
+      Provider<SaborRemoteDataSource>.value(value: sabor),
       Provider<ProductRemoteDataSource>.value(value: remote),
     ],
     child: MaterialApp.router(routerConfig: router),
@@ -311,13 +338,26 @@ void main() {
       expect(find.text('En revisión'), findsWidgets);
       expect(find.text('Sabores'), findsNothing);
       expect(find.text('Editar propuesta'), findsNothing);
+      expect(find.text('Editar producto'), findsNothing);
       expect(find.text('Reenviar a revisión'), findsNothing);
     });
 
-    testWidgets('APROBADO mantiene pantalla de sabores', (tester) async {
+    testWidgets('APROBADO abre detalle y no llama /sabores', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 1800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final sabor = _FakeSaborDs();
       await tester.pumpWidget(_listApp(
-        products: [_local(id: '8', name: 'Batido Aprobado', estado: 'APROBADO')],
+        products: [
+          _local(
+            id: '7',
+            name: 'Batido Aprobado',
+            estado: 'APROBADO',
+            optionGroups: _optionGroupsSample,
+          ),
+        ],
         remote: _FakeProductRemote(),
+        saborDs: sabor,
       ));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Propios'));
@@ -325,8 +365,42 @@ void main() {
       await tester.tap(find.text('Batido Aprobado'));
       await tester.pumpAndSettle();
 
+      expect(find.byType(HostProductReviewScreen), findsOneWidget);
+      expect(find.byType(HostProductSaboresScreen), findsNothing);
+      expect(find.text('Estado: APROBADO'), findsOneWidget);
       expect(find.text('Sabores'), findsOneWidget);
-      expect(find.text('Propuesta de producto'), findsNothing);
+      expect(find.text('• Frutilla'), findsOneWidget);
+      expect(find.text('• Vainilla'), findsOneWidget);
+      expect(find.text('Consistencia'), findsOneWidget);
+      expect(find.text('Selecciona de 1 a 2'), findsOneWidget);
+      expect(find.text('Permite repetir'), findsOneWidget);
+      expect(find.text('Editar producto'), findsOneWidget);
+      expect(find.text('Editar propuesta'), findsNothing);
+      expect(find.text('Reenviar a revisión'), findsNothing);
+      expect(sabor.getSaboresCalls, 0);
+    });
+
+    testWidgets('GLOBAL abre detalle read-only sin edición estructural',
+        (tester) async {
+      final sabor = _FakeSaborDs();
+      await tester.pumpWidget(_listApp(
+        products: [
+          _global(id: '1', name: 'Batido Global', optionGroups: _optionGroupsSample),
+        ],
+        remote: _FakeProductRemote(),
+        saborDs: sabor,
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Batido Global'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(HostProductReviewScreen), findsOneWidget);
+      expect(find.byType(HostProductSaboresScreen), findsNothing);
+      expect(find.text('Estado: APROBADO'), findsOneWidget);
+      expect(find.text('Editar producto'), findsNothing);
+      expect(find.text('Editar propuesta'), findsNothing);
+      expect(find.text('Reenviar a revisión'), findsNothing);
+      expect(sabor.getSaboresCalls, 0);
     });
   });
 
@@ -366,6 +440,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Editar propuesta'), findsNothing);
+      expect(find.text('Editar producto'), findsNothing);
       expect(find.text('Reenviar a revisión'), findsNothing);
     });
 
@@ -395,6 +470,122 @@ void main() {
       expect(find.text('• Cremoso'), findsOneWidget);
       expect(find.text('Editar propuesta'), findsNothing);
       expect(find.text('Reenviar a revisión'), findsNothing);
+    });
+
+    testWidgets('APROBADO muestra grupos y Editar producto', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 1800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HostProductReviewScreen(
+            clubId: 3,
+            product: _local(
+              id: '7',
+              name: 'Batido',
+              estado: 'APROBADO',
+              optionGroups: _optionGroupsSample,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Estado: APROBADO'), findsOneWidget);
+      expect(find.text('Sabores'), findsOneWidget);
+      expect(find.text('Selecciona de 1 a 2'), findsOneWidget);
+      expect(find.text('Permite repetir'), findsOneWidget);
+      expect(find.text('• Frutilla'), findsOneWidget);
+      expect(find.text('Editar producto'), findsOneWidget);
+      expect(find.text('Editar propuesta'), findsNothing);
+      expect(find.text('Reenviar a revisión'), findsNothing);
+    });
+
+    testWidgets('GLOBAL no muestra Editar producto', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HostProductReviewScreen(
+            clubId: 3,
+            product: _global(id: '1', name: 'Batido Hub'),
+          ),
+        ),
+      );
+
+      expect(find.text('Estado: APROBADO'), findsOneWidget);
+      expect(find.text('Editar producto'), findsNothing);
+      expect(find.text('Editar propuesta'), findsNothing);
+      expect(find.text('Reenviar a revisión'), findsNothing);
+    });
+
+    testWidgets('cancelar confirmación de edición no navega', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 1800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(_listApp(
+        products: [
+          _local(
+            id: '7',
+            name: 'Batido Aprobado',
+            estado: 'APROBADO',
+            optionGroups: _optionGroupsSample,
+          ),
+        ],
+        remote: _FakeProductRemote(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Propios'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Batido Aprobado'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Editar producto'));
+      await tester.tap(find.text('Editar producto'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Al guardar cambios en la definición, el producto volverá a revisión.',
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(HostProductProposalScreen), findsNothing);
+      expect(find.byType(HostProductReviewScreen), findsOneWidget);
+      expect(find.text('Editar producto'), findsOneWidget);
+    });
+
+    testWidgets('confirmar edición abre ProposalScreen con grupos precargados',
+        (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 1800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(_listApp(
+        products: [
+          _local(
+            id: '7',
+            name: 'Batido Aprobado',
+            estado: 'APROBADO',
+            optionGroups: _optionGroupsSample,
+          ),
+        ],
+        remote: _FakeProductRemote(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Propios'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Batido Aprobado'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Editar producto'));
+      await tester.tap(find.text('Editar producto'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continuar'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(HostProductProposalScreen), findsOneWidget);
+      expect(find.text('Editar propuesta'), findsOneWidget);
+      expect(find.text('Frutilla'), findsOneWidget);
+      expect(find.text('Vainilla'), findsOneWidget);
+      expect(find.text('Consistencia'), findsWidgets);
     });
   });
 
@@ -497,6 +688,63 @@ void main() {
         remote.lastUpdated!.optionGroups!.first.options.map((o) => o.name),
         ['Frutilla', 'Vainilla'],
       );
+    });
+
+    testWidgets('editar APROBADO hace PUT, no reenviar, y refleja PENDIENTE',
+        (tester) async {
+      final remote = _FakeProductRemote()
+        ..updateResult = (p) => p.copyWith(estadoAprobacion: 'PENDIENTE');
+      final approved = _local(
+        id: '7',
+        name: 'Batido Aprobado',
+        estado: 'APROBADO',
+        optionGroups: _optionGroupsSample,
+      );
+
+      await tester.binding.setSurfaceSize(const Size(800, 1800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<ProductRemoteDataSource>.value(value: remote),
+            Provider<ClubRemoteDataSource>.value(value: _FakeClubDs()),
+          ],
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: Center(
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<Product>(
+                          builder: (_) =>
+                              HostProductProposalScreen(product: approved),
+                        ),
+                      );
+                    },
+                    child: const Text('abrir edicion'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('abrir edicion'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Frutilla'), findsOneWidget);
+      await tester.ensureVisible(
+          find.widgetWithText(ElevatedButton, 'Guardar cambios'));
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar cambios'));
+      await tester.pumpAndSettle();
+
+      expect(remote.updateCalls, 1);
+      expect(remote.reenviarCalls, 0);
+      expect(remote.lastUpdated?.estadoAprobacion, 'APROBADO');
+      expect(find.text('Cambios guardados'), findsOneWidget);
     });
   });
 

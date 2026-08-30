@@ -6,8 +6,8 @@ import '../../../../domain/entities/product.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
-/// Pantalla para que el anfitrión gestione los sabores disponibles de un producto
-/// en su club. Accesible desde "Mi Menú" al tocar un producto.
+/// Legacy: gestión de sabores por club.
+/// El listado activo del anfitrión ya no navega aquí (FLUTTER-PROD-LEGACY-001).
 class HostProductSaboresScreen extends StatefulWidget {
   final int clubId;
   final Product product;
