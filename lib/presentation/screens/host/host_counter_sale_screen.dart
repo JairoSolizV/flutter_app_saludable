@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../domain/entities/combo.dart';
+import '../../../domain/entities/combo_cart_item.dart';
 import '../../../domain/entities/product.dart';
 import '../../providers/counter_sale_provider.dart';
 import '../../widgets/product_image.dart';
+import '../member/member_combo_detail_screen.dart';
 import 'host_counter_product_configure_sheet.dart';
 import 'host_counter_sale_ticket_screen.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
@@ -25,6 +28,7 @@ class HostCounterSaleScreen extends StatefulWidget {
 
 class _HostCounterSaleScreenState extends State<HostCounterSaleScreen> {
   String? _addingProductId;
+  int? _addingComboId;
 
   @override
   void initState() {
@@ -83,6 +87,54 @@ class _HostCounterSaleScreenState extends State<HostCounterSaleScreen> {
     } finally {
       if (mounted) {
         setState(() => _addingProductId = null);
+      }
+    }
+  }
+
+  Future<void> _handleAddCombo(
+    BuildContext context,
+    CounterSaleProvider provider,
+    Combo combo,
+  ) async {
+    if (_addingComboId == combo.id) return;
+
+    if (!combo.isPurchasable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Precio no configurado para este combo.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _addingComboId = combo.id);
+
+    try {
+      final result = await Navigator.of(context).push<ComboCartItem>(
+        MaterialPageRoute(
+          builder: (_) => MemberComboDetailScreen(
+            combo: combo,
+            productsById: provider.productsById,
+            appBarTitle: 'Configurar combo',
+            addButtonLabel: 'Agregar al ticket',
+            addButtonKey: const Key('host-counter-combo-add'),
+          ),
+        ),
+      );
+      if (!mounted || result == null) return;
+      provider.addComboLine(result);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${combo.nombre} agregado'),
+          duration: const Duration(milliseconds: 700),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _addingComboId = null);
       }
     }
   }
@@ -147,7 +199,7 @@ class _HostCounterSaleScreenState extends State<HostCounterSaleScreen> {
                                   childAspectRatio: 3.4,
                                   isAdding: _addingProductId,
                                   bottomPadding:
-                                      provider.totalItems > 0 ? 8 : 16,
+                                      provider.hasCartItems ? 8 : 16,
                                   onAdd: (p) =>
                                       _handleAddProduct(context, provider, p),
                                 ),
@@ -157,17 +209,24 @@ class _HostCounterSaleScreenState extends State<HostCounterSaleScreen> {
                                   childAspectRatio: 3.4,
                                   isAdding: _addingProductId,
                                   bottomPadding:
-                                      provider.totalItems > 0 ? 8 : 16,
+                                      provider.hasCartItems ? 8 : 16,
                                   onAdd: (p) =>
                                       _handleAddProduct(context, provider, p),
                                 ),
-                                const _CombosUnavailablePanel(),
+                                _ComboGrid(
+                                  combos: provider.activeCombos,
+                                  isAdding: _addingComboId,
+                                  bottomPadding:
+                                      provider.hasCartItems ? 8 : 16,
+                                  onAdd: (c) =>
+                                      _handleAddCombo(context, provider, c),
+                                ),
                               ],
                             ),
                           ),
-                          if (provider.totalItems > 0)
+                          if (provider.hasCartItems)
                             _CartSummaryBar(
-                              totalItems: provider.totalItems,
+                              totalUnits: provider.totalCartUnits,
                               totalBs: provider.totalBs,
                               totalPuntos: provider.totalPuntos,
                               onViewTicket: () => _openTicket(context),
@@ -182,13 +241,13 @@ class _HostCounterSaleScreenState extends State<HostCounterSaleScreen> {
 }
 
 class _CartSummaryBar extends StatelessWidget {
-  final int totalItems;
+  final int totalUnits;
   final double totalBs;
   final int totalPuntos;
   final VoidCallback onViewTicket;
 
   const _CartSummaryBar({
-    required this.totalItems,
+    required this.totalUnits,
     required this.totalBs,
     required this.totalPuntos,
     required this.onViewTicket,
@@ -211,7 +270,7 @@ class _CartSummaryBar extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '$totalItems producto${totalItems == 1 ? '' : 's'}',
+                      '$totalUnits ítem${totalUnits == 1 ? '' : 's'}',
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     Text(
@@ -381,37 +440,102 @@ class _AddProductButton extends StatelessWidget {
   }
 }
 
-class _CombosUnavailablePanel extends StatelessWidget {
-  const _CombosUnavailablePanel();
+class _ComboGrid extends StatelessWidget {
+  final List<Combo> combos;
+  final void Function(Combo combo) onAdd;
+  final double bottomPadding;
+  final int? isAdding;
+
+  const _ComboGrid({
+    required this.combos,
+    required this.onAdd,
+    this.bottomPadding = 12,
+    this.isAdding,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.fastfood_outlined, size: 48, color: Colors.grey),
-            SizedBox(height: 12),
-            Text(
-              'Combos — disponible próximamente',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey,
-              ),
+    if (combos.isEmpty) {
+      return const Center(child: Text('No hay combos disponibles'));
+    }
+    return ListView.separated(
+      padding: EdgeInsets.fromLTRB(12, 12, 12, bottomPadding),
+      itemCount: combos.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (context, i) {
+        final combo = combos[i];
+        final canBuy = combo.isPurchasable;
+        final adding = isAdding == combo.id;
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        combo.nombre,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        canBuy
+                            ? BolivianPrice.label(combo.price)
+                            : 'Precio no configurado',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: canBuy
+                              ? AppTheme.primaryColor
+                              : Colors.orange.shade800,
+                        ),
+                      ),
+                      if (combo.puntosValor > 0)
+                        Text(
+                          '${combo.puntosValor} puntos',
+                          style: const TextStyle(
+                            color: AppTheme.primaryColor,
+                            fontSize: 12,
+                          ),
+                        ),
+                      if (combo.includesCatalogSummary.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'Incluye:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          combo.includesCatalogSummary,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _AddProductButton(
+                  key: Key('add-combo-${combo.id}'),
+                  loading: adding,
+                  onPressed: canBuy && !adding ? () => onAdd(combo) : null,
+                ),
+              ],
             ),
-            SizedBox(height: 8),
-            Text(
-              'La venta de combos en mostrador se habilitará en una próxima actualización.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 13),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

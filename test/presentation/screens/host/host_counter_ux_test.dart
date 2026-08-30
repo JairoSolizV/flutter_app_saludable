@@ -40,6 +40,7 @@ class _StubOrders implements OrderRemoteDataSource {
     String? tipoConsumo,
     String? observaciones,
     required List<Map<String, dynamic>> items,
+    List<Map<String, dynamic>> combos = const [],
   }) async {
     createCalls++;
     if (shouldFail) throw ServerException('No se pudo registrar la venta');
@@ -238,7 +239,7 @@ void main() {
       await _pumpCatalog(tester, provider);
 
       expect(find.byKey(const Key('counter-view-ticket')), findsOneWidget);
-      expect(find.textContaining('1 producto'), findsOneWidget);
+      expect(find.textContaining('1 ítem'), findsOneWidget);
     });
 
     testWidgets('botón + visible y agrega producto simple', (tester) async {

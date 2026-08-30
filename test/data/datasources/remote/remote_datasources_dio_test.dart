@@ -152,17 +152,46 @@ void main() {
       expect(sent.queryParameters['tiempoEstimadoMinutos'], 15);
     }));
 
-    test('createCounterSale con items vacíos lanza sin llamar a la red',
+    test('createCounterSale con items y combos vacíos lanza sin llamar a la red',
         async_(() async {
       await expectLater(
         () => ds.createCounterSale(
           clubId: 1,
           tipoPago: 'EFECTIVO',
           items: const [],
+          combos: const [],
         ),
         throwsException,
       );
       expect(adapter.requests, isEmpty);
+    }));
+
+    test('createCounterSale solo combos permite POST', async_(() async {
+      adapter.stub('POST', '/pedidos/mostrador', statusCode: 201, data: {});
+
+      await ds.createCounterSale(
+        clubId: 1,
+        tipoPago: 'EFECTIVO',
+        items: const [],
+        combos: const [
+          {
+            'comboId': 1,
+            'cantidad': 2,
+            'componentes': [
+              {
+                'productoId': 7,
+                'opciones': [
+                  {'grupoId': 3, 'opcionId': 6, 'cantidad': 1},
+                ],
+              },
+            ],
+          },
+        ],
+      );
+
+      final body = adapter.requests.single.data as Map<String, dynamic>;
+      expect(body['items'], isEmpty);
+      expect(body['combos'], hasLength(1));
     }));
 
     test('createCounterSale exitoso hace POST a /pedidos/mostrador',

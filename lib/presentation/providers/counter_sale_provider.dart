@@ -7,6 +7,8 @@ import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import '../../data/datasources/remote/order_remote_data_source.dart';
 import '../../data/datasources/remote/product_remote_data_source.dart';
 import '../../data/datasources/remote/combo_remote_data_source.dart';
+import '../../domain/entities/combo.dart';
+import '../../domain/entities/combo_cart_item.dart';
 import '../../domain/entities/counter_sale_product_line.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_option_selection.dart';
@@ -36,27 +38,46 @@ class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
   String observaciones = '';
 
   List<Product> _products = [];
+  List<Combo> _combos = [];
   final Map<String, CounterSaleProductLine> _productCart = {};
+  final Map<String, ComboCartItem> _comboCart = {};
 
   List<Product> get generalProducts =>
       _products.where((p) => p.tipo == 'GLOBAL').toList();
   List<Product> get clubSpecialties =>
       _products.where((p) => p.tipo == 'LOCAL').toList();
+  List<Combo> get activeCombos =>
+      _combos.where((c) => c.activo).toList(growable: false);
+  Map<String, Product> get productsById => {
+        for (final p in _products) p.id: p,
+      };
   List<CounterSaleProductLine> get cartLines => _productCart.values.toList();
-  int get totalItems =>
+  List<ComboCartItem> get comboCartLines => _comboCart.values.toList();
+  int get totalProductUnits =>
       _productCart.values.fold(0, (sum, line) => sum + line.quantity);
+  int get totalComboUnits =>
+      _comboCart.values.fold(0, (sum, line) => sum + line.quantity);
+  int get totalCartUnits => totalProductUnits + totalComboUnits;
+  bool get hasCartItems => _productCart.isNotEmpty || _comboCart.isNotEmpty;
+
+  /// Compat: cantidad total de unidades en carrito (productos + combos).
+  int get totalItems => totalCartUnits;
+
   double get totalBs =>
-      _productCart.values.fold(0.0, (sum, line) => sum + line.subtotal);
+      _productCart.values.fold(0.0, (sum, line) => sum + line.subtotal) +
+      _comboCart.values.fold(0.0, (sum, line) => sum + line.lineTotal);
+
   int get totalPuntos =>
-      _productCart.values.fold(0, (sum, line) => sum + line.totalPoints);
+      _productCart.values.fold(0, (sum, line) => sum + line.totalPoints) +
+      _comboCart.values.fold(0, (sum, line) => sum + line.points * line.quantity);
+
   bool get canSubmit =>
-      _productCart.isNotEmpty &&
+      hasCartItems &&
       !isSubmitting &&
       tipoPago != null &&
       CounterSalePaymentTypes.backendValues.contains(tipoPago);
 
-  /// Combos deshabilitados hasta HOST-COUNTER-002.
-  bool get combosEnabled => false;
+  bool get combosEnabled => _comboDataSource != null;
 
   @override
   Future<void> clearSessionState() async {
@@ -67,7 +88,9 @@ class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
     tipoPago = null;
     observaciones = '';
     _products = [];
+    _combos = [];
     _productCart.clear();
+    _comboCart.clear();
     isCatalogLoading = false;
     isSubmitting = false;
     submitSuccess = false;
@@ -97,8 +120,11 @@ class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
         hubId: hubId!,
         clubId: clubId!,
       );
-      // Combos: catálogo no cargado en COUNTER-001 (HOST-COUNTER-002).
-      final _ = _comboDataSource;
+      if (_comboDataSource != null) {
+        _combos = await _comboDataSource.getCombosByClub(clubId!);
+      } else {
+        _combos = [];
+      }
     } catch (e) {
       if (shouldPresentErrorToUser(e)) {
         catalogError = ErrorMapper.publicMessage(e);
@@ -149,6 +175,20 @@ class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
     notifyListeners();
   }
 
+  void addComboLine(ComboCartItem item) {
+    if (item.quantity < 1 || !item.hasConfiguredPrice) return;
+    final key = item.configKey;
+    final existing = _comboCart[key];
+    if (existing != null) {
+      _comboCart[key] = existing.copyWith(
+        quantity: existing.quantity + item.quantity,
+      );
+    } else {
+      _comboCart[key] = item;
+    }
+    notifyListeners();
+  }
+
   void increaseQty(String configKey) {
     final line = _productCart[configKey];
     if (line == null) return;
@@ -178,14 +218,37 @@ class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
     notifyListeners();
   }
 
+  void increaseComboQty(String configKey) {
+    final line = _comboCart[configKey];
+    if (line == null) return;
+    _comboCart[configKey] = line.copyWith(quantity: line.quantity + 1);
+    notifyListeners();
+  }
+
+  void decreaseComboQty(String configKey) {
+    final line = _comboCart[configKey];
+    if (line == null) return;
+    if (line.quantity <= 1) {
+      _comboCart.remove(configKey);
+    } else {
+      _comboCart[configKey] = line.copyWith(quantity: line.quantity - 1);
+    }
+    notifyListeners();
+  }
+
+  void removeComboLine(String configKey) {
+    _comboCart.remove(configKey);
+    notifyListeners();
+  }
+
   Future<bool> submitCounterSale() async {
     if (clubId == null) {
       submitError = 'No se encontró club para registrar la venta.';
       notifyListeners();
       return false;
     }
-    if (_productCart.isEmpty) {
-      submitError = 'Debes agregar al menos un producto.';
+    if (!hasCartItems) {
+      submitError = 'Debes agregar al menos un producto o combo.';
       notifyListeners();
       return false;
     }
@@ -219,6 +282,9 @@ class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
         };
       }).toList();
 
+      final combos =
+          _comboCart.values.map((line) => line.toCounterSaleApiMap()).toList();
+
       await _orderDataSource.createCounterSale(
         clubId: clubId!,
         tipoPago: tipoPago!,
@@ -226,6 +292,7 @@ class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
         tipoConsumo: tipoConsumo,
         observaciones: observaciones.trim(),
         items: items,
+        combos: combos,
       );
 
       submitSuccess = true;
@@ -252,6 +319,7 @@ class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
     tipoPago = null;
     observaciones = '';
     _productCart.clear();
+    _comboCart.clear();
     submitError = null;
     submitSuccess = false;
     notifyListeners();

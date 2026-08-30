@@ -114,6 +114,32 @@ class ComboCartItem {
     return 'combo:$comboId#${parts.join(';')}';
   }
 
+  Map<String, dynamic> toCounterSaleApiMap() {
+    return {
+      'comboId': comboId,
+      'cantidad': quantity,
+      'componentes': components
+          .map(
+            (c) => {
+              'productoId': c.productId,
+              'opciones': c.selections
+                  .map((s) => s.toOrderItemOption().toApiMap())
+                  .toList(),
+            },
+          )
+          .toList(),
+    };
+  }
+
+  /// Líneas indentadas para ticket mostrador (sin precios por componente).
+  List<String> ticketComponentLines() {
+    return components.map((c) {
+      final opts = c.selections.map((s) => s.summaryLabel).join(' · ');
+      if (opts.isEmpty) return c.productName;
+      return '${c.productName}\n  $opts';
+    }).toList();
+  }
+
   OrderCombo toOrderCombo(String orderId) {
     return OrderCombo(
       orderId: orderId,

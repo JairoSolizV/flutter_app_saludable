@@ -12,11 +12,17 @@ import 'package:flutter_app_saludable/presentation/widgets/product_option_groups
 class MemberComboDetailScreen extends StatefulWidget {
   final Combo combo;
   final Map<String, Product> productsById;
+  final String addButtonLabel;
+  final Key addButtonKey;
+  final String appBarTitle;
 
   const MemberComboDetailScreen({
     super.key,
     required this.combo,
     required this.productsById,
+    this.addButtonLabel = 'Agregar al carrito',
+    this.addButtonKey = const Key('combo-add-to-cart'),
+    this.appBarTitle = 'Combo',
   });
 
   @override
@@ -99,7 +105,7 @@ class _MemberComboDetailScreenState extends State<MemberComboDetailScreen> {
     return Scaffold(
       key: const Key('member-combo-detail'),
       appBar: AppBar(
-        title: const Text('Combo'),
+        title: Text(widget.appBarTitle),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
@@ -231,7 +237,7 @@ class _MemberComboDetailScreenState extends State<MemberComboDetailScreen> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  key: const Key('combo-add-to-cart'),
+                  key: widget.addButtonKey,
                   onPressed: _canAdd ? _addToCart : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
@@ -241,9 +247,9 @@ class _MemberComboDetailScreenState extends State<MemberComboDetailScreen> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: const Text(
-                    'Agregar al carrito',
-                    style: TextStyle(
+                  child: Text(
+                    widget.addButtonLabel,
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),

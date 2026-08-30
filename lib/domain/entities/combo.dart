@@ -77,6 +77,12 @@ class Combo {
 
   bool get hasConfiguredPrice => price > 0;
 
+  bool get isPurchasable => activo && hasConfiguredPrice;
+
+  /// Resumen para catálogo: `Batido · Té · Aloe`
+  String get includesCatalogSummary =>
+      items.map((i) => i.productoNombre).join(' · ');
+
   /// Suma de precios efectivos de referencia (solo UI host).
   static double referenceSeparateTotal(
     Iterable<ComboItem> items,

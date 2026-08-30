@@ -38,6 +38,7 @@ class _StubOrders implements OrderRemoteDataSource {
     String? tipoConsumo,
     String? observaciones,
     required List<Map<String, dynamic>> items,
+    List<Map<String, dynamic>> combos = const [],
   }) async {
     if (shouldFail) throw ServerException('No se pudo registrar la venta');
   }

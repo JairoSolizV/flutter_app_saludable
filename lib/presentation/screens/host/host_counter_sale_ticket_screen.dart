@@ -126,11 +126,20 @@ class _HostCounterSaleTicketScreenState
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const _SectionTitle('Productos'),
-                        if (provider.cartLines.isEmpty)
+                        if (provider.cartLines.isEmpty &&
+                            provider.comboCartLines.isEmpty)
                           const Padding(
                             padding: EdgeInsets.symmetric(vertical: 24),
                             child: Center(
                               child: Text('Sin productos agregados'),
+                            ),
+                          )
+                        else if (provider.cartLines.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text(
+                              'Sin productos sueltos',
+                              style: TextStyle(color: Colors.grey[600]),
                             ),
                           )
                         else
@@ -233,11 +242,112 @@ class _HostCounterSaleTicketScreenState
                               ),
                             );
                           }),
+                        if (provider.comboCartLines.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          const _SectionTitle('Combos'),
+                          ...provider.comboCartLines.map((line) {
+                            final key = line.configKey;
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      line.comboName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Incluye:',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    ...line.ticketComponentLines().map(
+                                          (componentLine) => Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 8,
+                                              top: 2,
+                                            ),
+                                            child: Text(
+                                              '- $componentLine',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.grey[700],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        _QtyButton(
+                                          icon: Icons.remove,
+                                          onTap: () =>
+                                              provider.decreaseComboQty(key),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                          ),
+                                          child: Text(
+                                            '${line.quantity}',
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        _QtyButton(
+                                          icon: Icons.add,
+                                          onTap: () =>
+                                              provider.increaseComboQty(key),
+                                        ),
+                                        const Spacer(),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            Text(
+                                              '${line.quantity} × ${BolivianPrice.formatBs(line.price)}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                            Text(
+                                              BolivianPrice.formatBs(
+                                                line.lineTotal,
+                                              ),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+                        ],
                         const Divider(height: 32),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Productos: ${provider.totalItems}'),
+                            Text(
+                              'Ítems: ${provider.totalCartUnits}'
+                              '${provider.totalComboUnits > 0 ? ' (${provider.totalProductUnits} prod. · ${provider.totalComboUnits} combos)' : ''}',
+                            ),
                             Text('Puntos: ${provider.totalPuntos}'),
                           ],
                         ),

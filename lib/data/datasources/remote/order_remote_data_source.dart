@@ -18,6 +18,7 @@ abstract class OrderRemoteDataSource {
     String? tipoConsumo,
     String? observaciones,
     required List<Map<String, dynamic>> items,
+    List<Map<String, dynamic>> combos = const [],
   });
   Future<List<Map<String, dynamic>>> getOrdersByClub(int clubId);
   Future<List<Map<String, dynamic>>> getOrdersBySocio(int membresiaId);
@@ -76,9 +77,11 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
     String? tipoConsumo,
     String? observaciones,
     required List<Map<String, dynamic>> items,
+    List<Map<String, dynamic>> combos = const [],
   }) async {
-    if (items.isEmpty) {
-      throw Exception('Debes agregar al menos un producto al ticket.');
+    if (items.isEmpty && combos.isEmpty) {
+      throw Exception(
+          'Debes agregar al menos un producto o combo al ticket.');
     }
 
     final requestBody = <String, dynamic>{
@@ -92,6 +95,7 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
           : tipoConsumo,
       'observaciones': observaciones?.trim(),
       'items': items,
+      if (combos.isNotEmpty) 'combos': combos,
     };
 
     try {
