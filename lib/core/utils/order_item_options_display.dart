@@ -56,8 +56,17 @@ class OrderItemOptionsDisplay {
     return opt.optionName;
   }
 
-  /// Parsea `opciones` del item de historial remoto.
+  /// Parsea `opciones` del item de historial remoto o lista ya materializada.
   static List<OrderItemOption> parseFromHistoryItem(Map<String, dynamic> item) {
-    return OrderItemOption.listFromApi(item['opciones'] ?? item['options']);
+    final raw = item['opciones'] ?? item['options'];
+    if (raw == null) return const [];
+    if (raw is List<OrderItemOption>) return raw;
+    if (raw is List) {
+      if (raw.isNotEmpty && raw.first is OrderItemOption) {
+        return raw.cast<OrderItemOption>();
+      }
+      return OrderItemOption.listFromApi(raw);
+    }
+    return const [];
   }
 }

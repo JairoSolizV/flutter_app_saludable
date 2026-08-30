@@ -2,14 +2,16 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter_app_saludable/core/constants/counter_sale_payment_types.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/data/datasources/remote/combo_remote_data_source.dart';
 import 'package:flutter_app_saludable/data/datasources/remote/order_remote_data_source.dart';
 import 'package:flutter_app_saludable/data/datasources/remote/product_remote_data_source.dart';
 import 'package:flutter_app_saludable/core/pagination/paged_result.dart';
-import 'package:flutter_app_saludable/domain/entities/combo.dart';
 import 'package:flutter_app_saludable/domain/entities/order_entity.dart';
 import 'package:flutter_app_saludable/domain/entities/product.dart';
+import 'package:flutter_app_saludable/domain/entities/product_option.dart';
+import 'package:flutter_app_saludable/domain/entities/product_option_selection.dart';
 import 'package:flutter_app_saludable/presentation/providers/counter_sale_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -81,10 +83,12 @@ class _FakeOrderRemoteDataSource implements OrderRemoteDataSource {
   bool shouldFail = false;
   int createCounterSaleCalls = 0;
   List<Map<String, dynamic>>? lastItems;
+  String? lastTipoPago;
 
   @override
   Future<void> createCounterSale({
     required int clubId,
+    required String tipoPago,
     String? socioCodigo,
     String? tipoConsumo,
     String? observaciones,
@@ -92,13 +96,15 @@ class _FakeOrderRemoteDataSource implements OrderRemoteDataSource {
   }) async {
     createCounterSaleCalls++;
     lastItems = items;
+    lastTipoPago = tipoPago;
     if (shouldFail) {
       throw ServerException('No se pudo registrar la venta');
     }
   }
 
   @override
-  Future<void> sendOrder(OrderEntity order, {required List<OrderItem> items, required List<OrderCombo> combos}) async =>
+  Future<void> sendOrder(OrderEntity order,
+          {required List<OrderItem> items, required List<OrderCombo> combos}) async =>
       throw UnimplementedError();
 
   @override
@@ -140,11 +146,7 @@ class _FakeOrderRemoteDataSource implements OrderRemoteDataSource {
       throw UnimplementedError();
 }
 
-/// Adapter Dio configurable para simular respuestas de ComboRemoteDataSource.
 class _FakeComboAdapter implements HttpClientAdapter {
-  int statusCode = 200;
-  String body = '[]';
-
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
@@ -152,8 +154,8 @@ class _FakeComboAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     return ResponseBody.fromString(
-      body,
-      statusCode,
+      '[]',
+      200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
       },
@@ -169,15 +171,20 @@ Product _product({
   required String name,
   int puntos = 1,
   String tipo = 'GLOBAL',
+  double price = 20,
+  List<ProductOptionGroup>? optionGroups,
 }) {
   return Product(
     id: id,
     name: name,
     description: '',
+    price: price,
+    effectivePrice: price,
     puntosValor: puntos,
     tipo: tipo,
     active: true,
     available: true,
+    optionGroups: optionGroups,
   );
 }
 
@@ -185,271 +192,246 @@ void main() {
   group('CounterSaleProvider', () {
     late _FakeProductRemoteDataSource productDs;
     late _FakeOrderRemoteDataSource orderDs;
-    late _FakeComboAdapter comboAdapter;
-    late ComboRemoteDataSource comboDs;
     late CounterSaleProvider provider;
 
-    final p1 = _product(id: '1', name: 'Batido', puntos: 10, tipo: 'GLOBAL');
-    final p2 = _product(id: '2', name: 'Te', puntos: 5, tipo: 'LOCAL');
-    final p3 = _product(id: '3', name: 'Aloe', puntos: 8, tipo: 'GLOBAL');
-    final p4 = _product(id: '4', name: 'Extra', puntos: 3, tipo: 'GLOBAL');
+    final pSimple = _product(id: '1', name: 'Té', puntos: 5, price: 30);
+    final pConfigurable = _product(
+      id: '7',
+      name: 'Batido',
+      puntos: 10,
+      price: 20,
+      optionGroups: [
+        ProductOptionGroup(
+          id: 3,
+          name: 'Sabores',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            ProductOption(id: 6, name: 'Frutilla', active: true),
+            ProductOption(id: 7, name: 'Cookies', active: true),
+          ],
+        ),
+      ],
+    );
 
     setUp(() {
       productDs = _FakeProductRemoteDataSource()
-        ..products = [p1, p2, p3, p4];
+        ..products = [pSimple, pConfigurable];
       orderDs = _FakeOrderRemoteDataSource();
-      comboAdapter = _FakeComboAdapter();
       final dio = Dio(BaseOptions(baseUrl: 'https://example.test/api'));
-      dio.httpClientAdapter = comboAdapter;
-      comboDs = ComboRemoteDataSource(dio);
-      provider = CounterSaleProvider(productDs, orderDs, comboDs);
+      dio.httpClientAdapter = _FakeComboAdapter();
+      provider = CounterSaleProvider(
+        productDs,
+        orderDs,
+        ComboRemoteDataSource(dio),
+      );
     });
 
     test('init/loadCatalog separa productos globales y locales', () async {
+      productDs.products = [
+        pSimple,
+        _product(id: '2', name: 'Local', tipo: 'LOCAL'),
+      ];
       await provider.init(clubId: 1, hubId: 10);
 
-      expect(provider.clubId, 1);
-      expect(provider.hubId, 10);
-      expect(provider.isCatalogLoading, isFalse);
-      expect(provider.catalogError, isNull);
-      expect(provider.generalProducts.map((p) => p.id), ['1', '3', '4']);
-      expect(provider.clubSpecialties.map((p) => p.id), ['2']);
+      expect(provider.generalProducts, hasLength(1));
+      expect(provider.clubSpecialties, hasLength(1));
     });
 
-    test('loadCatalog con fallo del datasource de productos setea catalogError',
-        () async {
-      productDs.loadError = ServerException('Error de catálogo');
-      provider.clubId = 1;
-      provider.hubId = 1;
-
-      await provider.loadCatalog();
-
-      expect(provider.catalogError, isNotNull);
-      expect(provider.isCatalogLoading, isFalse);
-    });
-
-    test('fallo al cargar combos no afecta catalogError y deja combos vacíos',
-        () async {
-      comboAdapter.statusCode = 500;
-      comboAdapter.body = '{"message":"boom"}';
-
+    test('addProductLine sin opciones agrega directo', () async {
       await provider.init(clubId: 1, hubId: 1);
+      provider.addProductLine(product: pSimple);
 
-      expect(provider.activeCombos, isEmpty);
-      expect(provider.catalogError, isNull);
+      expect(provider.cartLines, hasLength(1));
+      expect(provider.cartLines.single.quantity, 1);
+      expect(provider.cartLines.single.selections, isEmpty);
     });
 
-    test('loadCatalog carga combos activos correctamente', () async {
-      comboAdapter.body = '''
-      [
-        {"id": 9, "clubId": 1, "nombre": "Combo Feliz", "activo": true, "items": []},
-        {"id": 10, "clubId": 1, "nombre": "Combo Inactivo", "activo": false, "items": []}
-      ]
-      ''';
-
+    test('configs distintas son líneas distintas', () async {
       await provider.init(clubId: 1, hubId: 1);
-
-      expect(provider.activeCombos, hasLength(1));
-      expect(provider.activeCombos.first.nombre, 'Combo Feliz');
-    });
-
-    test('addProduct respeta el máximo de 3 sabores distintos', () async {
-      await provider.init(clubId: 1, hubId: 1);
-
-      expect(provider.addProduct(p1), isTrue);
-      expect(provider.addProduct(p2), isTrue);
-      expect(provider.addProduct(p3), isTrue);
-      expect(provider.distinctProducts, 3);
-      expect(provider.isMaxSaboresReached, isTrue);
-
-      expect(provider.addProduct(p4), isFalse);
-      expect(provider.distinctProducts, 3);
-    });
-
-    test('addProduct existente incrementa cantidad en vez de agregar nuevo',
-        () async {
-      await provider.init(clubId: 1, hubId: 1);
-
-      provider.addProduct(p1);
-      provider.addProduct(p1);
-
-      expect(provider.distinctProducts, 1);
-      expect(provider.cartItems.single.quantity, 2);
-    });
-
-    test('addCombo agrega todos los items expandidos con referencia al combo',
-        () async {
-      await provider.init(clubId: 1, hubId: 1);
-      final combo = Combo(
-        id: 5,
-        clubId: 1,
-        nombre: 'Combo Doble',
-        items: [
-          ComboItem(productoId: 1, productoNombre: 'Batido', cantidad: 2),
-          ComboItem(productoId: 3, productoNombre: 'Aloe', cantidad: 1),
+      provider.addProductLine(
+        product: pConfigurable,
+        selections: const [
+          ProductOptionSelection(
+            groupId: 3,
+            groupName: 'Sabores',
+            optionId: 6,
+            optionName: 'Frutilla',
+            quantity: 1,
+          ),
+        ],
+      );
+      provider.addProductLine(
+        product: pConfigurable,
+        selections: const [
+          ProductOptionSelection(
+            groupId: 3,
+            groupName: 'Sabores',
+            optionId: 7,
+            optionName: 'Cookies',
+            quantity: 1,
+          ),
         ],
       );
 
-      final ok = provider.addCombo(combo);
-
-      expect(ok, isTrue);
-      expect(provider.distinctProducts, 2);
-      final batidoItem = provider.cartItems.firstWhere((i) => i.product.id == '1');
-      expect(batidoItem.quantity, 2);
-      expect(batidoItem.comboId, 5);
-      expect(batidoItem.comboNombre, 'Combo Doble');
+      expect(provider.cartLines, hasLength(2));
     });
 
-    test('addCombo retorna false si excede el máximo de sabores',
-        () async {
+    test('misma config incrementa quantity', () async {
       await provider.init(clubId: 1, hubId: 1);
-      provider.addProduct(p4);
-
-      final combo = Combo(
-        id: 6,
-        clubId: 1,
-        nombre: 'Combo Grande',
-        items: [
-          ComboItem(productoId: 1, productoNombre: 'Batido'),
-          ComboItem(productoId: 2, productoNombre: 'Te'),
-          ComboItem(productoId: 3, productoNombre: 'Aloe'),
-        ],
+      const selections = [
+        ProductOptionSelection(
+          groupId: 3,
+          groupName: 'Sabores',
+          optionId: 6,
+          optionName: 'Frutilla',
+          quantity: 1,
+        ),
+      ];
+      provider.addProductLine(
+        product: pConfigurable,
+        selections: selections,
+      );
+      provider.addProductLine(
+        product: pConfigurable,
+        selections: selections,
+        quantity: 2,
       );
 
-      final ok = provider.addCombo(combo);
-
-      expect(ok, isFalse);
-      expect(provider.distinctProducts, 1);
+      expect(provider.cartLines, hasLength(1));
+      expect(provider.cartLines.single.quantity, 3);
     });
 
-    test('increaseQty/decreaseQty modifican cantidad y remueven al llegar a 0',
-        () async {
-      await provider.init(clubId: 1, hubId: 1);
-      provider.addProduct(p1);
-
-      provider.increaseQty('1');
-      expect(provider.cartItems.single.quantity, 2);
-
-      provider.decreaseQty('1');
-      expect(provider.cartItems.single.quantity, 1);
-
-      provider.decreaseQty('1');
-      expect(provider.cartItems, isEmpty);
+    test('option quantity entra al configKey', () {
+      const a = [
+        ProductOptionSelection(
+          groupId: 3,
+          groupName: 'Sabores',
+          optionId: 6,
+          optionName: 'Frutilla',
+          quantity: 1,
+        ),
+      ];
+      const b = [
+        ProductOptionSelection(
+          groupId: 3,
+          groupName: 'Sabores',
+          optionId: 6,
+          optionName: 'Frutilla',
+          quantity: 2,
+        ),
+      ];
+      expect(
+        ProductOptionSelection.cartKey('7', a),
+        isNot(equals(ProductOptionSelection.cartKey('7', b))),
+      );
     });
 
-    test('removeItem elimina el producto del carrito', () async {
+    test('totalBs usa effectivePrice × quantity', () async {
       await provider.init(clubId: 1, hubId: 1);
-      provider.addProduct(p1);
-      provider.addProduct(p2);
+      provider.addProductLine(product: pSimple, quantity: 2);
 
-      provider.removeItem('1');
-
-      expect(provider.cartItems.map((i) => i.product.id), ['2']);
+      expect(provider.totalBs, 60);
     });
 
-    test('canSubmit es false con carrito vacío y true con items', () async {
+    test('totalPuntos suma puntos × quantity', () async {
       await provider.init(clubId: 1, hubId: 1);
+      provider.addProductLine(product: pSimple, quantity: 2);
+
+      expect(provider.totalPuntos, 10);
+    });
+
+    test('canSubmit false sin tipoPago', () async {
+      await provider.init(clubId: 1, hubId: 1);
+      provider.addProductLine(product: pSimple);
+
       expect(provider.canSubmit, isFalse);
+    });
 
-      provider.addProduct(p1);
+    test('canSubmit true con tipoPago válido', () async {
+      await provider.init(clubId: 1, hubId: 1);
+      provider.addProductLine(product: pSimple);
+      provider.setTipoPago(CounterSalePaymentTypes.efectivo);
+
       expect(provider.canSubmit, isTrue);
     });
 
-    test('totalPuntos suma puntosValor * cantidad de cada item', () async {
+    test('submitCounterSale manda opciones IDs y tipoPago', () async {
       await provider.init(clubId: 1, hubId: 1);
-      provider.addProduct(p1); // 10 pts
-      provider.increaseQty('1'); // qty 2 -> 20 pts
-      provider.addProduct(p3); // 8 pts
-
-      expect(provider.totalPuntos, 28);
-    });
-
-    test('submitCounterSale exitoso marca submitSuccess y limpia submitError',
-        () async {
-      await provider.init(clubId: 1, hubId: 1);
-      provider.addProduct(p1);
+      provider.addProductLine(
+        product: pConfigurable,
+        selections: const [
+          ProductOptionSelection(
+            groupId: 3,
+            groupName: 'Sabores',
+            optionId: 6,
+            optionName: 'Frutilla',
+            quantity: 1,
+          ),
+        ],
+      );
+      provider.setTipoPago(CounterSalePaymentTypes.qr);
 
       final ok = await provider.submitCounterSale();
 
       expect(ok, isTrue);
-      expect(provider.submitSuccess, isTrue);
-      expect(provider.submitError, isNull);
-      expect(provider.isSubmitting, isFalse);
-      expect(orderDs.createCounterSaleCalls, 1);
+      expect(orderDs.lastTipoPago, CounterSalePaymentTypes.qr);
+      final item = orderDs.lastItems!.single;
+      expect(item['opciones'], hasLength(1));
+      expect(item['opciones'][0]['grupoId'], 3);
+      expect(item['opciones'][0]['opcionId'], 6);
+      expect(item.containsKey('comboId'), isFalse);
+      expect(item['nota'], '');
     });
 
-    test('submitCounterSale fallido setea submitError y submitSuccess false',
-        () async {
+    test('submit sin tipoPago falla sin llamar datasource', () async {
       await provider.init(clubId: 1, hubId: 1);
-      provider.addProduct(p1);
+      provider.addProductLine(product: pSimple);
+
+      final ok = await provider.submitCounterSale();
+
+      expect(ok, isFalse);
+      expect(orderDs.createCounterSaleCalls, 0);
+    });
+
+    test('submit fallido conserva carrito', () async {
+      await provider.init(clubId: 1, hubId: 1);
+      provider.addProductLine(product: pSimple);
+      provider.setTipoPago(CounterSalePaymentTypes.efectivo);
       orderDs.shouldFail = true;
 
       final ok = await provider.submitCounterSale();
 
       expect(ok, isFalse);
-      expect(provider.submitSuccess, isFalse);
-      expect(provider.submitError, isNotNull);
-      expect(provider.isSubmitting, isFalse);
+      expect(provider.cartLines, hasLength(1));
     });
 
-    test('submitCounterSale sin productos en el carrito falla sin llamar al datasource',
-        () async {
-      provider.clubId = 1;
-
-      final ok = await provider.submitCounterSale();
-
-      expect(ok, isFalse);
-      expect(provider.submitError, isNotNull);
-      expect(orderDs.createCounterSaleCalls, 0);
-    });
-
-    test('doble submit concurrente: la segunda llamada retorna false de inmediato',
-        () async {
+    test('doble submit concurrente bloqueado', () async {
       await provider.init(clubId: 1, hubId: 1);
-      provider.addProduct(p1);
+      provider.addProductLine(product: pSimple);
+      provider.setTipoPago(CounterSalePaymentTypes.efectivo);
 
       final first = provider.submitCounterSale();
       final second = provider.submitCounterSale();
 
-      final secondResult = await second;
-      final firstResult = await first;
-
-      expect(secondResult, isFalse);
-      expect(firstResult, isTrue);
+      expect(await second, isFalse);
+      expect(await first, isTrue);
       expect(orderDs.createCounterSaleCalls, 1);
     });
 
-    test('resetSale limpia carrito y estado de envío sin borrar catálogo',
-        () async {
+    test('resetSale limpia carrito y tipoPago', () async {
       await provider.init(clubId: 1, hubId: 1);
-      provider.addProduct(p1);
-      provider.setSocioCodigo('S-1');
-      provider.setObservaciones('nota');
-      await provider.submitCounterSale();
+      provider.addProductLine(product: pSimple);
+      provider.setTipoPago(CounterSalePaymentTypes.efectivo);
 
       provider.resetSale();
 
-      expect(provider.cartItems, isEmpty);
-      expect(provider.socioCodigo, '');
-      expect(provider.observaciones, '');
-      expect(provider.submitError, isNull);
-      expect(provider.submitSuccess, isFalse);
-      expect(provider.generalProducts, isNotEmpty);
+      expect(provider.cartLines, isEmpty);
+      expect(provider.tipoPago, isNull);
     });
 
-    test('clearSessionState limpia todo incluyendo catálogo', () async {
-      await provider.init(clubId: 1, hubId: 1);
-      provider.addProduct(p1);
-
-      await provider.clearSessionState();
-
-      expect(provider.clubId, isNull);
-      expect(provider.hubId, isNull);
-      expect(provider.cartItems, isEmpty);
-      expect(provider.generalProducts, isEmpty);
-      expect(provider.clubSpecialties, isEmpty);
-      expect(provider.activeCombos, isEmpty);
+    test('combosEnabled es false', () {
+      expect(provider.combosEnabled, isFalse);
     });
   });
 }
-

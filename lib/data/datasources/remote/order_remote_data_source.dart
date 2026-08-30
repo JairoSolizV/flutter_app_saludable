@@ -13,6 +13,7 @@ abstract class OrderRemoteDataSource {
   });
   Future<void> createCounterSale({
     required int clubId,
+    required String tipoPago,
     String? socioCodigo,
     String? tipoConsumo,
     String? observaciones,
@@ -70,6 +71,7 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
   @override
   Future<void> createCounterSale({
     required int clubId,
+    required String tipoPago,
     String? socioCodigo,
     String? tipoConsumo,
     String? observaciones,
@@ -81,6 +83,7 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
 
     final requestBody = <String, dynamic>{
       'clubId': clubId,
+      'tipoPago': tipoPago,
       'socioCodigo': (socioCodigo == null || socioCodigo.trim().isEmpty)
           ? null
           : socioCodigo.trim(),

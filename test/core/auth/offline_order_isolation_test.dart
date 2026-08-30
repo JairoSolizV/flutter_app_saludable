@@ -129,6 +129,7 @@ class _FakeRemoteOrders implements OrderRemoteDataSource {
   @override
   Future<void> createCounterSale({
     required int clubId,
+    required String tipoPago,
     String? socioCodigo,
     String? tipoConsumo,
     String? observaciones,
@@ -422,7 +423,7 @@ void main() {
       final p = CounterSaleProvider(_NoopProducts(), _FakeRemoteOrders());
       p.socioCodigo = 'X';
       await p.clearSessionState();
-      expect(p.cartItems, isEmpty);
+      expect(p.cartLines, isEmpty);
       expect(p.socioCodigo, '');
       expect(p.clubId, isNull);
     });

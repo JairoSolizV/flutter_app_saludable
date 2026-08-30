@@ -155,7 +155,11 @@ void main() {
     test('createCounterSale con items vacíos lanza sin llamar a la red',
         async_(() async {
       await expectLater(
-        () => ds.createCounterSale(clubId: 1, items: const []),
+        () => ds.createCounterSale(
+          clubId: 1,
+          tipoPago: 'EFECTIVO',
+          items: const [],
+        ),
         throwsException,
       );
       expect(adapter.requests, isEmpty);
@@ -167,14 +171,28 @@ void main() {
 
       await ds.createCounterSale(
         clubId: 1,
+        tipoPago: 'EFECTIVO',
         tipoConsumo: 'EN_LUGAR',
         items: const [
-          {'productoId': 1, 'cantidad': 2},
+          {
+            'productoId': 1,
+            'cantidad': 2,
+            'nota': '',
+            'opciones': [
+              {'grupoId': 3, 'opcionId': 6, 'cantidad': 1},
+            ],
+          },
         ],
       );
 
       expect(adapter.requests, hasLength(1));
       expect(adapter.requests.single.method, 'POST');
+      final body = adapter.requests.single.data as Map<String, dynamic>;
+      expect(body['tipoPago'], 'EFECTIVO');
+      expect(body['items'], isNotEmpty);
+      final item = (body['items'] as List).first as Map<String, dynamic>;
+      expect(item['opciones'], hasLength(1));
+      expect(item.containsKey('comboId'), isFalse);
     }));
 
     test('sendOrder sin membresiaId lanza sin llamar a la red', async_(() async {
@@ -287,8 +305,9 @@ void main() {
       await expectLater(
         () => ds.createCounterSale(
           clubId: 1,
+          tipoPago: 'EFECTIVO',
           items: const [
-            {'productoId': 1, 'cantidad': 1},
+            {'productoId': 1, 'cantidad': 1, 'nota': '', 'opciones': []},
           ],
         ),
         throwsA(isA<AppException>()),

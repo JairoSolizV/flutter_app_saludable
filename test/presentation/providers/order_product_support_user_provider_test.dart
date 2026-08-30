@@ -119,6 +119,7 @@ class _FakeOrderRemoteDataSource implements OrderRemoteDataSource {
   @override
   Future<void> createCounterSale({
     required int clubId,
+    required String tipoPago,
     String? socioCodigo,
     String? tipoConsumo,
     String? observaciones,

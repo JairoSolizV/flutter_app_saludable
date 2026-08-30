@@ -7,7 +7,6 @@ import '../../../core/pagination/paged_result.dart';
 import '../../../data/datasources/remote/order_remote_data_source.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../providers/user_provider.dart';
-import 'host_counter_sale_screen.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/order_item_options_display.dart';
 import 'package:flutter_app_saludable/domain/entities/order_item_option.dart';
@@ -613,25 +612,6 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
       appBar: AppBar(
         title: const Text('Pedidos Recibidos'),
         actions: [
-          TextButton.icon(
-            onPressed: (_clubId != null && _hubId != null)
-                ? () async {
-                    final created = await Navigator.of(context).push<bool>(
-                      MaterialPageRoute(
-                        builder: (_) => HostCounterSaleScreen(
-                          clubId: _clubId!,
-                          hubId: _hubId!,
-                        ),
-                      ),
-                    );
-                    if (created == true) {
-                      await _ordersController?.refresh();
-                    }
-                  }
-                : null,
-            icon: const Icon(LucideIcons.receipt, size: 16),
-            label: const Text('Nueva venta'),
-          ),
           IconButton(
             icon: const Icon(LucideIcons.refreshCw),
             onPressed: _handleRefresh,

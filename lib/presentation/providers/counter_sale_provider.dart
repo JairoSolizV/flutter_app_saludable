@@ -1,29 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_app_saludable/core/auth/session_state_resetter.dart';
+import 'package:flutter_app_saludable/core/constants/counter_sale_payment_types.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 
 import '../../data/datasources/remote/order_remote_data_source.dart';
 import '../../data/datasources/remote/product_remote_data_source.dart';
 import '../../data/datasources/remote/combo_remote_data_source.dart';
+import '../../domain/entities/counter_sale_product_line.dart';
 import '../../domain/entities/product.dart';
-import '../../domain/entities/combo.dart';
-
-class CounterSaleItem {
-  final Product product;
-  int quantity;
-  String note;
-  int? comboId;
-  String? comboNombre;
-
-  CounterSaleItem({
-    required this.product,
-    this.quantity = 1,
-    this.note = '',
-    this.comboId,
-    this.comboNombre,
-  });
-}
+import '../../domain/entities/product_option_selection.dart';
 
 class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
   final ProductRemoteDataSource _productDataSource;
@@ -46,26 +32,31 @@ class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
   int? hubId;
   String socioCodigo = '';
   String tipoConsumo = 'EN_LUGAR';
+  String? tipoPago;
   String observaciones = '';
 
   List<Product> _products = [];
-  List<Combo> _combos = [];
-  final Map<String, CounterSaleItem> _cart = {};
+  final Map<String, CounterSaleProductLine> _productCart = {};
 
   List<Product> get generalProducts =>
       _products.where((p) => p.tipo == 'GLOBAL').toList();
   List<Product> get clubSpecialties =>
       _products.where((p) => p.tipo == 'LOCAL').toList();
-  List<Combo> get activeCombos => _combos.where((c) => c.activo).toList();
-  List<CounterSaleItem> get cartItems => _cart.values.toList();
+  List<CounterSaleProductLine> get cartLines => _productCart.values.toList();
   int get totalItems =>
-      _cart.values.fold(0, (sum, item) => sum + item.quantity);
-  bool get canSubmit => _cart.isNotEmpty && !isSubmitting;
-  static const int maxSabores = 3;
-  int get distinctProducts => _cart.length;
-  bool get isMaxSaboresReached => _cart.length >= maxSabores;
-  int get totalPuntos => _cart.values
-      .fold(0, (sum, item) => sum + (item.product.puntosValor * item.quantity));
+      _productCart.values.fold(0, (sum, line) => sum + line.quantity);
+  double get totalBs =>
+      _productCart.values.fold(0.0, (sum, line) => sum + line.subtotal);
+  int get totalPuntos =>
+      _productCart.values.fold(0, (sum, line) => sum + line.totalPoints);
+  bool get canSubmit =>
+      _productCart.isNotEmpty &&
+      !isSubmitting &&
+      tipoPago != null &&
+      CounterSalePaymentTypes.backendValues.contains(tipoPago);
+
+  /// Combos deshabilitados hasta HOST-COUNTER-002.
+  bool get combosEnabled => false;
 
   @override
   Future<void> clearSessionState() async {
@@ -73,10 +64,10 @@ class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
     hubId = null;
     socioCodigo = '';
     tipoConsumo = 'EN_LUGAR';
+    tipoPago = null;
     observaciones = '';
     _products = [];
-    _combos = [];
-    _cart.clear();
+    _productCart.clear();
     isCatalogLoading = false;
     isSubmitting = false;
     submitSuccess = false;
@@ -106,16 +97,8 @@ class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
         hubId: hubId!,
         clubId: clubId!,
       );
-      // Cargar combos del club
-      final comboDs = _comboDataSource;
-      if (comboDs != null) {
-        try {
-          _combos = await comboDs.getCombosByClub(clubId!);
-        } catch (e) {
-          debugPrint('[COUNTER SALE] Error cargando combos');
-          _combos = [];
-        }
-      }
+      // Combos: catálogo no cargado en COUNTER-001 (HOST-COUNTER-002).
+      final _ = _comboDataSource;
     } catch (e) {
       if (shouldPresentErrorToUser(e)) {
         catalogError = ErrorMapper.publicMessage(e);
@@ -141,88 +124,57 @@ class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
     notifyListeners();
   }
 
-  bool addProduct(Product product) {
-    final existing = _cart[product.id];
-    if (existing == null) {
-      if (_cart.length >= maxSabores) return false;
-      _cart[product.id] = CounterSaleItem(product: product, quantity: 1);
+  void setTipoPago(String? value) {
+    tipoPago = value;
+    notifyListeners();
+  }
+
+  void addProductLine({
+    required Product product,
+    List<ProductOptionSelection> selections = const [],
+    int quantity = 1,
+  }) {
+    if (quantity < 1) return;
+    final key = ProductOptionSelection.cartKey(product.id, selections);
+    final existing = _productCart[key];
+    if (existing != null) {
+      existing.quantity += quantity;
     } else {
-      existing.quantity += 1;
-    }
-    notifyListeners();
-    return true;
-  }
-
-  /// Agrega un combo completo al carrito.
-  /// Expande los items del combo como productos individuales con referencia al combo.
-  /// Retorna true si se pudo agregar, false si no hay espacio.
-  bool addCombo(Combo combo) {
-    // Verificar que hay espacio para los productos del combo que aún no están en el carrito
-    final newProductIds = combo.items
-        .map((item) => item.productoId.toString())
-        .where((id) => !_cart.containsKey(id))
-        .toSet();
-
-    if (_cart.length + newProductIds.length > maxSabores) {
-      return false;
-    }
-
-    // Agregar cada item del combo
-    for (final comboItem in combo.items) {
-      final productId = comboItem.productoId.toString();
-      final existing = _cart[productId];
-
-      // Buscar el producto en el catálogo cargado
-      final product = _products.where((p) => p.id == productId).firstOrNull;
-      if (product == null) continue;
-
-      if (existing != null) {
-        existing.quantity += comboItem.cantidad;
-        // Actualizar referencia de combo si no tenía
-        existing.comboId ??= combo.id;
-        existing.comboNombre ??= combo.nombre;
-      } else {
-        _cart[productId] = CounterSaleItem(
-          product: product,
-          quantity: comboItem.cantidad,
-          comboId: combo.id,
-          comboNombre: combo.nombre,
-          note: comboItem.saborNombre != null
-              ? 'Sabor: ${comboItem.saborNombre}'
-              : '',
-        );
-      }
-    }
-    notifyListeners();
-    return true;
-  }
-
-  void increaseQty(String productId) {
-    final item = _cart[productId];
-    if (item == null) return;
-    item.quantity += 1;
-    notifyListeners();
-  }
-
-  void decreaseQty(String productId) {
-    final item = _cart[productId];
-    if (item == null) return;
-    item.quantity -= 1;
-    if (item.quantity <= 0) {
-      _cart.remove(productId);
+      _productCart[key] = CounterSaleProductLine(
+        product: product,
+        selections: selections,
+        quantity: quantity,
+      );
     }
     notifyListeners();
   }
 
-  void removeItem(String productId) {
-    _cart.remove(productId);
+  void increaseQty(String configKey) {
+    final line = _productCart[configKey];
+    if (line == null) return;
+    line.quantity += 1;
     notifyListeners();
   }
 
-  void setItemNote(String productId, String note) {
-    final item = _cart[productId];
-    if (item == null) return;
-    item.note = note;
+  void decreaseQty(String configKey) {
+    final line = _productCart[configKey];
+    if (line == null) return;
+    line.quantity -= 1;
+    if (line.quantity <= 0) {
+      _productCart.remove(configKey);
+    }
+    notifyListeners();
+  }
+
+  void removeLine(String configKey) {
+    _productCart.remove(configKey);
+    notifyListeners();
+  }
+
+  void setLineNote(String configKey, String note) {
+    final line = _productCart[configKey];
+    if (line == null) return;
+    line.note = note;
     notifyListeners();
   }
 
@@ -232,8 +184,14 @@ class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
       notifyListeners();
       return false;
     }
-    if (_cart.isEmpty) {
+    if (_productCart.isEmpty) {
       submitError = 'Debes agregar al menos un producto.';
+      notifyListeners();
+      return false;
+    }
+    if (tipoPago == null ||
+        !CounterSalePaymentTypes.backendValues.contains(tipoPago)) {
+      submitError = 'Selecciona una forma de pago.';
       notifyListeners();
       return false;
     }
@@ -245,25 +203,25 @@ class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
     notifyListeners();
 
     try {
-      final items = _cart.values.map((item) {
-        final productoId = int.tryParse(item.product.id);
+      final items = _productCart.values.map((line) {
+        final productoId = int.tryParse(line.product.id);
         if (productoId == null) {
-          throw Exception('Producto inválido en ticket: id=${item.product.id}');
+          throw Exception('Producto inválido en ticket: id=${line.product.id}');
         }
-        final map = <String, dynamic>{
+        final opciones = line.selections
+            .map((s) => s.toOrderItemOption().toApiMap())
+            .toList();
+        return <String, dynamic>{
           'productoId': productoId,
-          'cantidad': item.quantity,
-          'nota': item.note.trim(),
-          'opciones': <Map<String, dynamic>>[],
+          'cantidad': line.quantity,
+          'nota': line.note.trim(),
+          'opciones': opciones,
         };
-        if (item.comboId != null) {
-          map['comboId'] = item.comboId;
-        }
-        return map;
       }).toList();
 
       await _orderDataSource.createCounterSale(
         clubId: clubId!,
+        tipoPago: tipoPago!,
         socioCodigo: socioCodigo.trim().isEmpty ? null : socioCodigo.trim(),
         tipoConsumo: tipoConsumo,
         observaciones: observaciones.trim(),
@@ -291,8 +249,9 @@ class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
   void resetSale() {
     socioCodigo = '';
     tipoConsumo = 'EN_LUGAR';
+    tipoPago = null;
     observaciones = '';
-    _cart.clear();
+    _productCart.clear();
     submitError = null;
     submitSuccess = false;
     notifyListeners();

@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../data/datasources/remote/order_remote_data_source.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
+import 'host_counter_sale_screen.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostDashboardScreen extends StatefulWidget {
@@ -346,6 +347,85 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                                ],
                            ),
                        ),
+                   ),
+
+                   const SizedBox(height: 24),
+
+                   InkWell(
+                     key: const Key('host-home-nueva-venta'),
+                     onTap: _club != null
+                         ? () async {
+                             final created =
+                                 await Navigator.of(context).push<bool>(
+                               MaterialPageRoute(
+                                 builder: (_) => HostCounterSaleScreen(
+                                   clubId: _club!.id,
+                                   hubId: _club!.hubId,
+                                 ),
+                               ),
+                             );
+                             if (created == true && mounted) {
+                               await _loadOrdersSummary();
+                             }
+                           }
+                         : null,
+                     child: Container(
+                       padding: const EdgeInsets.all(20),
+                       decoration: BoxDecoration(
+                         color: AppTheme.primaryColor,
+                         borderRadius: BorderRadius.circular(20),
+                         boxShadow: [
+                           BoxShadow(
+                             color: Colors.black.withOpacity(0.15),
+                             blurRadius: 10,
+                             offset: const Offset(0, 5),
+                           ),
+                         ],
+                       ),
+                       child: Row(
+                         children: [
+                           Container(
+                             padding: const EdgeInsets.all(12),
+                             decoration: BoxDecoration(
+                               color: Colors.white,
+                               borderRadius: BorderRadius.circular(12),
+                             ),
+                             child: const Icon(
+                               LucideIcons.shoppingCart,
+                               color: AppTheme.primaryColor,
+                               size: 30,
+                             ),
+                           ),
+                           const SizedBox(width: 16),
+                           const Expanded(
+                             child: Column(
+                               crossAxisAlignment: CrossAxisAlignment.start,
+                               children: [
+                                 Text(
+                                   'Nueva venta',
+                                   style: TextStyle(
+                                     fontSize: 18,
+                                     fontWeight: FontWeight.bold,
+                                     color: Colors.white,
+                                   ),
+                                 ),
+                                 Text(
+                                   'Venta en mostrador con ticket',
+                                   style: TextStyle(
+                                     color: Colors.white70,
+                                     fontSize: 12,
+                                   ),
+                                 ),
+                               ],
+                             ),
+                           ),
+                           const Icon(
+                             LucideIcons.chevronRight,
+                             color: Colors.white,
+                           ),
+                         ],
+                       ),
+                     ),
                    ),
 
                    const SizedBox(height: 24),
