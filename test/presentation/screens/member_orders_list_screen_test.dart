@@ -6,6 +6,7 @@ import 'package:flutter_app_saludable/domain/entities/attendance.dart';
 import 'package:flutter_app_saludable/domain/entities/arbol_referidos.dart';
 import 'package:flutter_app_saludable/domain/entities/club_membership.dart';
 import 'package:flutter_app_saludable/domain/entities/order_entity.dart';
+import 'package:flutter_app_saludable/domain/repositories/order_repository.dart';
 import 'package:flutter_app_saludable/domain/entities/user.dart';
 import 'package:flutter_app_saludable/presentation/providers/user_provider.dart';
 import 'package:flutter_app_saludable/presentation/screens/member/member_orders_list_screen.dart';
@@ -85,6 +86,35 @@ class _FakeMembresiaRemoteDataSource implements MembresiaRemoteDataSource {
   @override
   Future<ArbolReferidos> getArbolReferidos(int membresiaId) =>
       throw UnimplementedError();
+}
+
+class _FakeOrderRepository implements OrderRepository {
+  @override
+  Future<void> createOrder(OrderEntity order) async {}
+
+  @override
+  Future<List<OrderEntity>> getOrdersByUser(String userId) async => [];
+
+  @override
+  Future<List<OrderEntity>> getUnsyncedOrdersForUser(String userId) async => [];
+
+  @override
+  Future<int> countOrphanUnsyncedOrders() async => 0;
+
+  @override
+  Future<void> markAsSynced(String orderId) async {}
+
+  @override
+  Future<void> markOrdersAsSynced(List<String> orderIds) async {}
+
+  @override
+  Future<void> updateOrderStatus(String orderId, String status) async {}
+
+  @override
+  Future<void> deleteOrder(String orderId) async {}
+
+  @override
+  Future<void> deleteOrders(List<String> orderIds) async {}
 }
 
 class _FakeOrderRemoteDataSource implements OrderRemoteDataSource {
@@ -178,6 +208,7 @@ Widget _buildApp({
     providers: [
       Provider<MembresiaRemoteDataSource>.value(value: membresiaDs),
       Provider<OrderRemoteDataSource>.value(value: orderDs),
+      Provider<OrderRepository>.value(value: _FakeOrderRepository()),
       ChangeNotifierProvider<UserProvider>.value(value: userProvider),
     ],
     child: const MaterialApp(

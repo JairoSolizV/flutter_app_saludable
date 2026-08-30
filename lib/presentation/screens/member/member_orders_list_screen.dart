@@ -9,13 +9,15 @@ import '../../../core/pagination/paged_result.dart';
 import '../../../data/datasources/remote/order_remote_data_source.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../domain/entities/club_membership.dart';
+import '../../../domain/entities/order_entity.dart';
+import '../../../domain/repositories/order_repository.dart';
+import 'package:flutter_app_saludable/core/orders/order_offline_messages.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/order_item_options_display.dart';
 import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
+import 'member_local_order_mapper.dart';
 
-// Nota: los pedidos offline pendientes de sincronizar NO se mezclan en este
-// listado remoto paginado. Se gestionan por separado vía OrderProvider/
-// SyncService y se muestran en su propia pantalla.
+// Pedidos offline pendientes se mezclan en Activos leyendo SQLite local.
 class MemberOrdersListScreen extends StatefulWidget {
   const MemberOrdersListScreen({super.key});
 
@@ -33,6 +35,7 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
   bool _isLoadingMembresia = true;
   String? _membresiaError;
   ClubMembership? _activeMembership;
+  List<OrderEntity> _localPendingOrders = const [];
 
   @override
   void initState() {
@@ -84,12 +87,38 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
   }
 
   Future<void> _handleRefresh() async {
+    final user =
+        Provider.of<UserProvider>(context, listen: false).currentUser;
+    if (user != null) {
+      await _loadLocalPendingOrders(user.id);
+    }
     if (_ordersController == null) {
       await _initMembresia();
     } else {
       await _ordersController!.refresh();
     }
   }
+
+  Future<void> _loadLocalPendingOrders(String userId) async {
+    final repo = Provider.of<OrderRepository>(context, listen: false);
+    final pending = await repo.getUnsyncedOrdersForUser(userId);
+    if (!mounted) return;
+    setState(() => _localPendingOrders = pending);
+  }
+
+  List<Map<String, dynamic>> _mapLocalPendingOrders() {
+    final clubName = _activeMembership?.clubNombre;
+    return _localPendingOrders
+        .map(
+          (o) => MemberLocalOrderMapper.toUiMap(
+            o,
+            clubNombreFallback: clubName,
+          ),
+        )
+        .toList();
+  }
+
+  bool get _hasLocalPending => _localPendingOrders.isNotEmpty;
 
   Future<void> _initMembresia() async {
     if (!mounted) return;
@@ -105,6 +134,8 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
       if (user == null) {
         throw Exception('Usuario no autenticado');
       }
+
+      await _loadLocalPendingOrders(user.id);
 
       final membresiaDataSource =
           Provider.of<MembresiaRemoteDataSource>(context, listen: false);
@@ -240,23 +271,41 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
     final rawOrders =
         _ordersController?.items ?? const <Map<String, dynamic>>[];
     final mappedOrders = rawOrders.map(_mapOrder).toList();
+    final localActive = _mapLocalPendingOrders();
 
     // Filtrado local de pedidos según estado (partición del mismo feed
     // paginado; el backend no distingue Activos/Historial).
-    final activeOrders = mappedOrders.where((o) {
+    final remoteActive = mappedOrders.where((o) {
       final estado = o['estado']?.toString().toUpperCase() ?? '';
       return estado != 'ENTREGADO' && estado != 'CANCELADO';
     }).toList();
+
+    // Pending local primero; IDs distintos (UUID vs int backend) evitan duplicados.
+    final activeOrders = [...localActive, ...remoteActive];
 
     final historyOrders = mappedOrders.where((o) {
       final estado = o['estado']?.toString().toUpperCase() ?? '';
       return estado == 'ENTREGADO' || estado == 'CANCELADO';
     }).toList();
 
-    final bool isInitialLoading =
-        _isLoadingMembresia || (_ordersController?.isInitialLoading ?? false);
-    final String? error =
-        _membresiaError ?? _ordersController?.initialError?.toString();
+    final bool isInitialLoading = _isLoadingMembresia ||
+        ((_ordersController?.isInitialLoading ?? false) && !_hasLocalPending);
+
+    final remoteError = _ordersController?.initialError;
+    final bool showOfflineEmpty = _membresiaError == null &&
+        remoteError != null &&
+        !_hasLocalPending &&
+        OrderOfflineMessages.isLikelyNetworkError(remoteError);
+
+    final String? otherError = _membresiaError ??
+        (remoteError != null &&
+                !_hasLocalPending &&
+                !OrderOfflineMessages.isLikelyNetworkError(remoteError)
+            ? OrderOfflineMessages.friendlyLoadError(remoteError)
+            : null);
+
+    final bool showOfflineRemoteHint =
+        remoteError != null && _hasLocalPending;
 
     return Scaffold(
       appBar: AppBar(
@@ -275,28 +324,40 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
       body: isInitialLoading
           ? const Center(
               child: CircularProgressIndicator(color: AppTheme.primaryColor))
-          : error != null
-              ? RefreshableScrollView(
-                  onRefresh: _handleRefresh,
-                  child: Text('Error: $error',
-                      style: const TextStyle(color: Colors.red)),
-                )
+          : showOfflineEmpty
+              ? _OfflineEmptyState(onRetry: _handleRefresh)
+              : otherError != null
+                  ? RefreshableScrollView(
+                      onRefresh: _handleRefresh,
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Text(
+                          otherError.startsWith('Error:')
+                              ? otherError
+                              : 'Error: $otherError',
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    )
               : RefreshIndicator(
                   onRefresh: _handleRefresh,
                   color: AppTheme.primaryColor,
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      // Tab Activos
                       _OrdersList(
-                          orders: activeOrders,
-                          scrollController: _activeScrollController,
-                          footer: _buildFooter()),
-                      // Tab Historial
+                        orders: activeOrders,
+                        scrollController: _activeScrollController,
+                        footer: _buildFooter(),
+                        offlineBanner: showOfflineRemoteHint
+                            ? OrderOfflineMessages.localPendingBanner
+                            : null,
+                      ),
                       _OrdersList(
-                          orders: historyOrders,
-                          scrollController: _historyScrollController,
-                          footer: _buildFooter()),
+                        orders: historyOrders,
+                        scrollController: _historyScrollController,
+                        footer: _buildFooter(),
+                      ),
                     ],
                   ),
                 ),
@@ -322,12 +383,58 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
   }
 }
 
+class _OfflineEmptyState extends StatelessWidget {
+  final Future<void> Function() onRetry;
+
+  const _OfflineEmptyState({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshableScrollView(
+      onRefresh: onRetry,
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.wifiOff, size: 56, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            const Text(
+              OrderOfflineMessages.offlineEmptyTitle,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              OrderOfflineMessages.offlineEmptyBody,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 20),
+            TextButton.icon(
+              onPressed: () => onRetry(),
+              icon: const Icon(LucideIcons.refreshCw, size: 18),
+              label: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _OrdersList extends StatelessWidget {
   final List<Map<String, dynamic>> orders;
   final ScrollController? scrollController;
   final Widget? footer;
+  final String? offlineBanner;
 
-  const _OrdersList({required this.orders, this.scrollController, this.footer});
+  const _OrdersList({
+    required this.orders,
+    this.scrollController,
+    this.footer,
+    this.offlineBanner,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -358,12 +465,19 @@ class _OrdersList extends StatelessWidget {
       controller: scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
-      itemCount: orders.length + (footer != null ? 1 : 0),
+      itemCount: orders.length +
+          (offlineBanner != null ? 1 : 0) +
+          (footer != null ? 1 : 0),
       itemBuilder: (context, index) {
-        if (index == orders.length) return footer!;
-        final order = orders[index];
-        final int pedidoId =
-            order['pedidoId'] as int? ?? order['id'] as int? ?? 0;
+        if (offlineBanner != null && index == 0) {
+          return _OfflineBanner(message: offlineBanner!);
+        }
+        final orderIndex = index - (offlineBanner != null ? 1 : 0);
+        if (orderIndex == orders.length) return footer!;
+        final order = orders[orderIndex];
+        final bool isLocalPending = order['isLocalPending'] == true;
+        final dynamic pedidoIdRaw =
+            order['pedidoId'] ?? order['id'] ?? order['localId'];
         final DateTime fecha = order['fecha'] as DateTime? ?? DateTime.now();
         final String estado = order['estado']?.toString() ?? 'RECIBIDO';
         final String clubNombre = order['clubNombre']?.toString() ?? 'Club';
@@ -392,13 +506,22 @@ class _OrdersList extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Pedido #$pedidoId',
+                      isLocalPending
+                          ? 'Pedido pendiente de envío'
+                          : 'Pedido #$pedidoIdRaw',
                       style: const TextStyle(
                           fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     _StatusBadge(status: estado),
                   ],
                 ),
+                if (isLocalPending) ...[
+                  const SizedBox(height: 8),
+                  _OfflineBanner(
+                    message: OrderOfflineMessages.localPendingBanner,
+                    compact: true,
+                  ),
+                ],
                 const SizedBox(height: 8),
                 if ((estado == 'PREPARANDO' || estado == 'PREPARING') &&
                     order['tiempoEstimadoMinutos'] != null)
@@ -585,6 +708,47 @@ class _OrdersList extends StatelessWidget {
   }
 }
 
+class _OfflineBanner extends StatelessWidget {
+  final String message;
+  final bool compact;
+
+  const _OfflineBanner({required this.message, this.compact = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.only(bottom: compact ? 0 : 12),
+      padding: EdgeInsets.all(compact ? 10 : 12),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            LucideIcons.wifiOff,
+            size: compact ? 16 : 18,
+            color: Colors.amber.shade900,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              compact ? '[Sin conexión] $message' : message,
+              style: TextStyle(
+                fontSize: compact ? 12 : 13,
+                color: Colors.amber.shade900,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _StatusBadge extends StatelessWidget {
   final String status;
 
@@ -597,6 +761,10 @@ class _StatusBadge extends StatelessWidget {
 
     final statusUpper = status.toUpperCase();
     switch (statusUpper) {
+      case 'LOCAL_PENDING':
+        color = Colors.amber;
+        text = 'Pendiente de envío';
+        break;
       case 'RECIBIDO':
       case 'PENDING':
         color = Colors.orange;

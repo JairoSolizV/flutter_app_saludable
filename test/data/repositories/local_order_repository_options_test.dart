@@ -143,4 +143,30 @@ void main() {
     expect(pending.first.items.first.options.first.quantity, 2);
     expect(pending.first.items.first.options.first.optionId, 6);
   });
+
+  test('UUID del pedido sobrevive persistencia y reload', () async {
+    const orderId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    await dbHelper.insert('products', {'id': '7', 'name': 'Batido'});
+    await repo.createOrder(_order(orderId, items: [
+      OrderItem(
+        orderId: orderId,
+        productId: '7',
+        quantity: 1,
+        options: const [
+          OrderItemOption(
+            groupId: 3,
+            groupName: 'Sabores',
+            optionId: 6,
+            optionName: 'Frutilla',
+            quantity: 1,
+          ),
+        ],
+      ),
+    ]));
+
+    final reloaded = await repo.getUnsyncedOrdersForUser('u1');
+    expect(reloaded, hasLength(1));
+    expect(reloaded.first.id, orderId);
+    expect(reloaded.first.items.first.options.first.optionName, 'Frutilla');
+  });
 }

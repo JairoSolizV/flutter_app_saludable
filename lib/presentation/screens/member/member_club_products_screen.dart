@@ -19,6 +19,8 @@ import '../../widgets/product_image.dart';
 import '../../../domain/entities/product_option_selection.dart';
 import 'member_product_detail_screen.dart';
 import 'widgets/member_cart_checkout.dart';
+import 'package:flutter_app_saludable/core/orders/order_offline_messages.dart';
+import 'package:flutter_app_saludable/core/orders/order_submit_outcome.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/bolivian_price.dart';
 import 'package:flutter_app_saludable/core/utils/order_item_options_display.dart';
@@ -549,7 +551,7 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
         ));
       }
 
-      await orderProv.createOrder(OrderEntity(
+      final outcome = await orderProv.createOrder(OrderEntity(
         id: orderId,
         userId: user.id,
         clubId: widget.clubId,
@@ -565,8 +567,11 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
       if (mounted) {
         setState(_clearCart);
         context.go('/member-orders');
+        final snackText = outcome == OrderSubmitOutcome.remoteSynced
+            ? OrderOfflineMessages.sentSynced
+            : OrderOfflineMessages.savedPending;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Pedido enviado al Club ${widget.clubNombre}'),
+          content: Text(snackText),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 3),
         ));

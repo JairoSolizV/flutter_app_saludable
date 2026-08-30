@@ -19,6 +19,8 @@ import 'package:flutter_app_saludable/domain/entities/user.dart';
 import 'package:flutter_app_saludable/domain/repositories/order_repository.dart';
 import 'package:flutter_app_saludable/domain/repositories/product_repository.dart';
 import 'package:flutter_app_saludable/presentation/providers/order_provider.dart';
+import 'package:flutter_app_saludable/core/orders/order_offline_messages.dart';
+import 'package:flutter_app_saludable/core/orders/order_submit_outcome.dart';
 import 'package:flutter_app_saludable/presentation/providers/product_provider.dart';
 import 'package:flutter_app_saludable/presentation/providers/user_provider.dart';
 import 'package:flutter_app_saludable/presentation/screens/member/member_club_products_screen.dart';
@@ -384,6 +386,7 @@ void main() {
     expect(repo.lastOrder!.items.single.productId, '7');
     expect(find.text('Historial pedidos'), findsOneWidget);
     expect(find.byKey(const Key('member-cart-bar')), findsNothing);
+    expect(find.text(OrderOfflineMessages.savedPending), findsNothing);
   });
 
   testWidgets('error al crear conserva carrito y sheet', (tester) async {

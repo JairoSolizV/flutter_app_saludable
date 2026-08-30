@@ -3,6 +3,7 @@ import 'package:flutter_app_saludable/core/auth/session_state_resetter.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/utils/app_logger.dart';
+import 'package:flutter_app_saludable/core/orders/order_submit_outcome.dart';
 import '../../domain/entities/order_entity.dart';
 import '../../domain/repositories/order_repository.dart';
 import '../../core/services/connectivity_service.dart';
@@ -49,7 +50,7 @@ class OrderProvider extends ChangeNotifier implements SessionScopedState {
     }
   }
 
-  Future<void> createOrder(OrderEntity order) async {
+  Future<OrderSubmitOutcome> createOrder(OrderEntity order) async {
     try {
       debugPrint(
         '[DEBUG ORDER] Creando pedido - ID: ${order.id}, clubId: ${order.clubId}, membresiaId: ${order.membresiaId}, items: ${order.items.length}',
@@ -62,7 +63,7 @@ class OrderProvider extends ChangeNotifier implements SessionScopedState {
         debugPrint('[DEBUG ORDER] Hay conexión, sincronizando pedido...');
         try {
           await _syncService.syncNow();
-          debugPrint('[DEBUG ORDER] Pedido sincronizado exitosamente');
+          debugPrint('[DEBUG ORDER] Sync finalizado');
         } catch (syncError) {
           debugPrint('[DEBUG ORDER] Error sincronizando pedido: $syncError');
           if (kDebugMode) {
@@ -76,6 +77,15 @@ class OrderProvider extends ChangeNotifier implements SessionScopedState {
       }
 
       await loadOrders(order.userId);
+
+      final stillPending = await _repository.getUnsyncedOrdersForUser(
+        order.userId,
+      );
+      final isPending =
+          stillPending.any((pending) => pending.id == order.id);
+      return isPending
+          ? OrderSubmitOutcome.localPending
+          : OrderSubmitOutcome.remoteSynced;
     } catch (e) {
       debugPrint('[DEBUG ORDER] Error creando pedido: $e');
       if (kDebugMode) logDebug('Error creating order: $e');

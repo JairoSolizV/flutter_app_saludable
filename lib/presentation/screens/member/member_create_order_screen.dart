@@ -13,6 +13,8 @@ import '../../../domain/entities/combo.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../data/datasources/remote/combo_remote_data_source.dart';
+import 'package:flutter_app_saludable/core/orders/order_offline_messages.dart';
+import 'package:flutter_app_saludable/core/orders/order_submit_outcome.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class MemberCreateOrderScreen extends StatefulWidget {
@@ -697,18 +699,22 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                                   '[DEBUG CREATE] OrderEntity creado - clubId: ${newOrder.clubId}, membresiaId: ${newOrder.membresiaId}');
 
                               try {
-                                await orderProvider.createOrder(newOrder);
+                                final outcome =
+                                    await orderProvider.createOrder(newOrder);
                                 debugPrint(
                                     '[DEBUG CREATE] Pedido creado y procesado');
 
                                 if (context.mounted) {
                                   context.pop(); // Volver a lista
+                                  final msg = outcome ==
+                                          OrderSubmitOutcome.remoteSynced
+                                      ? OrderOfflineMessages.sentSynced
+                                      : OrderOfflineMessages.savedPending;
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                          'Pedido creado correctamente. Verifica los logs para confirmar el envío al backend.'),
+                                    SnackBar(
+                                      content: Text(msg),
                                       backgroundColor: Colors.green,
-                                      duration: Duration(seconds: 4),
+                                      duration: const Duration(seconds: 4),
                                     ),
                                   );
                                 }
