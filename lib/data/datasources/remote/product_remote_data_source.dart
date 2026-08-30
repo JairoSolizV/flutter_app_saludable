@@ -24,6 +24,10 @@ abstract class ProductRemoteDataSource {
     String? imagenUrl,
   });
   Future<void> updateProduct(Product product);
+
+  /// PATCH /productos/{id}/reenviar — solo LOCAL RECHAZADO del propietario.
+  Future<Product> reenviarProducto(String productId);
+
   Future<void> deleteProduct(String id);
   Future<void> toggleProductAvailability(int clubId, String productId);
 }
@@ -137,6 +141,11 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
                     'APROBADO',
             active: json['activo'] == true || json['activo'] == 1,
             available: available,
+            ingredientes: _optionalString(json['ingredientes']),
+            comentarioRevision: _optionalString(json['comentarioRevision']),
+            revisadoPorUsuarioId: _optionalInt(json['revisadoPorUsuarioId']),
+            revisadoPorNombre: _optionalString(json['revisadoPorNombre']),
+            revisadoAt: _optionalDateTime(json['revisadoAt']),
           );
         }
 
@@ -381,8 +390,9 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
         'puntosValor': puntosValor,
         'activo': true,
       };
-      if (imagenUrl != null && imagenUrl.isNotEmpty)
+      if (imagenUrl != null && imagenUrl.isNotEmpty) {
         data['imagenUrl'] = imagenUrl;
+      }
 
       debugPrint('[DEBUG PRODUCTOS] Enviando propuesta de producto: $data');
       debugPrint('[DEBUG PRODUCTOS] Endpoint: POST /api/productos');
@@ -409,16 +419,67 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
   @override
   Future<void> updateProduct(Product product) async {
     try {
-      final data = {
+      final data = <String, dynamic>{
         'nombre': product.name,
         'descripcion': product.description,
+        'puntosValor': product.puntosValor,
         'activo': product.active,
       };
+      if (product.ingredientes != null) {
+        data['ingredientes'] = product.ingredientes;
+      }
+      if (product.imageUrl.isNotEmpty) {
+        data['imagenUrl'] = product.imageUrl;
+      }
       // Endpoint PUT /api/productos/{id}
       await _client.put('/productos/${product.id}', data: data);
     } on DioException catch (e, st) {
       throwDioAsApp(e, fallback: 'Error en productos', stackTrace: st);
     }
+  }
+
+  @override
+  Future<Product> reenviarProducto(String productId) async {
+    try {
+      final response = await _client.patch('/productos/$productId/reenviar');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.data is Map) {
+          return Product.fromMap(Map<String, dynamic>.from(response.data));
+        }
+        return Product(
+          id: productId,
+          name: '',
+          description: '',
+          tipo: 'LOCAL',
+          estadoAprobacion: 'PENDIENTE',
+        );
+      }
+      throw ServerException(
+        'Error al reenviar el producto a revisión',
+        statusCode: response.statusCode,
+      );
+    } on DioException catch (e, st) {
+      throwDioAsApp(e,
+          fallback: 'Error al reenviar el producto a revisión', stackTrace: st);
+    }
+  }
+
+  static String? _optionalString(dynamic value) {
+    if (value == null) return null;
+    final text = value.toString().trim();
+    return text.isEmpty ? null : text;
+  }
+
+  static int? _optionalInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    return int.tryParse(value.toString());
+  }
+
+  static DateTime? _optionalDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    return DateTime.tryParse(value.toString());
   }
 
   @override

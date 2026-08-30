@@ -56,6 +56,10 @@ class _FakeProductRemoteDataSource implements ProductRemoteDataSource {
       throw UnimplementedError();
 
   @override
+  Future<Product> reenviarProducto(String productId) async =>
+      throw UnimplementedError();
+
+  @override
   Future<void> deleteProduct(String id) async => throw UnimplementedError();
 
   @override

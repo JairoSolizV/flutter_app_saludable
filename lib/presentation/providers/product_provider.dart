@@ -80,11 +80,20 @@ class ProductProvider extends ChangeNotifier implements SessionScopedState {
       name: original.name,
       description: original.description,
       price: original.price,
+      puntosValor: original.puntosValor,
       category: original.category,
       imageUrl: original.imageUrl,
       hubId: original.hubId,
+      clubCreadorId: original.clubCreadorId,
+      tipo: original.tipo,
+      estadoAprobacion: original.estadoAprobacion,
       active: original.active,
       available: !original.available,
+      ingredientes: original.ingredientes,
+      comentarioRevision: original.comentarioRevision,
+      revisadoPorUsuarioId: original.revisadoPorUsuarioId,
+      revisadoPorNombre: original.revisadoPorNombre,
+      revisadoAt: original.revisadoAt,
     );
 
     _products[index] = updated;

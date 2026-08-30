@@ -42,6 +42,7 @@ import '../../presentation/screens/host/host_scan_screen.dart';
 import '../../presentation/screens/host/products/host_product_list_screen.dart';
 import '../../presentation/screens/host/products/host_edit_product_screen.dart';
 import '../../presentation/screens/host/products/host_product_proposal_screen.dart';
+import '../../presentation/screens/host/products/host_product_review_screen.dart';
 import '../../presentation/screens/host/members/host_members_list_screen.dart';
 import '../../presentation/screens/host/members/host_member_registration_screen.dart';
 import '../../presentation/screens/host/host_profile_screen.dart';
@@ -342,7 +343,26 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: 'proposal',
-              builder: (context, state) => const HostProductProposalScreen(),
+              builder: (context, state) {
+                Product? product;
+                final extra = state.extra;
+                if (extra is Product) {
+                  product = extra;
+                } else if (extra is Map) {
+                  product = extra['product'] as Product?;
+                }
+                return HostProductProposalScreen(product: product);
+              },
+            ),
+            GoRoute(
+              path: 'review',
+              builder: (context, state) {
+                final extra = state.extra as Map<String, dynamic>;
+                return HostProductReviewScreen(
+                  clubId: extra['clubId'] as int,
+                  product: extra['product'] as Product,
+                );
+              },
             ),
             GoRoute(
               path: 'new',

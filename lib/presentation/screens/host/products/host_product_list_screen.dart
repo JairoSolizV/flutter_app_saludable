@@ -131,7 +131,7 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
         ],
       ),
     );
-    if (confirm != true) return;
+    if (!mounted || confirm != true) return;
     try {
       final comboDs = Provider.of<ComboRemoteDataSource>(context, listen: false);
       await comboDs.deleteCombo(_clubId!, combo.id!);
@@ -328,7 +328,22 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                       provider.toggleAvailability(_clubId!, product.id, _hubId!);
                     } : null,
                   ),
-                  onTap: _clubId != null ? () {
+                  onTap: _clubId != null ? () async {
+                    final estadoAbreRevision = product.shouldOpenHostReview;
+                    if (estadoAbreRevision) {
+                      final changed = await context.push<bool>(
+                        '/host/products/review',
+                        extra: {
+                          'clubId': _clubId!,
+                          'product': product,
+                        },
+                      );
+                      if (changed == true && mounted) {
+                        await _refreshProducts();
+                      }
+                      return;
+                    }
+                    if (!mounted) return;
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => HostProductSaboresScreen(
@@ -338,8 +353,21 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                       ),
                     );
                   } : null,
-                  // Opcional: permitir editar productos propios con onLongPress
-                  onLongPress: !isGlobal ? () {
+                  // LOCAL en revisión va al detalle nuevo, no al editor legacy.
+                  onLongPress: !isGlobal ? () async {
+                    if (product.shouldOpenHostReview && _clubId != null) {
+                      final changed = await context.push<bool>(
+                        '/host/products/review',
+                        extra: {
+                          'clubId': _clubId!,
+                          'product': product,
+                        },
+                      );
+                      if (changed == true && mounted) {
+                        await _refreshProducts();
+                      }
+                      return;
+                    }
                     context.push('/host/products/edit', extra: {
                       'clubId': _clubId!,
                       'product': product,

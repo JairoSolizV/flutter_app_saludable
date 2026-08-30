@@ -6,14 +6,19 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../data/datasources/remote/product_remote_data_source.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
+import '../../../../domain/entities/product.dart';
 import '../../../widgets/product_image.dart';
+import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class HostProductProposalScreen extends StatefulWidget {
-  const HostProductProposalScreen({super.key});
+  final Product? product;
+
+  const HostProductProposalScreen({super.key, this.product});
 
   @override
-  State<HostProductProposalScreen> createState() => _HostProductProposalScreenState();
+  State<HostProductProposalScreen> createState() =>
+      _HostProductProposalScreenState();
 }
 
 class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
@@ -27,9 +32,26 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
   File? _pickedImage;
   String? _imagenUrl;
 
+  bool get _isEditing => widget.product != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.product;
+    if (existing != null) {
+      _nombreCtrl.text = existing.name;
+      _descripcionCtrl.text = existing.description;
+      _ingredientesCtrl.text = existing.ingredientes ?? '';
+      _puntosValorCtrl.text =
+          existing.puntosValor > 0 ? existing.puntosValor.toString() : '';
+      _imagenUrl = existing.imageUrl.isEmpty ? null : existing.imageUrl;
+    }
+  }
+
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    final picked =
+        await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (picked != null && mounted) {
       setState(() {
         _pickedImage = File(picked.path);
@@ -64,18 +86,45 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
-      final club = await clubDataSource.getMyClub();
-
-      if (club == null) {
-        throw Exception('No se encontró tu club. Verifica que tengas un club asignado como anfitrión.');
-      }
-
-      final dataSource = Provider.of<ProductRemoteDataSource>(context, listen: false);
+      final dataSource =
+          Provider.of<ProductRemoteDataSource>(context, listen: false);
+      final clubDataSource = _isEditing
+          ? null
+          : Provider.of<ClubRemoteDataSource>(context, listen: false);
 
       String? imagenUrlToSend = _imagenUrl;
       if (_pickedImage != null) {
         imagenUrlToSend = await dataSource.uploadProductImage(_pickedImage!);
+      }
+
+      if (_isEditing) {
+        final original = widget.product!;
+        final updated = original.copyWith(
+          name: _nombreCtrl.text.trim(),
+          description: _descripcionCtrl.text.trim(),
+          ingredientes: _ingredientesCtrl.text.trim(),
+          puntosValor: puntos,
+          imageUrl: (imagenUrlToSend != null && imagenUrlToSend.isNotEmpty)
+              ? imagenUrlToSend
+              : original.imageUrl,
+        );
+        await dataSource.updateProduct(updated);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cambios guardados'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).pop(updated);
+        return;
+      }
+
+      final club = await clubDataSource!.getMyClub();
+
+      if (club == null) {
+        throw Exception(
+            'No se encontró tu club. Verifica que tengas un club asignado como anfitrión.');
       }
 
       await dataSource.createProductProposal(
@@ -113,7 +162,11 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al enviar la propuesta: ${e.toString().replaceAll('Exception: ', '')}'),
+          content: Text(
+            _isEditing
+                ? 'Error al guardar: ${ErrorMapper.publicMessage(e)}'
+                : 'Error al enviar la propuesta: ${ErrorMapper.publicMessage(e)}',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -128,7 +181,8 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Proponer Producto del Club'),
+        title: Text(
+            _isEditing ? 'Editar propuesta' : 'Proponer Producto del Club'),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
@@ -145,7 +199,8 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
                 style: TextStyle(fontSize: 14, color: Colors.grey),
               ),
               const SizedBox(height: 16),
-              const Text('Foto del producto', style: TextStyle(fontWeight: FontWeight.w600)),
+              const Text('Foto del producto',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,18 +218,23 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
                       child: _pickedImage != null
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: Image.file(_pickedImage!, fit: BoxFit.cover),
+                              child:
+                                  Image.file(_pickedImage!, fit: BoxFit.cover),
                             )
                           : _imagenUrl != null && _imagenUrl!.isNotEmpty
-                              ? ProductImage(imageUrl: _imagenUrl, width: 100, height: 100)
+                              ? ProductImage(
+                                  imageUrl: _imagenUrl, width: 100, height: 100)
                               : Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(LucideIcons.imagePlus, size: 32, color: Colors.grey[600]),
+                                    Icon(LucideIcons.imagePlus,
+                                        size: 32, color: Colors.grey[600]),
                                     const SizedBox(height: 4),
                                     Text(
                                       'Elegir de galería',
-                                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey[600]),
                                       textAlign: TextAlign.center,
                                     ),
                                   ],
@@ -190,7 +250,8 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
                         border: OutlineInputBorder(),
                         isDense: true,
                       ),
-                      onChanged: (v) => setState(() => _imagenUrl = v.trim().isEmpty ? null : v.trim()),
+                      onChanged: (v) => setState(() =>
+                          _imagenUrl = v.trim().isEmpty ? null : v.trim()),
                     ),
                   ),
                 ],
@@ -203,8 +264,9 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
                   prefixIcon: Icon(LucideIcons.coffee),
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'El nombre es obligatorio' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'El nombre es obligatorio'
+                    : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -241,8 +303,9 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Ingresa los puntos de valor' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Ingresa los puntos de valor'
+                    : null,
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -256,12 +319,18 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Icon(LucideIcons.send),
+                      : Icon(
+                          _isEditing ? LucideIcons.pencil : LucideIcons.send),
                   label: Text(
-                    _isSubmitting ? 'Enviando...' : 'Enviar a Revisión',
+                    _isSubmitting
+                        ? (_isEditing ? 'Guardando...' : 'Enviando...')
+                        : (_isEditing
+                            ? 'Guardar cambios'
+                            : 'Enviar a Revisión'),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
@@ -279,5 +348,3 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
     );
   }
 }
-
-

@@ -13,6 +13,13 @@ class Product {
   final bool active; // Global status
   final bool available; // Local club status (disponible)
 
+  /// Campos de propuesta/revisión. Remotos: no se persisten en SQLite (`toMap`).
+  final String? ingredientes;
+  final String? comentarioRevision;
+  final int? revisadoPorUsuarioId;
+  final String? revisadoPorNombre;
+  final DateTime? revisadoAt;
+
   Product({
     required this.id,
     required this.name,
@@ -27,7 +34,25 @@ class Product {
     this.estadoAprobacion = 'APROBADO',
     this.active = true,
     this.available = false,
+    this.ingredientes,
+    this.comentarioRevision,
+    this.revisadoPorUsuarioId,
+    this.revisadoPorNombre,
+    this.revisadoAt,
   });
+
+  bool get isLocal => tipo.toUpperCase() == 'LOCAL';
+
+  String get estadoNormalizado => estadoAprobacion.toUpperCase();
+
+  bool get isRechazado => estadoNormalizado == 'RECHAZADO';
+
+  bool get isPendiente => estadoNormalizado == 'PENDIENTE';
+
+  bool get isAprobado => estadoNormalizado == 'APROBADO';
+
+  /// LOCAL en revisión (pendiente o rechazado): detalle, no sabores.
+  bool get shouldOpenHostReview => isLocal && (isRechazado || isPendiente);
 
   factory Product.fromMap(Map<String, dynamic> map) {
     // Manejar el id correctamente: puede venir como int o String
@@ -60,9 +85,15 @@ class Product {
       estadoAprobacion: map['estadoAprobacion']?.toString() ?? 'APROBADO',
       active: map['active'] == true || map['activo'] == true || map['active'] == 1 || map['activo'] == 1,
       available: available, // false si es null, true/false según el valor
+      ingredientes: _optionalString(map['ingredientes']),
+      comentarioRevision: _optionalString(map['comentarioRevision']),
+      revisadoPorUsuarioId: _optionalInt(map['revisadoPorUsuarioId']),
+      revisadoPorNombre: _optionalString(map['revisadoPorNombre']),
+      revisadoAt: _optionalDateTime(map['revisadoAt']),
     );
   }
 
+  /// Solo columnas SQLite existentes. Los campos de revisión son remote-only.
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -79,5 +110,65 @@ class Product {
       'active': active ? 1 : 0,
       'disponible': available ? 1 : 0,
     };
+  }
+
+  Product copyWith({
+    String? id,
+    String? name,
+    String? description,
+    double? price,
+    int? puntosValor,
+    String? category,
+    String? imageUrl,
+    int? hubId,
+    int? clubCreadorId,
+    String? tipo,
+    String? estadoAprobacion,
+    bool? active,
+    bool? available,
+    String? ingredientes,
+    String? comentarioRevision,
+    int? revisadoPorUsuarioId,
+    String? revisadoPorNombre,
+    DateTime? revisadoAt,
+  }) {
+    return Product(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      price: price ?? this.price,
+      puntosValor: puntosValor ?? this.puntosValor,
+      category: category ?? this.category,
+      imageUrl: imageUrl ?? this.imageUrl,
+      hubId: hubId ?? this.hubId,
+      clubCreadorId: clubCreadorId ?? this.clubCreadorId,
+      tipo: tipo ?? this.tipo,
+      estadoAprobacion: estadoAprobacion ?? this.estadoAprobacion,
+      active: active ?? this.active,
+      available: available ?? this.available,
+      ingredientes: ingredientes ?? this.ingredientes,
+      comentarioRevision: comentarioRevision ?? this.comentarioRevision,
+      revisadoPorUsuarioId: revisadoPorUsuarioId ?? this.revisadoPorUsuarioId,
+      revisadoPorNombre: revisadoPorNombre ?? this.revisadoPorNombre,
+      revisadoAt: revisadoAt ?? this.revisadoAt,
+    );
+  }
+
+  static String? _optionalString(dynamic value) {
+    if (value == null) return null;
+    final text = value.toString().trim();
+    return text.isEmpty ? null : text;
+  }
+
+  static int? _optionalInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    return int.tryParse(value.toString());
+  }
+
+  static DateTime? _optionalDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    return DateTime.tryParse(value.toString());
   }
 }

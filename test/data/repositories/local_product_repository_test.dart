@@ -55,6 +55,17 @@ class _FakeProductRemoteDataSource implements ProductRemoteDataSource {
   }
 
   @override
+  Future<Product> reenviarProducto(String productId) async {
+    return Product(
+      id: productId,
+      name: '',
+      description: '',
+      tipo: 'LOCAL',
+      estadoAprobacion: 'PENDIENTE',
+    );
+  }
+
+  @override
   Future<void> deleteProduct(String id) async {
     deleteCalls++;
   }

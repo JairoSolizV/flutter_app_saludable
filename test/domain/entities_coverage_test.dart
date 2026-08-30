@@ -97,6 +97,62 @@ void main() {
       expect(roundTrip.active, isTrue);
       expect(roundTrip.available, isTrue);
     });
+
+    test('fromMap parsea campos de revisión e ingredientes', () {
+      final p = Product.fromMap({
+        'id': 6,
+        'nombre': 'Frappe',
+        'descripcion': 'Batido',
+        'ingredientes': 'leche, hielo',
+        'tipo': 'LOCAL',
+        'estadoAprobacion': 'RECHAZADO',
+        'comentarioRevision': 'falta info',
+        'revisadoPorUsuarioId': 9,
+        'revisadoPorNombre': 'Admin Hub',
+        'revisadoAt': '2026-08-29T18:30:00',
+        'puntosValor': 12,
+      });
+
+      expect(p.ingredientes, 'leche, hielo');
+      expect(p.comentarioRevision, 'falta info');
+      expect(p.revisadoPorUsuarioId, 9);
+      expect(p.revisadoPorNombre, 'Admin Hub');
+      expect(p.revisadoAt, DateTime.parse('2026-08-29T18:30:00'));
+      expect(p.shouldOpenHostReview, isTrue);
+    });
+
+    test('fromMap tolera payloads antiguos sin campos de revisión', () {
+      final p = Product.fromMap({
+        'id': '9',
+        'nombre': 'Té',
+        'descripcion': 'Caliente',
+      });
+      expect(p.ingredientes, isNull);
+      expect(p.comentarioRevision, isNull);
+      expect(p.revisadoPorNombre, isNull);
+      expect(p.revisadoAt, isNull);
+      expect(p.revisadoPorUsuarioId, isNull);
+      expect(p.shouldOpenHostReview, isFalse);
+    });
+
+    test('toMap no incluye campos de revisión (SQLite)', () {
+      final p = Product(
+        id: '6',
+        name: 'Frappe',
+        description: 'x',
+        ingredientes: 'leche',
+        comentarioRevision: 'falta info',
+        revisadoPorNombre: 'Admin',
+        revisadoAt: DateTime(2026, 8, 29),
+        tipo: 'LOCAL',
+        estadoAprobacion: 'RECHAZADO',
+      );
+      final map = p.toMap();
+      expect(map.containsKey('comentarioRevision'), isFalse);
+      expect(map.containsKey('ingredientes'), isFalse);
+      expect(map.containsKey('revisadoPorNombre'), isFalse);
+      expect(map.containsKey('revisadoAt'), isFalse);
+    });
   });
 
   group('ComboItem', () {

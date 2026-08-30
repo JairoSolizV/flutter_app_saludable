@@ -101,6 +101,35 @@ void main() {
       expect(products.map((p) => p.tipo).toSet(), {'GLOBAL', 'LOCAL'});
     }));
 
+    test('preserva revisión e ingredientes en LOCAL', async_(() async {
+      adapter.stub('GET', '/productos', data: [
+        {'id': 1, 'nombre': 'Global 1', 'tipo': 'GLOBAL'},
+      ], queryContains: {'tipo': 'GLOBAL'});
+      adapter.stub('GET', '/productos', data: [
+        {
+          'id': 6,
+          'nombre': 'Frappe',
+          'descripcion': 'Batido',
+          'ingredientes': 'leche, hielo',
+          'tipo': 'LOCAL',
+          'estadoAprobacion': 'RECHAZADO',
+          'comentarioRevision': 'falta info',
+          'revisadoPorNombre': 'Admin Hub',
+          'revisadoAt': '2026-08-29T18:30:00',
+          'puntosValor': 10,
+          'clubCreadorId': 3,
+        },
+      ], queryContains: {'tipo': 'LOCAL'});
+
+      final products = await ds.getProducts(hubId: 1, clubId: 3);
+      final local = products.firstWhere((p) => p.tipo == 'LOCAL');
+      expect(local.comentarioRevision, 'falta info');
+      expect(local.ingredientes, 'leche, hielo');
+      expect(local.revisadoPorNombre, 'Admin Hub');
+      expect(local.revisadoAt, isNotNull);
+      expect(local.estadoAprobacion, 'RECHAZADO');
+    }));
+
     test('extrae de envoltorio content y data y productos', async_(() async {
       adapter.stub('GET', '/productos', data: {
         'content': [
@@ -273,17 +302,68 @@ void main() {
   });
 
   group('updateProduct', () {
-    test('hace PUT', async_(() async {
+    test('hace PUT con payload completo de propuesta', async_(() async {
       adapter.stub('PUT', '/productos/1', statusCode: 200, data: {});
-      await ds.updateProduct(Product(id: '1', name: 'P', description: 'D'));
+      await ds.updateProduct(Product(
+        id: '1',
+        name: 'Frappe',
+        description: 'Batido',
+        ingredientes: 'leche, hielo',
+        puntosValor: 12,
+        imageUrl: '/api/productos/imagenes/a.png',
+        active: true,
+        tipo: 'LOCAL',
+        estadoAprobacion: 'RECHAZADO',
+      ));
       expect(adapter.requests, hasLength(1));
       expect(adapter.requests.single.method, 'PUT');
+      final data = adapter.requests.single.data as Map;
+      expect(data['nombre'], 'Frappe');
+      expect(data['descripcion'], 'Batido');
+      expect(data['ingredientes'], 'leche, hielo');
+      expect(data['puntosValor'], 12);
+      expect(data['imagenUrl'], '/api/productos/imagenes/a.png');
+      expect(data['activo'], isTrue);
+    }));
+
+    test('omite imagenUrl e ingredientes nulos para no borrar datos', async_(() async {
+      adapter.stub('PUT', '/productos/1', statusCode: 200, data: {});
+      await ds.updateProduct(Product(id: '1', name: 'P', description: 'D'));
+      final data = adapter.requests.single.data as Map;
+      expect(data.containsKey('imagenUrl'), isFalse);
+      expect(data.containsKey('ingredientes'), isFalse);
     }));
 
     test('error se mapea', async_(() async {
       adapter.stub('PUT', '/productos/1', statusCode: 500, data: {});
       await expectLater(
         () => ds.updateProduct(Product(id: '1', name: 'P', description: 'D')),
+        throwsA(isA<AppException>()),
+      );
+    }));
+  });
+
+  group('reenviarProducto', () {
+    test('llama PATCH /productos/{id}/reenviar', async_(() async {
+      adapter.stub('PATCH', '/productos/6/reenviar', statusCode: 200, data: {
+        'id': 6,
+        'nombre': 'Frappe',
+        'estadoAprobacion': 'PENDIENTE',
+        'tipo': 'LOCAL',
+        'comentarioRevision': 'falta info',
+      });
+      final product = await ds.reenviarProducto('6');
+      expect(adapter.requests.single.method, 'PATCH');
+      expect(adapter.requests.single.uri.path, contains('/productos/6/reenviar'));
+      expect(product.estadoAprobacion, 'PENDIENTE');
+      expect(product.comentarioRevision, 'falta info');
+    }));
+
+    test('error se mapea', async_(() async {
+      adapter.stub('PATCH', '/productos/6/reenviar',
+          statusCode: 400, data: {'message': 'Solo se puede reenviar un producto RECHAZADO'});
+      await expectLater(
+        () => ds.reenviarProducto('6'),
         throwsA(isA<AppException>()),
       );
     }));

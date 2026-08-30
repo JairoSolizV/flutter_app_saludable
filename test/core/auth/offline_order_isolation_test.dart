@@ -204,6 +204,15 @@ class _NoopProducts implements ProductRemoteDataSource {
   Future<void> updateProduct(Product product) async {}
 
   @override
+  Future<Product> reenviarProducto(String productId) async => Product(
+        id: productId,
+        name: '',
+        description: '',
+        tipo: 'LOCAL',
+        estadoAprobacion: 'PENDIENTE',
+      );
+
+  @override
   Future<String> uploadProductImage(File imageFile) async => '';
 }
 
