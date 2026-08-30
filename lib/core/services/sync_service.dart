@@ -108,13 +108,20 @@ class SyncService {
         logDebug('[DEBUG SYNC] Failed to sync order ${order.id}: $publicMsg');
       }
 
-      final errorMessage = publicMsg.toLowerCase();
-      if (errorMessage.contains('no está activa') ||
-          errorMessage.contains('no está activo') ||
-          errorMessage.contains('no está disponible') ||
-          errorMessage.contains('no está configurado')) {
+      // 400 (p. ej. opciones inválidas tras cambio de catálogo): mantener pending.
+      if (e is ValidationException) {
         logDebug(
-          '[DEBUG SYNC] Pedido con error de validación, eliminando: ${order.id}',
+          '[DEBUG SYNC] Validación rechazada; pedido ${order.id} sigue pendiente',
+        );
+        return;
+      }
+
+      final errorMessage = publicMsg.toLowerCase();
+      if (errorMessage.contains('membres') &&
+          (errorMessage.contains('no está activa') ||
+              errorMessage.contains('no activa'))) {
+        logDebug(
+          '[DEBUG SYNC] Pedido con membresía inválida, eliminando: ${order.id}',
         );
         try {
           await _orderRepository.deleteOrder(order.id);

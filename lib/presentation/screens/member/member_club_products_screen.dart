@@ -7,6 +7,7 @@ import '../../providers/product_provider.dart';
 import '../../providers/order_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../../domain/entities/order_entity.dart';
+import '../../../domain/entities/order_item_option.dart';
 import '../../../domain/entities/product.dart';
 import '../../../domain/entities/club_membership.dart';
 import '../../../domain/entities/combo.dart';
@@ -15,7 +16,12 @@ import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../data/datasources/remote/combo_remote_data_source.dart';
 import '../../../data/datasources/remote/sabor_remote_data_source.dart';
 import '../../widgets/product_image.dart';
+import '../../../domain/entities/product_option_selection.dart';
+import 'member_product_detail_screen.dart';
+import 'widgets/member_cart_checkout.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/bolivian_price.dart';
+import 'package:flutter_app_saludable/core/utils/order_item_options_display.dart';
 import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 class MemberClubProductsScreen extends StatefulWidget {
@@ -39,6 +45,9 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
   final Map<String, String> _selectedSabores = {};
   final Map<String, String> _productNotes = {};
   final Map<String, int> _productComboIds = {};
+  /// Selecciones estructuradas in-memory (001c/001). No van a SQLite ni a `nota`.
+  final Map<String, List<ProductOptionSelection>> _cartSelections = {};
+  final Map<String, Product> _cartProducts = {};
 
   // ── Sabores cache (productId -> available sabores) ──
   final Map<String, List<Sabor>> _saboresCache = {};
@@ -100,7 +109,6 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
           await Provider.of<ProductProvider>(context, listen: false)
               .loadAvailableProducts(widget.clubId);
           _loadCombos();
-          _loadAllSabores();
         }
       } else {
         setState(() => _isLoadingMembership = false);
@@ -116,7 +124,6 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
     await Provider.of<ProductProvider>(context, listen: false)
         .loadAvailableProducts(widget.clubId);
     await _loadCombos();
-    await _loadAllSabores();
   }
 
   Future<void> _loadCombos() async {
@@ -133,34 +140,6 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
     } catch (e) {
       debugPrint('[MEMBER] Error cargando combos: $e');
       if (mounted) setState(() => _isLoadingCombos = false);
-    }
-  }
-
-  Future<void> _loadAllSabores() async {
-    final products =
-        Provider.of<ProductProvider>(context, listen: false).products;
-    if (products.isEmpty) return;
-    try {
-      final ds = Provider.of<SaborRemoteDataSource>(context, listen: false);
-      final futures = products.map((p) async {
-        try {
-          final s = await ds.getSaboresDeProductoEnClub(
-              widget.clubId, int.parse(p.id));
-          return MapEntry(p.id, s.where((x) => x.disponible).toList());
-        } catch (_) {
-          return MapEntry(p.id, <Sabor>[]);
-        }
-      });
-      final results = await Future.wait(futures);
-      if (mounted) {
-        setState(() {
-          for (final e in results) {
-            _saboresCache[e.key] = e.value;
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint('[MEMBER] Error cargando sabores: $e');
     }
   }
 
@@ -191,34 +170,161 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
     setState(() {
       final sabor = _selectedSabores[productId] ?? '';
       final key = sabor.isNotEmpty ? '${productId}_$sabor' : productId;
-      final next = ((_cart[key] ?? 0) + delta).clamp(0, 99);
-      if (next > 0) {
-        _cart[key] = next;
-      } else {
-        _cart.remove(key);
-        _productNotes.remove(key);
-        _productComboIds.remove(key);
-        bool hasAny = _cart.keys.any((k) => k.startsWith('${productId}_') || k == productId);
-        if (!hasAny) _selectedSabores.remove(productId);
+      _adjustCartKey(key, delta, productId: productId);
+    });
+  }
+
+  void _adjustCartKey(String key, int delta, {required String productId}) {
+    final next = ((_cart[key] ?? 0) + delta).clamp(0, 99);
+    if (next > 0) {
+      _cart[key] = next;
+    } else {
+      _cart.remove(key);
+      _productNotes.remove(key);
+      _productComboIds.remove(key);
+      _cartSelections.remove(key);
+      bool hasAny = _cart.keys.any((k) =>
+          k == productId ||
+          k.startsWith('${productId}_') ||
+          k.startsWith('$productId#'));
+      if (!hasAny) {
+        _selectedSabores.remove(productId);
+        _cartProducts.remove(productId);
       }
-    });
+    }
   }
 
-  void _selectSabor(String productId, Sabor sabor) {
+  int _qtyForProduct(Product product) {
+    var n = 0;
+    for (final e in _cart.entries) {
+      if (e.key == product.id ||
+          e.key.startsWith('${product.id}_') ||
+          e.key.startsWith('${product.id}#')) {
+        n += e.value;
+      }
+    }
+    return n;
+  }
+
+  Future<void> _onProductPlus(Product product) async {
+    await _openProductDetail(product);
+  }
+
+  Future<void> _openProductDetail(Product product) async {
+    final result = await Navigator.of(context).push<ProductCartAddResult>(
+      MaterialPageRoute(
+        builder: (_) => MemberProductDetailScreen(product: product),
+      ),
+    );
+    if (result == null || !mounted) return;
     setState(() {
-      _selectedSabores[productId] = sabor.nombre;
-      bool hasAny = _cart.keys.any((k) => k.startsWith('${productId}_') || k == productId);
-      if (!hasAny) _cart['${productId}_${sabor.nombre}'] = 1;
+      final key = result.cartKey;
+      _cart[key] = (_cart[key] ?? 0) + result.quantity;
+      _cartSelections[key] = result.selections;
+      _cartProducts[product.id] = product;
     });
   }
 
-  int get _totalItems => _cart.values.fold(0, (s, q) => s + q);
+  void _onProductMinus(Product product) {
+    final hashKeys =
+        _cart.keys.where((k) => k.startsWith('${product.id}#')).toList();
+    if (hashKeys.isNotEmpty) {
+      setState(() => _adjustCartKey(hashKeys.last, -1, productId: product.id));
+      return;
+    }
+    if (product.hasConfigurableOptionGroups) return;
+    _updateQuantity(product.id, -1);
+  }
+
+  String _productIdFromCartKey(String key) {
+    if (key.contains('#')) return key.split('#').first;
+    return key.split('_').first;
+  }
+
+  String? _configuredSummary(Product product) {
+    final lines = _cart.entries
+        .where((e) =>
+            (e.key == product.id ||
+                e.key.startsWith('${product.id}_') ||
+                e.key.startsWith('${product.id}#')) &&
+            e.value > 0)
+        .toList();
+    if (lines.isEmpty) return null;
+    final labels = <String>[];
+    for (final e in lines) {
+      final sels = _cartSelections[e.key];
+      final options = sels?.map((s) => s.toOrderItemOption()).toList() ??
+          const <OrderItemOption>[];
+      final optionsText = OrderItemOptionsDisplay.compactSummary(options);
+      final unit = product?.effectivePrice ?? 0;
+      final priced = product?.hasConfiguredSalePrice == true;
+      labels.add(optionsText.isEmpty
+          ? (priced
+              ? '${e.value} × ${BolivianPrice.formatBs(unit)}'
+              : '${e.value} u.')
+          : '$optionsText · ${priced ? '${e.value} × ${BolivianPrice.formatBs(unit)}' : '${e.value} u.'}');
+    }
+    if (labels.isEmpty) return null;
+    return labels.join(' · ');
+  }
+
+  Product? _lookupProduct(String productId) {
+    final cached = _cartProducts[productId];
+    if (cached != null) return cached;
+    try {
+      return Provider.of<ProductProvider>(context, listen: false)
+          .products
+          .firstWhere((p) => p.id == productId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  int get _totalItems => MemberCartTotals.totalUnits(_cart);
+
+  double get _cartTotalAmount => MemberCartTotals.totalAmount(
+        _cart,
+        (pid) => _lookupProduct(pid)?.effectivePrice ?? 0,
+        (pid) => _lookupProduct(pid)?.hasConfiguredSalePrice == true,
+      );
+
+  List<MemberCartLineViewModel> _cartLineViewModels() {
+    return _cart.entries.map((e) {
+      final pid = _productIdFromCartKey(e.key);
+      final product = _lookupProduct(pid);
+      final sels = _cartSelections[e.key] ?? const [];
+      final options =
+          sels.map((s) => s.toOrderItemOption()).toList();
+      return MemberCartLineViewModel(
+        cartKey: e.key,
+        productId: pid,
+        productName: product?.name ?? 'Producto',
+        optionsSummary: OrderItemOptionsDisplay.compactSummary(options),
+        quantity: e.value,
+        unitPrice: product?.effectivePrice ?? 0,
+        priced: product?.hasConfiguredSalePrice == true,
+      );
+    }).toList();
+  }
+
+  void _clearCart() {
+    _cart.clear();
+    _cartSelections.clear();
+    _cartProducts.clear();
+    _productNotes.clear();
+    _productComboIds.clear();
+    _selectedSabores.clear();
+  }
 
   String _buildItemNote(String cartKey) {
     final parts = <String>[];
-    final partsKey = cartKey.split('_');
-    if (partsKey.length > 1) {
-      parts.add('Sabor: ${partsKey[1]}');
+    // No convertir selecciones estructuradas (`id#...`) en `nota: "Sabor: ..."`.
+    // Esa persistencia llega en 001d. El split `_` solo aplica a líneas legacy.
+    if (!cartKey.contains('#')) {
+      final partsKey = cartKey.split('_');
+      if (partsKey.length > 1) {
+        parts.add('Sabor: ${partsKey[1]}');
+      }
     }
     final n = _productNotes[cartKey];
     if (n != null && n.isNotEmpty) parts.add(n);
@@ -390,19 +496,19 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
 
   // ═══════════════════════ CREATE ORDER ═══════════════════════
 
-  Future<void> _createOrder() async {
-    if (_isCreatingOrder) return;
+  Future<bool> _createOrder() async {
+    if (_isCreatingOrder) return false;
     if (_cart.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Selecciona al menos un producto'),
           backgroundColor: Colors.orange));
-      return;
+      return false;
     }
     if (_membership == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('No tienes una membresia activa'),
           backgroundColor: Colors.red));
-      return;
+      return false;
     }
 
     setState(() => _isCreatingOrder = true);
@@ -412,19 +518,36 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
       final orderProv = Provider.of<OrderProvider>(context, listen: false);
       final orderId = const Uuid().v4();
 
-      final items = _cart.entries
-          .map((e) {
-            final parts = e.key.split('_');
-            final pid = parts[0];
-            return OrderItem(
-                orderId: orderId,
-                productId: pid,
-                quantity: e.value,
-                note: _buildItemNote(e.key),
-                comboId: _productComboIds[e.key],
+      final items = <OrderItem>[];
+      for (final e in _cart.entries) {
+        final pid = _productIdFromCartKey(e.key);
+        final product = _lookupProduct(pid);
+        final selections = _cartSelections[e.key] ?? const [];
+        if (product?.hasConfigurableOptionGroups == true) {
+          if (selections.isEmpty) {
+            throw Exception(
+              'Completa la configuración de ${product!.name} antes de pedir.',
+            );
+          }
+          for (final s in selections) {
+            if (!s.hasRequiredIds) {
+              throw Exception(
+                'Configuración incompleta en ${product!.name}. '
+                'Vuelve a abrir el producto y elige las opciones.',
               );
-          })
-          .toList();
+            }
+          }
+        }
+        items.add(OrderItem(
+          orderId: orderId,
+          productId: pid,
+          quantity: e.value,
+          note: _buildItemNote(e.key),
+          comboId: _productComboIds[e.key],
+          productName: product?.name ?? '',
+          options: selections.map((s) => s.toOrderItemOption()).toList(),
+        ));
+      }
 
       await orderProv.createOrder(OrderEntity(
         id: orderId,
@@ -440,6 +563,7 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
       ));
 
       if (mounted) {
+        setState(_clearCart);
         context.go('/member-orders');
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Pedido enviado al Club ${widget.clubNombre}'),
@@ -447,6 +571,7 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
           duration: const Duration(seconds: 3),
         ));
       }
+      return true;
     } catch (e) {
       if (mounted) {
         final err = e.toString();
@@ -459,9 +584,90 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4)));
       }
+      return false;
     } finally {
       if (mounted) setState(() => _isCreatingOrder = false);
     }
+  }
+
+  void _openCartSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.78,
+          minChildSize: 0.5,
+          maxChildSize: 0.85,
+          builder: (_, scrollController) {
+            return StatefulBuilder(
+              builder: (context, sheetSetState) {
+                void refreshSheet() {
+                  setState(() {});
+                  sheetSetState(() {});
+                }
+
+                return MemberCartCheckoutSheet(
+                  lines: _cartLineViewModels(),
+                  totalAmount: _cartTotalAmount,
+                  tipoConsumo: _tipoConsumo,
+                  onTipoConsumoChanged: (v) {
+                    setState(() => _tipoConsumo = v);
+                    sheetSetState(() {});
+                  },
+                  notaController: _notaController,
+                  scrollController: scrollController,
+                  isCreatingOrder: _isCreatingOrder,
+                  onQuantityChanged: (key, delta) {
+                    setState(() {
+                      _adjustCartKey(
+                        key,
+                        delta,
+                        productId: _productIdFromCartKey(key),
+                      );
+                    });
+                    if (_cart.isEmpty) {
+                      Navigator.pop(sheetContext);
+                    } else {
+                      refreshSheet();
+                    }
+                  },
+                  onRemoveLine: (key) {
+                    final qty = _cart[key] ?? 0;
+                    setState(() {
+                      _adjustCartKey(
+                        key,
+                        -qty,
+                        productId: _productIdFromCartKey(key),
+                      );
+                    });
+                    if (_cart.isEmpty) {
+                      Navigator.pop(sheetContext);
+                    } else {
+                      refreshSheet();
+                    }
+                  },
+                  onCreateOrder: () async {
+                    final ok = await _createOrder();
+                    if (ok && sheetContext.mounted) {
+                      Navigator.pop(sheetContext);
+                    } else if (mounted) {
+                      sheetSetState(() {});
+                    }
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -515,7 +721,12 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
                         color: AppTheme.primaryColor,
                         child: ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                          padding: EdgeInsets.fromLTRB(
+                            16,
+                            8,
+                            16,
+                            _totalItems > 0 ? 88 : 16,
+                          ),
                           children: [
                             // ── COMBOS ──
                             if (_combos.isNotEmpty) ...[
@@ -533,12 +744,16 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
                               const SizedBox(height: 8),
                               ...products.map(_productCard),
                             ],
-                            if (_totalItems > 0) const SizedBox(height: 16),
                           ],
                         ),
                       ),
           ),
-          if (_totalItems > 0) _bottomBar(),
+          if (_totalItems > 0)
+            MemberCartBar(
+              totalUnits: _totalItems,
+              totalAmount: _cartTotalAmount,
+              onTap: _openCartSheet,
+            ),
         ],
       ),
     );
@@ -987,12 +1202,11 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
   // ═══════════════════════ PRODUCT CARD ═══════════════════════
 
   Widget _productCard(Product product) {
-    final selSabor = _selectedSabores[product.id] ?? '';
-    final cartKey = selSabor.isNotEmpty ? '${product.id}_$selSabor' : product.id;
-    final qty = _cart[cartKey] ?? 0;
-    final sabores = _saboresCache[product.id] ?? [];
+    final cartKey = product.id;
+    final qty = _qtyForProduct(product);
     final hasNote = _productNotes.containsKey(cartKey);
-    final inCart = _cart.keys.any((k) => k.startsWith('${product.id}_') || k == product.id);
+    final inCart = qty > 0;
+    final configuredSummary = _configuredSummary(product);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -1005,7 +1219,10 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
             ? const BorderSide(color: AppTheme.primaryColor, width: 1.5)
             : BorderSide.none,
       ),
-      child: Padding(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => _openProductDetail(product),
+        child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1053,56 +1270,28 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
                                   color: AppTheme.primaryColor)),
                         ),
                       ],
+                      const SizedBox(height: 4),
+                      Text(
+                        BolivianPrice.label(product.effectivePrice),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: product.hasConfiguredSalePrice
+                              ? Colors.black87
+                              : Colors.orange.shade800,
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
 
-            // Sabor Dropdown
-            if (sabores.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              const Text('Sabor:',
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textSecondary)),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                value: selSabor.isNotEmpty && sabores.any((s) => s.nombre == selSabor)
-                    ? selSabor
-                    : null,
-                hint: const Text('Seleccionar sabor', style: TextStyle(fontSize: 13)),
-                icon: const Icon(LucideIcons.chevronDown, size: 18),
-                items: sabores.map((sabor) {
-                  return DropdownMenuItem<String>(
-                    value: sabor.nombre,
-                    child: Text(sabor.nombre, style: const TextStyle(fontSize: 13)),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    final s = sabores.firstWhere((x) => x.nombre == value);
-                    _selectSabor(product.id, s);
-                  }
-                },
+            if (configuredSummary != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                configuredSummary,
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
               ),
             ],
 
@@ -1120,7 +1309,7 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _qtyBtn(LucideIcons.minus,
-                          qty > 0 ? () => _updateQuantity(product.id, -1) : null),
+                          qty > 0 ? () => _onProductMinus(product) : null),
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         width: 36,
@@ -1134,7 +1323,7 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
                                     : Colors.grey[400])),
                       ),
                       _qtyBtn(LucideIcons.plus,
-                          () => _updateQuantity(product.id, 1),
+                          () => _onProductPlus(product),
                           highlight: qty == 0),
                     ],
                   ),
@@ -1208,6 +1397,7 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -1263,131 +1453,5 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
     );
   }
 
-  // ═══════════════════════ BOTTOM BAR ═══════════════════════
-
-  Widget _bottomBar() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(20)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 12,
-              offset: const Offset(0, -4)),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Tipo consumo
-            Row(children: [
-              Expanded(
-                  child: _consumoChip(
-                      'EN_LUGAR', 'En Lugar', LucideIcons.home)),
-              const SizedBox(width: 8),
-              Expanded(
-                  child: _consumoChip('PARA_RECOGER', 'Para Recoger',
-                      LucideIcons.shoppingBag)),
-            ]),
-            const SizedBox(height: 10),
-            // Nota general
-            TextField(
-              controller: _notaController,
-              style: const TextStyle(fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'Nota general del pedido (opcional)',
-                hintStyle:
-                    TextStyle(fontSize: 13, color: Colors.grey[400]),
-                prefixIcon: Icon(LucideIcons.fileText,
-                    size: 18, color: Colors.grey[400]),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[200]!)),
-                enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[200]!)),
-                filled: true,
-                fillColor: Colors.grey[50],
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 12),
-              ),
-              maxLines: 1,
-            ),
-            const SizedBox(height: 12),
-            // Order button
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: _isCreatingOrder ? null : _createOrder,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: Colors.grey[300],
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-                child: _isCreatingOrder
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2.5, color: Colors.white))
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(LucideIcons.shoppingCart, size: 20),
-                          const SizedBox(width: 10),
-                          Text(
-                              'Crear Pedido  ·  $_totalItems ${_totalItems == 1 ? 'item' : 'items'}',
-                              style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _consumoChip(String value, String label, IconData icon) {
-    final sel = _tipoConsumo == value;
-    return GestureDetector(
-      onTap: () => setState(() => _tipoConsumo = value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: sel ? AppTheme.primaryColor : Colors.grey[100],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-              color: sel ? AppTheme.primaryColor : Colors.grey[200]!),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon,
-                size: 16,
-                color: sel ? Colors.white : Colors.grey[600]),
-            const SizedBox(width: 6),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight:
-                        sel ? FontWeight.w600 : FontWeight.normal,
-                    color: sel ? Colors.white : Colors.grey[600])),
-          ],
-        ),
-      ),
-    );
-  }
+  // ═══════════════════════ EMPTY STATE ═══════════════════════
 }

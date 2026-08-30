@@ -28,6 +28,7 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
   final _descripcionCtrl = TextEditingController();
   final _ingredientesCtrl = TextEditingController();
   final _puntosValorCtrl = TextEditingController();
+  final _precioCtrl = TextEditingController();
 
   bool _isSubmitting = false;
   File? _pickedImage;
@@ -35,6 +36,12 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
   final List<ProductOptionGroupDraft> _optionGroups = [];
 
   bool get _isEditing => widget.product != null;
+
+  /// LOCAL APROBADO: edición estructural — el precio se cambia solo desde detalle.
+  bool get _isStructuralEditApproved =>
+      _isEditing && widget.product!.isAprobado;
+
+  bool get _showsSalePriceField => !_isStructuralEditApproved;
 
   @override
   void initState() {
@@ -46,6 +53,9 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
       _ingredientesCtrl.text = existing.ingredientes ?? '';
       _puntosValorCtrl.text =
           existing.puntosValor > 0 ? existing.puntosValor.toString() : '';
+      _precioCtrl.text = existing.price > 0
+          ? existing.price.toStringAsFixed(2)
+          : '';
       _imagenUrl = existing.imageUrl.isEmpty ? null : existing.imageUrl;
       final groups = existing.optionGroups;
       if (groups != null) {
@@ -74,6 +84,7 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
     _descripcionCtrl.dispose();
     _ingredientesCtrl.dispose();
     _puntosValorCtrl.dispose();
+    _precioCtrl.dispose();
     for (final group in _optionGroups) {
       group.dispose();
     }
@@ -122,6 +133,23 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
       return;
     }
 
+    late final double precio;
+    if (_isStructuralEditApproved) {
+      precio = widget.product!.price;
+    } else {
+      final parsed = _parsePrecio(_precioCtrl.text);
+      if (parsed == null || parsed <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ingresa un precio mayor a 0'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      precio = parsed;
+    }
+
     setState(() => _isSubmitting = true);
 
     try {
@@ -143,6 +171,10 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
           description: _descripcionCtrl.text.trim(),
           ingredientes: _ingredientesCtrl.text.trim(),
           puntosValor: puntos,
+          price: _isStructuralEditApproved ? original.price : precio,
+          effectivePrice: _isStructuralEditApproved
+              ? original.effectivePrice
+              : (original.clubSalePrice ?? precio),
           imageUrl: (imagenUrlToSend != null && imagenUrlToSend.isNotEmpty)
               ? imagenUrlToSend
               : original.imageUrl,
@@ -173,6 +205,7 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
         descripcion: _descripcionCtrl.text.trim(),
         ingredientes: _ingredientesCtrl.text.trim(),
         puntosValor: puntos,
+        precio: precio,
         imagenUrl: imagenUrlToSend,
         optionGroups: builtGroups.isEmpty ? null : builtGroups,
       );
@@ -216,6 +249,12 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
         setState(() => _isSubmitting = false);
       }
     }
+  }
+
+  static double? _parsePrecio(String raw) {
+    final text = raw.trim().replaceAll(',', '.');
+    if (text.isEmpty) return null;
+    return double.tryParse(text);
   }
 
   @override
@@ -334,12 +373,36 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
                     ? 'Debes detallar los ingredientes para que el Admin pueda revisarlo'
                     : null,
               ),
+              if (_showsSalePriceField) ...[
+                const SizedBox(height: 16),
+                TextFormField(
+                  key: const Key('precio-venta-field'),
+                  controller: _precioCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Precio de venta (Bs)',
+                    hintText: 'Ej: 32.00',
+                    helperText:
+                        'Precio en bolivianos. Los puntos son fidelización, no precio.',
+                    prefixIcon: Icon(LucideIcons.banknote),
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  validator: (v) {
+                    final n = _parsePrecio(v ?? '');
+                    if (n == null) return 'Ingresa un precio válido';
+                    if (n <= 0) return 'Ingresa un precio mayor a 0';
+                    return null;
+                  },
+                ),
+              ],
               const SizedBox(height: 16),
               TextFormField(
                 controller: _puntosValorCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Puntos de Valor',
+                  labelText: 'Puntos de fidelización',
                   hintText: 'Ej: 10',
+                  helperText: 'No es el precio de venta.',
                   prefixIcon: Icon(LucideIcons.star),
                   border: OutlineInputBorder(),
                 ),

@@ -46,6 +46,7 @@ class _FakeProductRemoteDataSource implements ProductRemoteDataSource {
     required String descripcion,
     required String ingredientes,
     required int puntosValor,
+    required double precio,
     String? imagenUrl,
     List<ProductOptionGroup>? optionGroups,
   }) async {}
@@ -55,6 +56,14 @@ class _FakeProductRemoteDataSource implements ProductRemoteDataSource {
     updateCalls++;
     return product;
   }
+
+  @override
+  Future<Product?> updateClubSalePrice({
+    required int clubId,
+    required String productId,
+    required double? precioVenta,
+  }) async =>
+      null;
 
   @override
   Future<Product> reenviarProducto(String productId) async {

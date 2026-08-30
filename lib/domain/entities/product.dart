@@ -3,11 +3,22 @@ import 'product_option.dart';
 export 'product_option.dart';
 
 class Product {
+  static const Object _unset = Object();
+
   final String id;
   final String name;
   final String description;
-  final double price; // Optional/legacy
-  final int puntosValor; // MR QUILLO Points
+
+  /// Precio base / sugerido (`precio`). SQLite persiste este campo como `price`.
+  final double price;
+
+  /// Precio efectivo de venta (`precioEfectivo` = club ?? base). Remote-only.
+  final double effectivePrice;
+
+  /// Override del club (`precioVentaClub`). Null = usar precio base. Remote-only.
+  final double? clubSalePrice;
+
+  final int puntosValor; // Fidelización — no es precio.
   final String category;
   final String imageUrl;
   final int? hubId;
@@ -32,6 +43,8 @@ class Product {
     required this.name,
     required this.description,
     this.price = 0.0,
+    double? effectivePrice,
+    this.clubSalePrice,
     this.puntosValor = 0,
     this.category = 'General',
     this.imageUrl = '',
@@ -47,7 +60,7 @@ class Product {
     this.revisadoPorNombre,
     this.revisadoAt,
     this.optionGroups,
-  });
+  }) : effectivePrice = effectivePrice ?? price;
 
   bool get isLocal => tipo.toUpperCase() == 'LOCAL';
 
@@ -61,12 +74,22 @@ class Product {
 
   bool get isAprobado => estadoNormalizado == 'APROBADO';
 
+  /// Hay definición estructural para que el socio configure el producto.
+  bool get hasConfigurableOptionGroups =>
+      optionGroups != null && optionGroups!.isNotEmpty;
+
   /// Listado activo del anfitrión: detalle de definición, no sabores legacy.
   bool get shouldOpenHostReview => isLocal || isGlobal;
 
   /// LOCAL APROBADO del club del anfitrión: puede editar la definición estructural.
   bool canHostEditDefinition(int clubId) =>
       isLocal && isAprobado && clubCreadorId == clubId;
+
+  /// APROBADO (LOCAL o GLOBAL): el anfitrión puede fijar precio de venta del club.
+  bool get canHostSetClubSalePrice => isAprobado;
+
+  /// Backend rechaza pedidos con precio efectivo <= 0.
+  bool get hasConfiguredSalePrice => effectivePrice > 0;
 
   factory Product.fromMap(Map<String, dynamic> map) {
     // Manejar el id correctamente: puede venir como int o String
@@ -85,11 +108,14 @@ class Product {
     final dynamic clubIdValue = map['clubCreadorId'] ?? map['club_creador_id'] ?? map['clubId'] ?? map['club_id'];
     final int? clubIdParsed = clubIdValue is int ? clubIdValue : (clubIdValue != null ? int.tryParse(clubIdValue.toString()) : null);
     
+    final prices = ProductPrices.fromJson(map);
     return Product(
       id: productId,
       name: map['name']?.toString() ?? map['nombre']?.toString() ?? '',
       description: map['description']?.toString() ?? map['descripcion']?.toString() ?? '',
-      price: (map['price'] ?? 0).toDouble(),
+      price: prices.price,
+      effectivePrice: prices.effectivePrice,
+      clubSalePrice: prices.clubSalePrice,
       puntosValor: map['puntosValor'] is int ? map['puntosValor'] as int : (int.tryParse(map['puntosValor']?.toString() ?? '0') ?? 0),
       category: map['category']?.toString() ?? 'General',
       imageUrl: map['imagenUrl']?.toString() ?? map['image_url']?.toString() ?? '',
@@ -132,6 +158,8 @@ class Product {
     String? name,
     String? description,
     double? price,
+    double? effectivePrice,
+    Object? clubSalePrice = _unset,
     int? puntosValor,
     String? category,
     String? imageUrl,
@@ -153,6 +181,10 @@ class Product {
       name: name ?? this.name,
       description: description ?? this.description,
       price: price ?? this.price,
+      effectivePrice: effectivePrice ?? this.effectivePrice,
+      clubSalePrice: identical(clubSalePrice, _unset)
+          ? this.clubSalePrice
+          : clubSalePrice as double?,
       puntosValor: puntosValor ?? this.puntosValor,
       category: category ?? this.category,
       imageUrl: imageUrl ?? this.imageUrl,
@@ -187,5 +219,42 @@ class Product {
     if (value == null) return null;
     if (value is DateTime) return value;
     return DateTime.tryParse(value.toString());
+  }
+}
+
+/// Parseo de `precio` / `precioEfectivo` / `precioVentaClub` (y `price` legacy).
+class ProductPrices {
+  final double price;
+  final double effectivePrice;
+  final double? clubSalePrice;
+
+  const ProductPrices({
+    required this.price,
+    required this.effectivePrice,
+    required this.clubSalePrice,
+  });
+
+  factory ProductPrices.fromJson(Map<String, dynamic> map) {
+    final price = _parseDouble(map['precio'] ?? map['price']) ?? 0;
+    final clubSalePrice = map.containsKey('precioVentaClub')
+        ? _parseDouble(map['precioVentaClub'])
+        : null;
+    final effectivePrice = map.containsKey('precioEfectivo') &&
+            map['precioEfectivo'] != null
+        ? (_parseDouble(map['precioEfectivo']) ?? price)
+        : price;
+    return ProductPrices(
+      price: price,
+      effectivePrice: effectivePrice,
+      clubSalePrice: clubSalePrice,
+    );
+  }
+
+  static double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    final text = value.toString().trim().replaceAll(',', '.');
+    if (text.isEmpty) return null;
+    return double.tryParse(text);
   }
 }

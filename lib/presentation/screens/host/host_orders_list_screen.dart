@@ -9,6 +9,8 @@ import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../providers/user_provider.dart';
 import 'host_counter_sale_screen.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/order_item_options_display.dart';
+import 'package:flutter_app_saludable/domain/entities/order_item_option.dart';
 import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 // Nota: los pedidos offline pendientes de sincronizar NO se mezclan en este
@@ -301,6 +303,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                 'productoNombre': productoNombre,
                 'cantidad': cantidad,
                 'nota': itemMap['nota']?.toString() ?? '',
+                'opciones': OrderItemOptionsDisplay.parseFromHistoryItem(itemMap),
               });
             }
           }
@@ -352,7 +355,8 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
               'estado': estado,
               'tipoConsumo': order['tipoConsumo']?.toString() ?? 'EN_LUGAR',
               'observaciones': order['observaciones']?.toString() ?? '',
-              'nota': item['nota']?.toString() ?? '', // NEW
+              'nota': item['nota']?.toString() ?? '',
+              'opciones': item['opciones'] ?? const <OrderItemOption>[],
               'customerName': customerName,
               'numeroSocio': numeroSocio,
               'isVip': isVip,
@@ -396,6 +400,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
           'productoNombre': item['productoNombre'],
           'cantidad': item['cantidad'],
           'nota': item['nota'],
+          'opciones': item['opciones'] ?? const <OrderItemOption>[],
         });
       }
 
@@ -848,6 +853,12 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                                                       ?.toString()
                                                       .trim() ??
                                                   '';
+                                              final options = (item['opciones']
+                                                      as List<OrderItemOption>?) ??
+                                                  const [];
+                                              final optionLines =
+                                                  OrderItemOptionsDisplay
+                                                      .hostBulletLines(options);
 
                                               return Padding(
                                                   padding:
@@ -866,6 +877,23 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                                                                 fontSize: 16,
                                                                 color: Colors
                                                                     .black87)),
+                                                        for (final line
+                                                            in optionLines)
+                                                          Padding(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .only(
+                                                                    left: 12.0,
+                                                                    top: 4.0),
+                                                            child: Text(
+                                                              line,
+                                                              style: TextStyle(
+                                                                color: Colors
+                                                                    .grey[800],
+                                                                fontSize: 14,
+                                                              ),
+                                                            ),
+                                                          ),
                                                         if (notaItem.isNotEmpty)
                                                           Padding(
                                                             padding:

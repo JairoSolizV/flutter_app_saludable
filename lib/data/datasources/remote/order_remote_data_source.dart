@@ -130,7 +130,8 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
         final itemMap = <String, dynamic>{
           'productoId': productoId,
           'cantidad': item.quantity,
-          'nota': item.note, // Siempre enviar la nota aunque esté vacía ('')
+          'nota': item.note,
+          'opciones': item.options.map((o) => o.toApiMap()).toList(),
         };
         if (item.comboId != null) {
           itemMap['comboId'] = item.comboId;
@@ -174,6 +175,11 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
       } else if (response.statusCode == 403) {
         debugPrint('[DEBUG SEND] ERROR 403: Sin permisos');
         throw ForbiddenException('No tienes permisos para crear pedidos.');
+      } else if (response.statusCode == 400) {
+        final message = _extractBackendMessage(response.data,
+            fallback: 'No se pudo crear el pedido');
+        debugPrint('[DEBUG SEND] ERROR 400: $message');
+        throw ValidationException(message);
       } else if (response.statusCode == 500) {
         debugPrint('[DEBUG SEND] ERROR 500: Error del servidor');
         throw ServerException(
@@ -181,7 +187,12 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
             statusCode: 500);
       } else {
         debugPrint(
-            '[DEBUG SEND] WARNING: Status code inesperado: ${response.statusCode}');
+            '[DEBUG SEND] ERROR: Status code inesperado: ${response.statusCode}');
+        throw ServerException(
+          _extractBackendMessage(response.data,
+              fallback: 'Error al crear el pedido'),
+          statusCode: response.statusCode,
+        );
       }
     } on DioException catch (e, st) {
       throwDioAsApp(e, fallback: 'Error enviando pedido', stackTrace: st);

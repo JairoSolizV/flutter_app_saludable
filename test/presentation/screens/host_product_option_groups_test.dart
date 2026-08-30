@@ -35,6 +35,7 @@ class _FakeProductRemote implements ProductRemoteDataSource {
   int updateCalls = 0;
   int reenviarCalls = 0;
   List<ProductOptionGroup>? lastCreateGroups;
+  double? lastPrecio;
   Product? lastUpdated;
 
   @override
@@ -58,11 +59,13 @@ class _FakeProductRemote implements ProductRemoteDataSource {
     required String descripcion,
     required String ingredientes,
     required int puntosValor,
+    required double precio,
     String? imagenUrl,
     List<ProductOptionGroup>? optionGroups,
   }) async {
     createCalls++;
     lastCreateGroups = optionGroups;
+    lastPrecio = precio;
   }
 
   @override
@@ -71,6 +74,14 @@ class _FakeProductRemote implements ProductRemoteDataSource {
     lastUpdated = product;
     return product;
   }
+
+  @override
+  Future<Product?> updateClubSalePrice({
+    required int clubId,
+    required String productId,
+    required double? precioVenta,
+  }) async =>
+      null;
 
   @override
   Future<Product> reenviarProducto(String productId) async {
@@ -104,6 +115,7 @@ Future<void> _fillRequired(WidgetTester tester) async {
       find.widgetWithIcon(TextFormField, LucideIcons.list), 'proteína');
   await tester.enterText(
       find.widgetWithIcon(TextFormField, LucideIcons.star), '10');
+  await tester.enterText(find.byKey(const Key('precio-venta-field')), '28.50');
 }
 
 void main() {
@@ -114,6 +126,12 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(app);
   }
+
+  testWidgets('creación usa label Precio de venta, no Precio base', (tester) async {
+    await pumpForm(tester, _app(_FakeProductRemote()));
+    expect(find.text('Precio de venta (Bs)'), findsOneWidget);
+    expect(find.text('Precio base (Bs)'), findsNothing);
+  });
 
   testWidgets('producto sin grupos se envía en el POST', (tester) async {
     final remote = _FakeProductRemote();
@@ -126,7 +144,25 @@ void main() {
 
     expect(remote.createCalls, 1);
     expect(remote.lastCreateGroups, isNull);
+    expect(remote.lastPrecio, 28.5);
     expect(find.text('Propuesta enviada'), findsOneWidget);
+  });
+
+  testWidgets('precio inválido o cero bloquea el envío', (tester) async {
+    final remote = _FakeProductRemote();
+    await pumpForm(tester, _app(remote));
+    await tester.enterText(
+        find.widgetWithIcon(TextFormField, LucideIcons.coffee), 'Batido');
+    await tester.enterText(
+        find.widgetWithIcon(TextFormField, LucideIcons.list), 'proteína');
+    await tester.enterText(
+        find.widgetWithIcon(TextFormField, LucideIcons.star), '10');
+    await tester.enterText(find.byKey(const Key('precio-venta-field')), '0');
+    await tester.ensureVisible(find.text('Enviar a Revisión'));
+    await tester.tap(find.text('Enviar a Revisión'));
+    await tester.pumpAndSettle();
+    expect(remote.createCalls, 0);
+    expect(find.text('Ingresa un precio mayor a 0'), findsWidgets);
   });
 
   testWidgets('agregar y eliminar grupo/opción', (tester) async {
@@ -287,6 +323,7 @@ void main() {
 
     expect(remote.createCalls, 1);
     expect(remote.lastCreateGroups, hasLength(1));
+    expect(remote.lastPrecio, 28.5);
     expect(remote.lastCreateGroups!.first.name, 'Sabores');
     expect(
       remote.lastCreateGroups!.first.options.map((o) => o.name),

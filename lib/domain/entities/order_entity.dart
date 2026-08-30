@@ -1,3 +1,7 @@
+import 'order_item_option.dart';
+
+export 'order_item_option.dart';
+
 class OrderEntity {
   final String id;
   final String userId;
@@ -62,9 +66,10 @@ class OrderItem {
   final String orderId;
   final String productId;
   final int quantity;
-  final String note; // Nota específica del producto
+  final String note; // Comentario humano — no fuente de verdad de opciones
   final String productName; // Desnormalizado para facil visualización offline
   final int? comboId; // ID del combo origen (null si es producto suelto)
+  final List<OrderItemOption> options;
 
   OrderItem({
     this.id,
@@ -74,7 +79,34 @@ class OrderItem {
     this.note = '',
     this.productName = '',
     this.comboId,
+    this.options = const [],
   });
+
+  /// Identidad estable de línea (misma semántica que cartKey del carrito).
+  static String lineKey({
+    required String productId,
+    required List<OrderItemOption> options,
+    int? comboId,
+  }) {
+    if (comboId != null) return '$productId@combo:$comboId';
+    if (options.isEmpty) return productId;
+    final parts = [...options]
+      ..sort((a, b) {
+        final g = (a.groupId ?? 0).compareTo(b.groupId ?? 0);
+        if (g != 0) return g;
+        return (a.optionId ?? 0).compareTo(b.optionId ?? 0);
+      });
+    final sig = parts
+        .map((o) => '${o.groupId}:${o.optionId}:${o.quantity}')
+        .join('|');
+    return '$productId#$sig';
+  }
+
+  String get lineKeyValue => lineKey(
+        productId: productId,
+        options: options,
+        comboId: comboId,
+      );
 
   Map<String, dynamic> toMap() {
     return {
@@ -82,12 +114,15 @@ class OrderItem {
       'product_id': productId,
       'quantity': quantity,
       'note': note,
-      // 'product_name' no se guarda en tabla order_items normalizada, pero útil si se quiere desnormalizar. 
-      // Por ahora mantenemos simple.
+      if (comboId != null) 'combo_id': comboId,
     };
   }
-  
-  factory OrderItem.fromMap(Map<String, dynamic> map, {String productName = ''}) {
+
+  factory OrderItem.fromMap(
+    Map<String, dynamic> map, {
+    String productName = '',
+    List<OrderItemOption> options = const [],
+  }) {
     return OrderItem(
       id: map['id']?.toString(),
       orderId: map['order_id'],
@@ -95,6 +130,14 @@ class OrderItem {
       quantity: map['quantity'],
       note: map['note'] ?? '',
       productName: productName,
+      comboId: _optionalInt(map['combo_id']),
+      options: options,
     );
+  }
+
+  static int? _optionalInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    return int.tryParse(value.toString());
   }
 }

@@ -36,7 +36,7 @@ class DatabaseHelper {
         join(await getDatabasesPath(), 'nutrilife_club.db');
     return await openDatabase(
       path,
-      version: 12,
+      version: 13,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -102,9 +102,25 @@ class DatabaseHelper {
         order_id TEXT,
         product_id TEXT,
         quantity INTEGER,
-        note TEXT, -- Nota específica del producto
+        note TEXT,
+        combo_id INTEGER,
         FOREIGN KEY(order_id) REFERENCES orders(id),
         FOREIGN KEY(product_id) REFERENCES products(id)
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE order_item_options(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_item_id INTEGER NOT NULL,
+        group_id INTEGER,
+        group_name TEXT,
+        group_order INTEGER DEFAULT 0,
+        option_id INTEGER,
+        option_name TEXT,
+        option_order INTEGER DEFAULT 0,
+        quantity INTEGER DEFAULT 1,
+        FOREIGN KEY(order_item_id) REFERENCES order_items(id) ON DELETE CASCADE
       )
     ''');
 
@@ -235,6 +251,35 @@ class DatabaseHelper {
         logDebug("Error migrando app_settings: $e");
       }
     }
+    if (oldVersion < 13) {
+      try {
+        await db.execute('ALTER TABLE order_items ADD COLUMN combo_id INTEGER');
+      } catch (e) {
+        logDebug('Error migrando combo_id en order_items: $e');
+      }
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS order_item_options(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_item_id INTEGER NOT NULL,
+            group_id INTEGER,
+            group_name TEXT,
+            group_order INTEGER DEFAULT 0,
+            option_id INTEGER,
+            option_name TEXT,
+            option_order INTEGER DEFAULT 0,
+            quantity INTEGER DEFAULT 1,
+            FOREIGN KEY(order_item_id) REFERENCES order_items(id) ON DELETE CASCADE
+          )
+        ''');
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_order_item_options_item_id '
+          'ON order_item_options(order_item_id)',
+        );
+      } catch (e) {
+        logDebug('Error migrando order_item_options: $e');
+      }
+    }
   }
 
   /// Idempotente: CREATE INDEX IF NOT EXISTS.
@@ -246,6 +291,10 @@ class DatabaseHelper {
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_order_items_order_id '
       'ON order_items(order_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_order_item_options_item_id '
+      'ON order_item_options(order_item_id)',
     );
   }
 

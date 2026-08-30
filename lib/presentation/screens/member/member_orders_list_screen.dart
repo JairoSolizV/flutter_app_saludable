@@ -10,6 +10,7 @@ import '../../../data/datasources/remote/order_remote_data_source.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../domain/entities/club_membership.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/order_item_options_display.dart';
 import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 // Nota: los pedidos offline pendientes de sincronizar NO se mezclan en este
@@ -495,29 +496,51 @@ class _OrdersList extends StatelessWidget {
                                         'Producto'
                                     : 'Producto');
                         final String? nota = item['nota']?.toString();
+                        final options =
+                            OrderItemOptionsDisplay.parseFromHistoryItem(
+                                Map<String, dynamic>.from(item));
+                        final optionLines =
+                            OrderItemOptionsDisplay.groupLines(options);
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 4),
-                          child: Row(
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                '• $cantidad x $productoNombre',
-                                style: const TextStyle(
-                                    color: Color(0xFF333333), fontSize: 13),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '• $cantidad x $productoNombre',
+                                    style: const TextStyle(
+                                        color: Color(0xFF333333), fontSize: 13),
+                                  ),
+                                  if (nota != null && nota.isNotEmpty) ...[
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        '($nota)',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600],
+                                            fontStyle: FontStyle.italic),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
-                              if (nota != null && nota.isNotEmpty) ...[
-                                const SizedBox(width: 8),
-                                Expanded(
+                              for (final line in optionLines)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                      left: 12, top: 2),
                                   child: Text(
-                                    '($nota)',
+                                    line,
                                     style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
-                                        fontStyle: FontStyle.italic),
+                                      fontSize: 12,
+                                      color: Colors.grey[700],
+                                    ),
                                   ),
                                 ),
-                              ],
                             ],
                           ),
                         );

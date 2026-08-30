@@ -143,12 +143,21 @@ class _FakeProductRemote implements ProductRemoteDataSource {
     required String descripcion,
     required String ingredientes,
     required int puntosValor,
+    required double precio,
     String? imagenUrl,
     List<ProductOptionGroup>? optionGroups,
   }) async {}
 
   @override
   Future<Product> updateProduct(Product product) async => product;
+
+  @override
+  Future<Product?> updateClubSalePrice({
+    required int clubId,
+    required String productId,
+    required double? precioVenta,
+  }) async =>
+      null;
 
   @override
   Future<Product> reenviarProducto(String productId) async =>

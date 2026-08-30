@@ -38,6 +38,8 @@ Product _local({
     description: 'Desc $name',
     ingredientes: 'leche, hielo',
     puntosValor: 10,
+    price: 28.5,
+    effectivePrice: 28.5,
     tipo: 'LOCAL',
     estadoAprobacion: estado,
     comentarioRevision: comentario,
@@ -59,6 +61,8 @@ Product _global({
     description: 'Desc $name',
     ingredientes: 'fórmula hub',
     puntosValor: 8,
+    price: 28.5,
+    effectivePrice: 28.5,
     tipo: 'GLOBAL',
     estadoAprobacion: 'APROBADO',
     optionGroups: optionGroups,
@@ -172,6 +176,10 @@ class _FakeSaborDs extends SaborRemoteDataSource {
 
 class _FakeProductRemote implements ProductRemoteDataSource {
   Product? lastUpdated;
+  int clubPriceCalls = 0;
+  double? lastClubPrecioVenta;
+  int lastClubPriceClubId = 0;
+  String lastClubPriceProductId = '';
   int updateCalls = 0;
   int reenviarCalls = 0;
   Object? reenviarError;
@@ -200,6 +208,7 @@ class _FakeProductRemote implements ProductRemoteDataSource {
     required String descripcion,
     required String ingredientes,
     required int puntosValor,
+    required double precio,
     String? imagenUrl,
     List<ProductOptionGroup>? optionGroups,
   }) async {
@@ -213,6 +222,29 @@ class _FakeProductRemote implements ProductRemoteDataSource {
     lastUpdated = product;
     if (updateResult != null) return updateResult!(product);
     return product;
+  }
+
+  @override
+  Future<Product?> updateClubSalePrice({
+    required int clubId,
+    required String productId,
+    required double? precioVenta,
+  }) async {
+    clubPriceCalls++;
+    lastClubPriceClubId = clubId;
+    lastClubPriceProductId = productId;
+    lastClubPrecioVenta = precioVenta;
+    return Product(
+      id: productId,
+      name: lastUpdated?.name ?? 'Producto',
+      description: '',
+      price: 28.5,
+      effectivePrice: precioVenta ?? 28.5,
+      clubSalePrice: precioVenta,
+      tipo: 'LOCAL',
+      estadoAprobacion: 'APROBADO',
+      clubCreadorId: 3,
+    );
   }
 
   @override
@@ -830,6 +862,162 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Reenviar a revisión'), findsOneWidget);
+    });
+  });
+
+  group('precio operativo HOST', () {
+    testWidgets('LOCAL APROBADO muestra solo Precio de venta', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(400, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HostProductReviewScreen(
+            clubId: 3,
+            product: _local(id: '7', name: 'Batido', estado: 'APROBADO'),
+          ),
+        ),
+      );
+
+      expect(find.text('Precio de venta'), findsOneWidget);
+      expect(find.textContaining('Precio base'), findsNothing);
+      expect(find.textContaining('Precio efectivo'), findsNothing);
+      expect(find.textContaining('Precio en mi club'), findsNothing);
+      expect(find.text('Bs 28,50'), findsOneWidget);
+    });
+
+    testWidgets('APROBADO cambia precio vía PATCH y no llama PUT',
+        (tester) async {
+      final remote = _FakeProductRemote();
+      await tester.binding.setSurfaceSize(const Size(400, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<ProductRemoteDataSource>.value(value: remote),
+          ],
+          child: MaterialApp(
+            home: HostProductReviewScreen(
+              clubId: 3,
+              product: _local(id: '7', name: 'Batido', estado: 'APROBADO'),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Cambiar precio'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('cambiar-precio')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Usar precio sugerido'), findsNothing);
+      await tester.enterText(
+          find.byKey(const Key('club-sale-price-field')), '30.00');
+      await tester.tap(find.byKey(const Key('guardar-precio-venta')));
+      await tester.pumpAndSettle();
+
+      expect(remote.clubPriceCalls, 1);
+      expect(remote.updateCalls, 0);
+      expect(remote.reenviarCalls, 0);
+      expect(remote.lastClubPrecioVenta, 30.0);
+      expect(remote.lastClubPriceClubId, 3);
+      expect(remote.lastClubPriceProductId, '7');
+      expect(find.text('Precio de venta actualizado'), findsOneWidget);
+    });
+
+    testWidgets('GLOBAL usar precio sugerido manda null', (tester) async {
+      final remote = _FakeProductRemote();
+      await tester.binding.setSurfaceSize(const Size(400, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<ProductRemoteDataSource>.value(value: remote),
+          ],
+          child: MaterialApp(
+            home: HostProductReviewScreen(
+              clubId: 3,
+              product: _global(id: '1', name: 'Batido Global')
+                  .copyWith(clubSalePrice: 30.0, effectivePrice: 30.0),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('cambiar-precio')));
+      await tester.pumpAndSettle();
+      expect(find.text('Precio sugerido por administrador'), findsOneWidget);
+      expect(find.text('Bs 28,50'), findsWidgets);
+      await tester.tap(find.byKey(const Key('usar-precio-sugerido')));
+      await tester.pumpAndSettle();
+
+      expect(remote.clubPriceCalls, 1);
+      expect(remote.updateCalls, 0);
+      expect(remote.lastClubPrecioVenta, isNull);
+    });
+
+    testWidgets('GLOBAL permite override comercial pero no edición estructural',
+        (tester) async {
+      final remote = _FakeProductRemote();
+      await tester.binding.setSurfaceSize(const Size(400, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<ProductRemoteDataSource>.value(value: remote),
+          ],
+          child: MaterialApp(
+            home: HostProductReviewScreen(
+              clubId: 3,
+              product: _global(id: '1', name: 'Batido Global'),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Editar producto'), findsNothing);
+      expect(find.text('Cambiar precio'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('cambiar-precio')));
+      await tester.pumpAndSettle();
+      expect(find.text('Precio sugerido por administrador'), findsOneWidget);
+      await tester.enterText(
+          find.byKey(const Key('club-sale-price-field')), '22');
+      await tester.tap(find.byKey(const Key('guardar-precio-venta')));
+      await tester.pumpAndSettle();
+      expect(remote.clubPriceCalls, 1);
+      expect(remote.updateCalls, 0);
+    });
+
+    testWidgets('edición estructural APROBADO no muestra campo precio',
+        (tester) async {
+      final approved = _local(
+        id: '7',
+        name: 'Batido Aprobado',
+        estado: 'APROBADO',
+        optionGroups: _optionGroupsSample,
+      );
+
+      await tester.binding.setSurfaceSize(const Size(800, 1800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<ProductRemoteDataSource>.value(value: _FakeProductRemote()),
+            Provider<ClubRemoteDataSource>.value(value: _FakeClubDs()),
+          ],
+          child: MaterialApp(
+            home: HostProductProposalScreen(product: approved),
+          ),
+        ),
+      );
+
+      expect(find.byKey(const Key('precio-venta-field')), findsNothing);
+      expect(find.text('Precio de venta (Bs)'), findsNothing);
+      expect(
+        find.text(
+          'Al guardar cambios en la definición, el producto volverá a revisión.',
+        ),
+        findsOneWidget,
+      );
     });
   });
 }

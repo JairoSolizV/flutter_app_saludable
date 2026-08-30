@@ -199,6 +199,70 @@ void main() {
       final products = await ds.getAvailableProductsByClub(5);
       expect(products, hasLength(1));
       expect(products.first.available, isTrue);
+      expect(products.first.optionGroups, isNull);
+    }));
+
+    test('parsea gruposOpciones del SOCIO y tolera producto viejo sin grupos',
+        async_(() async {
+      adapter.stub('GET', '/productos', data: [
+        {
+          'id': 7,
+          'nombre': 'Batido de leche',
+          'descripcion': 'Clásico',
+          'gruposOpciones': [
+            {
+              'id': 2,
+              'nombre': 'Sabores',
+              'orden': 0,
+              'minSelecciones': 1,
+              'maxSelecciones': 2,
+              'permiteRepetir': true,
+              'opciones': [
+                {'id': 3, 'nombre': 'Frutilla', 'activo': true},
+                {'id': 4, 'nombre': 'Cookies', 'activo': true},
+              ],
+            },
+          ],
+        },
+        {'id': 9, 'nombre': 'Té', 'descripcion': 'Caliente'},
+      ]);
+      final products = await ds.getAvailableProductsByClub(5);
+      expect(products, hasLength(2));
+      expect(products.first.optionGroups, isNotNull);
+      expect(products.first.optionGroups, hasLength(1));
+      expect(products.first.optionGroups!.first.name, 'Sabores');
+      expect(products.first.optionGroups!.first.allowRepeat, isTrue);
+      expect(
+        products.first.optionGroups!.first.options.map((o) => o.name),
+        ['Frutilla', 'Cookies'],
+      );
+      expect(products.last.optionGroups, isNull);
+      expect(products.last.hasConfigurableOptionGroups, isFalse);
+    }));
+
+    test('parsea precio, precioEfectivo y precioVentaClub del SOCIO',
+        async_(() async {
+      adapter.stub('GET', '/productos', data: [
+        {
+          'id': 7,
+          'nombre': 'Batido',
+          'precio': 28.0,
+          'precioVentaClub': 30.5,
+          'precioEfectivo': 30.5,
+        },
+        {
+          'id': 8,
+          'nombre': 'Té',
+          'precio': 12,
+        },
+      ]);
+      final products = await ds.getAvailableProductsByClub(5);
+      expect(products.first.price, 28.0);
+      expect(products.first.clubSalePrice, 30.5);
+      expect(products.first.effectivePrice, 30.5);
+      expect(products.last.price, 12.0);
+      expect(products.last.clubSalePrice, isNull);
+      expect(products.last.effectivePrice, 12.0);
     }));
 
     test('200 con envoltorio content', async_(() async {
@@ -302,11 +366,13 @@ void main() {
         descripcion: 'D',
         ingredientes: 'I',
         puntosValor: 5,
+        precio: 28.5,
         imagenUrl: 'http://x.png',
       );
       expect(adapter.requests, hasLength(1));
       final data = adapter.requests.single.data as Map;
       expect(data.containsKey('gruposOpciones'), isFalse);
+      expect(data['precio'], 28.5);
     }));
 
     test('incluye gruposOpciones cuando hay definición', async_(() async {
@@ -317,6 +383,7 @@ void main() {
         descripcion: 'D',
         ingredientes: 'I',
         puntosValor: 10,
+        precio: 28.5,
         optionGroups: [
           ProductOptionGroup(
             name: 'Sabores',
@@ -348,6 +415,7 @@ void main() {
         descripcion: 'D',
         ingredientes: 'I',
         puntosValor: 5,
+        precio: 12.0,
       );
       expect(adapter.requests, hasLength(1));
     }));
@@ -361,6 +429,7 @@ void main() {
           descripcion: 'D',
           ingredientes: 'I',
           puntosValor: 5,
+          precio: 10,
         ),
         throwsA(isA<AppException>()),
       );
@@ -388,6 +457,7 @@ void main() {
       expect(data['descripcion'], 'Batido');
       expect(data['ingredientes'], 'leche, hielo');
       expect(data['puntosValor'], 12);
+      expect(data['precio'], 0.0);
       expect(data['imagenUrl'], '/api/productos/imagenes/a.png');
       expect(data['activo'], isTrue);
     }));
@@ -493,6 +563,53 @@ void main() {
         throwsA(isA<UnsupportedError>()),
       );
       expect(adapter.requests, isEmpty);
+    }));
+  });
+
+  group('updateClubSalePrice', () {
+    test('PATCH con precioVenta numérico y no llama PUT', async_(() async {
+      adapter.stub('PATCH', '/clubes/3/productos/7/precio',
+          statusCode: 200, data: {
+        'id': 7,
+        'nombre': 'Batido',
+        'precio': 28.5,
+        'precioVentaClub': 30.0,
+        'precioEfectivo': 30.0,
+      });
+      final product = await ds.updateClubSalePrice(
+        clubId: 3,
+        productId: '7',
+        precioVenta: 30.0,
+      );
+      expect(adapter.requests, hasLength(1));
+      expect(adapter.requests.single.method, 'PATCH');
+      expect(adapter.requests.single.uri.path,
+          contains('/clubes/3/productos/7/precio'));
+      final data = adapter.requests.single.data as Map;
+      expect(data['precioVenta'], 30.0);
+      expect(product?.effectivePrice, 30.0);
+      expect(product?.clubSalePrice, 30.0);
+    }));
+
+    test('PATCH con precioVenta null usa precio base', async_(() async {
+      adapter.stub('PATCH', '/clubes/3/productos/7/precio',
+          statusCode: 200, data: {
+        'id': 7,
+        'nombre': 'Batido',
+        'precio': 28.5,
+        'precioVentaClub': null,
+        'precioEfectivo': 28.5,
+      });
+      final product = await ds.updateClubSalePrice(
+        clubId: 3,
+        productId: '7',
+        precioVenta: null,
+      );
+      final data = adapter.requests.single.data as Map;
+      expect(data.containsKey('precioVenta'), isTrue);
+      expect(data['precioVenta'], isNull);
+      expect(product?.clubSalePrice, isNull);
+      expect(product?.effectivePrice, 28.5);
     }));
   });
 }

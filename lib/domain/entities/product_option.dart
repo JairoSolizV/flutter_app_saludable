@@ -121,6 +121,32 @@ class ProductOptionGroup {
     }
     return 'Selecciona de $minSelections a $max';
   }
+
+  /// Textos de regla para el socio (PROD-OPTIONS-001c-FL).
+  String get socioChoiceLabel {
+    final max = maxSelections;
+    if (max == null) {
+      if (minSelections <= 0) return 'Opcional';
+      return 'Elige al menos $minSelections';
+    }
+    if (minSelections == 1 && max == 1) return 'Elige 1';
+    if (minSelections <= 0 && max == 1) return 'Elige hasta 1';
+    if (minSelections == max) return 'Elige $minSelections';
+    if (minSelections <= 0) return 'Elige hasta $max';
+    return 'Elige entre $minSelections y $max';
+  }
+
+  bool get showRepeatHint => allowRepeat && maxSelections != 1;
+
+  List<ProductOption> get selectableOptions {
+    final list = options.where((o) => o.active).toList()
+      ..sort((a, b) {
+        final byOrden = a.orden.compareTo(b.orden);
+        if (byOrden != 0) return byOrden;
+        return (a.id ?? 0).compareTo(b.id ?? 0);
+      });
+    return list;
+  }
 }
 
 class ProductOptionGroupIssue {

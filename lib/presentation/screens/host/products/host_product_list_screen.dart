@@ -11,6 +11,7 @@ import '../../../../data/datasources/remote/combo_remote_data_source.dart';
 import '../../../widgets/product_image.dart';
 import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/bolivian_price.dart';
 import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 import 'host_combo_create_screen.dart';
 
@@ -322,6 +323,16 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                       Text(
                         'Puntos Volumen: ${product.puntosValor}',
                         style: const TextStyle(fontWeight: FontWeight.w500, color: AppTheme.primaryColor),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        BolivianPrice.label(product.effectivePrice),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: product.hasConfiguredSalePrice
+                              ? Colors.black87
+                              : Colors.orange.shade800,
+                        ),
                       ),
                       if (!isGlobal && product.estadoAprobacion != 'APROBADO') 
                         Container(

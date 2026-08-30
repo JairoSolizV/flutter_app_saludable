@@ -96,6 +96,21 @@ void main() {
     });
   });
 
+  group('socioChoiceLabel', () {
+    test('cubre min/max y null según 001c', () {
+      expect(_group(min: 1, max: 1).socioChoiceLabel, 'Elige 1');
+      expect(_group(min: 0, max: 1).socioChoiceLabel, 'Elige hasta 1');
+      expect(_group(min: 1, max: 2).socioChoiceLabel, 'Elige entre 1 y 2');
+      expect(_group(min: 2, max: null).socioChoiceLabel, 'Elige al menos 2');
+      expect(_group(min: 0, max: null).socioChoiceLabel, 'Opcional');
+    });
+
+    test('hint de repetir solo si max != 1', () {
+      expect(_group(min: 1, max: 2, repeat: true).showRepeatHint, isTrue);
+      expect(_group(min: 1, max: 1, repeat: true).showRepeatHint, isFalse);
+    });
+  });
+
   group('selectionRuleLabel', () {
     test('describe min/max y exactamente', () {
       expect(_group(min: 1, max: 2).selectionRuleLabel, 'Selecciona de 1 a 2');

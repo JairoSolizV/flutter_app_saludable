@@ -22,12 +22,22 @@ abstract class ProductRemoteDataSource {
     required String descripcion,
     required String ingredientes,
     required int puntosValor,
+    required double precio,
     String? imagenUrl,
     List<ProductOptionGroup>? optionGroups,
   });
   /// PUT /productos/{id}. Devuelve el producto del backend (p. ej. PENDIENTE
   /// si hubo cambio estructural en un LOCAL APROBADO). No llama /reenviar.
   Future<Product> updateProduct(Product product);
+
+  /// PATCH /clubes/{clubId}/productos/{productoId}/precio
+  /// `{ "precioVenta": 28.50 }` o `{ "precioVenta": null }` (usar precio base).
+  /// No dispara revisión. No usa PUT.
+  Future<Product?> updateClubSalePrice({
+    required int clubId,
+    required String productId,
+    required double? precioVenta,
+  });
 
   /// PATCH /productos/{id}/reenviar — solo LOCAL RECHAZADO del propietario.
   Future<Product> reenviarProducto(String productId);
@@ -131,11 +141,15 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
           final int puntosValor = json['puntosValor'] is int
               ? json['puntosValor'] as int
               : (int.tryParse(json['puntosValor']?.toString() ?? '0') ?? 0);
+          final prices = ProductPrices.fromJson(
+              Map<String, dynamic>.from(json as Map));
           return Product(
             id: productId,
             name: json['nombre']?.toString() ?? 'Sin nombre',
             description: json['descripcion']?.toString() ?? '',
-            price: 0.0,
+            price: prices.price,
+            effectivePrice: prices.effectivePrice,
+            clubSalePrice: prices.clubSalePrice,
             puntosValor: puntosValor,
             category: 'General',
             imageUrl: imageUrl,
@@ -260,12 +274,16 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
               json['tipo']?.toString().toUpperCase() ?? 'GLOBAL';
           final String estadoAprobacion =
               json['estadoAprobacion']?.toString().toUpperCase() ?? 'APROBADO';
+          final prices = ProductPrices.fromJson(
+              Map<String, dynamic>.from(json as Map));
 
           return Product(
             id: productId,
             name: json['nombre']?.toString() ?? 'Sin nombre',
             description: json['descripcion']?.toString() ?? '',
-            price: 0.0,
+            price: prices.price,
+            effectivePrice: prices.effectivePrice,
+            clubSalePrice: prices.clubSalePrice,
             puntosValor: puntosValor,
             category: 'General',
             imageUrl: imageUrl,
@@ -275,6 +293,9 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
             estadoAprobacion: estadoAprobacion,
             active: json['activo'] == true || json['activo'] == 1,
             available: isAvailable,
+            ingredientes: _optionalString(json['ingredientes']),
+            optionGroups:
+                ProductOptionGroup.listFromJson(json['gruposOpciones']),
           );
         }).toList();
       } else if (response.statusCode == 401) {
@@ -386,6 +407,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
     required String descripcion,
     required String ingredientes,
     required int puntosValor,
+    required double precio,
     String? imagenUrl,
     List<ProductOptionGroup>? optionGroups,
   }) async {
@@ -396,6 +418,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
         'descripcion': descripcion,
         'ingredientes': ingredientes,
         'puntosValor': puntosValor,
+        'precio': precio,
         'activo': true,
       };
       if (imagenUrl != null && imagenUrl.isNotEmpty) {
@@ -435,6 +458,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
         'nombre': product.name,
         'descripcion': product.description,
         'puntosValor': product.puntosValor,
+        'precio': product.price,
         'activo': product.active,
       };
       if (product.ingredientes != null) {
@@ -463,6 +487,10 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
             puntosValor: parsed.puntosValor > 0
                 ? parsed.puntosValor
                 : product.puntosValor,
+            price: parsed.price > 0 ? parsed.price : product.price,
+            effectivePrice: parsed.effectivePrice > 0
+                ? parsed.effectivePrice
+                : (parsed.price > 0 ? parsed.price : product.effectivePrice),
             imageUrl: parsed.imageUrl.isNotEmpty
                 ? parsed.imageUrl
                 : product.imageUrl,
@@ -481,6 +509,36 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       return product;
     } on DioException catch (e, st) {
       throwDioAsApp(e, fallback: 'Error en productos', stackTrace: st);
+    }
+  }
+
+  @override
+  Future<Product?> updateClubSalePrice({
+    required int clubId,
+    required String productId,
+    required double? precioVenta,
+  }) async {
+    try {
+      final response = await _client.patch(
+        '/clubes/$clubId/productos/$productId/precio',
+        data: <String, dynamic>{'precioVenta': precioVenta},
+      );
+      if (response.statusCode != 200 &&
+          response.statusCode != 201 &&
+          response.statusCode != 204) {
+        throw ServerException(
+          'Error al actualizar el precio de venta',
+          statusCode: response.statusCode,
+        );
+      }
+      if (response.data is Map) {
+        final map = Map<String, dynamic>.from(response.data as Map);
+        if (map.isNotEmpty) return Product.fromMap(map);
+      }
+      return null;
+    } on DioException catch (e, st) {
+      throwDioAsApp(e,
+          fallback: 'Error al actualizar el precio de venta', stackTrace: st);
     }
   }
 

@@ -254,6 +254,7 @@ class CounterSaleProvider extends ChangeNotifier implements SessionScopedState {
           'productoId': productoId,
           'cantidad': item.quantity,
           'nota': item.note.trim(),
+          'opciones': <Map<String, dynamic>>[],
         };
         if (item.comboId != null) {
           map['comboId'] = item.comboId;

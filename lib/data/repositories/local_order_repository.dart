@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import '../../core/database/database_helper.dart';
 import '../../core/utils/app_logger.dart';
 import '../../domain/entities/order_entity.dart';
+import '../../domain/entities/order_item_option.dart';
 import '../../domain/repositories/order_repository.dart';
 
 typedef DatabaseGetter = Future<Database> Function();
@@ -51,7 +52,13 @@ class LocalOrderRepository implements OrderRepository {
       );
 
       for (final item in order.items) {
-        await txn.insert('order_items', item.toMap());
+        final itemId = await txn.insert('order_items', item.toMap());
+        for (final opt in item.options) {
+          await txn.insert(
+            'order_item_options',
+            opt.toSqlMap(orderItemId: itemId),
+          );
+        }
       }
     });
   }
@@ -169,6 +176,21 @@ class LocalOrderRepository implements OrderRepository {
     await db.transaction((txn) async {
       for (final chunk in _chunks(ids, sqliteInChunkSize)) {
         final placeholders = List.filled(chunk.length, '?').join(',');
+        final itemRows = await txn.rawQuery(
+          'SELECT id FROM order_items WHERE order_id IN ($placeholders)',
+          chunk,
+        );
+        final itemIds = itemRows
+            .map((r) => r['id'])
+            .whereType<int>()
+            .toList();
+        if (itemIds.isNotEmpty) {
+          final itemPh = List.filled(itemIds.length, '?').join(',');
+          await txn.rawDelete(
+            'DELETE FROM order_item_options WHERE order_item_id IN ($itemPh)',
+            itemIds,
+          );
+        }
         await txn.rawDelete(
           'DELETE FROM order_items WHERE order_id IN ($placeholders)',
           chunk,
@@ -201,6 +223,7 @@ class LocalOrderRepository implements OrderRepository {
     final itemsByOrderId = <String, List<OrderItem>>{
       for (final id in orderIds) id: <OrderItem>[],
     };
+    final optionsByItemId = <int, List<OrderItemOption>>{};
 
     for (final chunk in _chunks(orderIds, sqliteInChunkSize)) {
       if (chunk.isEmpty) continue;
@@ -231,21 +254,49 @@ class LocalOrderRepository implements OrderRepository {
         );
       }
 
+      final itemIds = itemRows
+          .map((m) => _optionalInt(m['id']))
+          .whereType<int>()
+          .toList();
+      if (itemIds.isNotEmpty) {
+        for (final idChunk in _chunks(itemIds, sqliteInChunkSize)) {
+          final idPh = List.filled(idChunk.length, '?').join(',');
+          _trackSql();
+          final optRows = await db.rawQuery(
+            '''
+            SELECT *
+            FROM order_item_options
+            WHERE order_item_id IN ($idPh)
+            ORDER BY order_item_id ASC, group_order ASC, option_order ASC
+            ''',
+            idChunk,
+          );
+          for (final row in optRows) {
+            final oid = _optionalInt(row['order_item_id']);
+            if (oid == null) continue;
+            optionsByItemId.putIfAbsent(oid, () => []).add(
+                  OrderItemOption.fromSqlMap(row),
+                );
+          }
+        }
+      }
+
       for (final m in itemRows) {
         final orderId = m['order_id']?.toString();
         if (orderId == null) continue;
         final list = itemsByOrderId[orderId];
         if (list == null) continue;
+        final itemId = _optionalInt(m['id']);
         list.add(
           OrderItem.fromMap(
             m,
             productName: (m['product_name'] as String?) ?? '',
+            options: itemId != null ? (optionsByItemId[itemId] ?? const []) : const [],
           ),
         );
       }
     }
 
-    // Conservar el orden de las filas de órdenes (ya ordenadas por la query).
     return [
       for (final row in orderRows)
         OrderEntity.fromMap(
@@ -261,5 +312,11 @@ class LocalOrderRepository implements OrderRepository {
       final end = (i + size < source.length) ? i + size : source.length;
       yield source.sublist(i, end);
     }
+  }
+
+  static int? _optionalInt(Object? value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    return int.tryParse(value.toString());
   }
 }

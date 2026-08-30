@@ -10,7 +10,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 Future<Database> _openOrderTestDb({
   String? path,
-  int version = 11,
+  int version = 13,
 }) async {
   return databaseFactoryFfi.openDatabase(
     path ?? inMemoryDatabasePath,
@@ -43,7 +43,22 @@ Future<Database> _openOrderTestDb({
             order_id TEXT,
             product_id TEXT,
             quantity INTEGER,
-            note TEXT
+            note TEXT,
+            combo_id INTEGER
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE order_item_options(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_item_id INTEGER NOT NULL,
+            group_id INTEGER,
+            group_name TEXT,
+            group_order INTEGER DEFAULT 0,
+            option_id INTEGER,
+            option_name TEXT,
+            option_order INTEGER DEFAULT 0,
+            quantity INTEGER DEFAULT 1,
+            FOREIGN KEY(order_item_id) REFERENCES order_items(id) ON DELETE CASCADE
           )
         ''');
         if (v >= 11) {
@@ -54,6 +69,10 @@ Future<Database> _openOrderTestDb({
           await db.execute(
             'CREATE INDEX IF NOT EXISTS idx_order_items_order_id '
             'ON order_items(order_id)',
+          );
+          await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_order_item_options_item_id '
+            'ON order_item_options(order_item_id)',
           );
         }
       },
@@ -66,6 +85,31 @@ Future<Database> _openOrderTestDb({
           await db.execute(
             'CREATE INDEX IF NOT EXISTS idx_order_items_order_id '
             'ON order_items(order_id)',
+          );
+        }
+        if (oldVersion < 13 && newVersion >= 13) {
+          try {
+            await db.execute(
+              'ALTER TABLE order_items ADD COLUMN combo_id INTEGER',
+            );
+          } catch (_) {}
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS order_item_options(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              order_item_id INTEGER NOT NULL,
+              group_id INTEGER,
+              group_name TEXT,
+              group_order INTEGER DEFAULT 0,
+              option_id INTEGER,
+              option_name TEXT,
+              option_order INTEGER DEFAULT 0,
+              quantity INTEGER DEFAULT 1,
+              FOREIGN KEY(order_item_id) REFERENCES order_items(id) ON DELETE CASCADE
+            )
+          ''');
+          await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_order_item_options_item_id '
+            'ON order_item_options(order_item_id)',
           );
         }
       },
@@ -209,7 +253,7 @@ void main() {
       final orders = await repo.getOrdersByUser('A');
       expect(orders, hasLength(1));
       expect(orders.first.items, isEmpty);
-      // orders query + 1 items batch
+      // orders query + 1 items batch (sin query de opciones si no hay items)
       expect(repo.sqlCallCount, 2);
     });
 
@@ -347,8 +391,8 @@ void main() {
       repo.resetSqlCallCount();
       final orders = await repo.getOrdersByUser('A');
       expect(orders, hasLength(10));
-      // 1 orders + 1 items batch (+0 orphans path N/A)
-      expect(repo.sqlCallCount, lessThanOrEqualTo(2));
+      // 1 orders + 1 items batch + 1 options batch
+      expect(repo.sqlCallCount, lessThanOrEqualTo(3));
       expect(repo.sqlCallCount, isNot(10 + 1));
     });
 
@@ -370,7 +414,7 @@ void main() {
       final orders = await repo.getOrdersByUser('A');
       expect(orders, hasLength(100));
       expect(orders.every((o) => o.items.length == 2), isTrue);
-      expect(repo.sqlCallCount, lessThanOrEqualTo(2));
+      expect(repo.sqlCallCount, lessThanOrEqualTo(3));
     });
 
     test('más del chunk size: crece por chunks, no por orden', () async {
@@ -390,7 +434,8 @@ void main() {
       repo.resetSqlCallCount();
       final orders = await repo.getOrdersByUser('A');
       expect(orders, hasLength(n));
-      expect(repo.sqlCallCount, 3); // 1 + ceil(501/500)
+      // 1 orders + 2 item chunks + 2 option chunks (501 líneas)
+      expect(repo.sqlCallCount, 5);
       expect(repo.sqlCallCount, lessThan(n));
     });
 

@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/bolivian_price.dart';
 import 'package:flutter_app_saludable/data/datasources/remote/product_remote_data_source.dart';
 import 'package:flutter_app_saludable/domain/entities/product.dart';
 import 'package:flutter_app_saludable/presentation/widgets/product_image.dart';
@@ -28,6 +29,7 @@ class _HostProductReviewScreenState extends State<HostProductReviewScreen> {
   late Product _product;
   bool _didChange = false;
   bool _isResending = false;
+  bool _isSavingPrice = false;
 
   @override
   void initState() {
@@ -41,6 +43,70 @@ class _HostProductReviewScreenState extends State<HostProductReviewScreen> {
 
   bool get _canEditApprovedDefinition =>
       _product.canHostEditDefinition(widget.clubId);
+
+  bool get _canSetClubSalePrice => _product.canHostSetClubSalePrice;
+
+  Future<void> _saveClubSalePrice(double? precioVenta) async {
+    setState(() => _isSavingPrice = true);
+    try {
+      final ds = Provider.of<ProductRemoteDataSource>(context, listen: false);
+      final updated = await ds.updateClubSalePrice(
+        clubId: widget.clubId,
+        productId: _product.id,
+        precioVenta: precioVenta,
+      );
+      if (!mounted) return;
+      setState(() {
+        if (updated != null && updated.id == _product.id) {
+          _product = _product.copyWith(
+            price: updated.price > 0 ? updated.price : _product.price,
+            effectivePrice: updated.effectivePrice,
+            clubSalePrice: updated.clubSalePrice,
+          );
+        } else {
+          _product = _product.copyWith(
+            clubSalePrice: precioVenta,
+            effectivePrice: precioVenta ?? _product.price,
+          );
+        }
+        _didChange = true;
+        _isSavingPrice = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Precio de venta actualizado'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSavingPrice = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(ErrorMapper.publicMessage(e,
+              fallback: 'Error al actualizar el precio')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _openSalePriceEditor() async {
+    if (_isSavingPrice || _isResending) return;
+    final result = await showModalBottomSheet<Object?>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _ClubSalePriceSheet(product: _product),
+    );
+    if (!mounted || result == null) return;
+    if (result == 'suggested') {
+      await _saveClubSalePrice(null);
+      return;
+    }
+    if (result is double) {
+      await _saveClubSalePrice(result);
+    }
+  }
 
   Future<void> _editProposal() async {
     final result = await context.push<Object?>(
@@ -187,9 +253,11 @@ class _HostProductReviewScreenState extends State<HostProductReviewScreen> {
             onPressed: _popWithResult,
           ),
         ),
-        body: ListView(
+        body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
-          children: [
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             _StatusBanner(product: _product),
             const SizedBox(height: 16),
             if (_product.imageUrl.isNotEmpty)
@@ -227,6 +295,29 @@ class _HostProductReviewScreenState extends State<HostProductReviewScreen> {
                 fontSize: 16,
               ),
             ),
+            const SizedBox(height: 16),
+            _PriceBlock(product: _product),
+            if (_canSetClubSalePrice) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: OutlinedButton.icon(
+                  key: const Key('cambiar-precio'),
+                  onPressed: (_isSavingPrice || _isResending)
+                      ? null
+                      : _openSalePriceEditor,
+                  icon: _isSavingPrice
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(LucideIcons.banknote, size: 18),
+                  label: const Text('Cambiar precio'),
+                ),
+              ),
+            ],
             if (_product.optionGroups != null &&
                 _product.optionGroups!.isNotEmpty) ...[
               const SizedBox(height: 24),
@@ -318,8 +409,24 @@ class _HostProductReviewScreenState extends State<HostProductReviewScreen> {
                 ),
               ),
             ],
-            if (_canEditApprovedDefinition) ...[
-              const SizedBox(height: 32),
+          ],
+          ),
+        ),
+        bottomNavigationBar: _buildReviewActions(rejected),
+      ),
+    );
+  }
+
+  Widget? _buildReviewActions(bool rejected) {
+    final editApproved = _canEditApprovedDefinition;
+    if (!editApproved && !rejected) return null;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (editApproved)
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -330,9 +437,7 @@ class _HostProductReviewScreenState extends State<HostProductReviewScreen> {
                   label: const Text('Editar producto'),
                 ),
               ),
-            ],
             if (rejected) ...[
-              const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -461,6 +566,31 @@ class _StatusBanner extends StatelessWidget {
   }
 }
 
+class _PriceBlock extends StatelessWidget {
+  const _PriceBlock({required this.product});
+
+  final Product product;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Precio de venta',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          BolivianPrice.label(product.effectivePrice),
+          key: const Key('review-precio-venta'),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
+  }
+}
+
 class _LabeledBlock extends StatelessWidget {
   const _LabeledBlock({required this.label, required this.value});
 
@@ -476,6 +606,140 @@ class _LabeledBlock extends StatelessWidget {
         const SizedBox(height: 4),
         Text(value),
       ],
+    );
+  }
+}
+
+/// Bottom sheet de cambio de precio. GLOBAL muestra precio sugerido ADMIN;
+/// LOCAL solo precio de venta (sin reset).
+class _ClubSalePriceSheet extends StatefulWidget {
+  const _ClubSalePriceSheet({required this.product});
+
+  final Product product;
+
+  @override
+  State<_ClubSalePriceSheet> createState() => _ClubSalePriceSheetState();
+}
+
+class _ClubSalePriceSheetState extends State<_ClubSalePriceSheet> {
+  late final TextEditingController _controller;
+
+  bool get _isGlobal => widget.product.isGlobal;
+
+  double get _initialSalePrice {
+    final p = widget.product;
+    if (p.effectivePrice > 0) return p.effectivePrice;
+    if (p.clubSalePrice != null && p.clubSalePrice! > 0) {
+      return p.clubSalePrice!;
+    }
+    return p.price;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: _initialSalePrice > 0
+          ? _initialSalePrice.toStringAsFixed(2)
+          : '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Cambiar precio',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          if (_isGlobal) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Precio sugerido por administrador',
+              style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              BolivianPrice.formatBs(widget.product.price),
+              key: const Key('global-precio-sugerido'),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Precio de venta en tu club',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ] else ...[
+            const SizedBox(height: 12),
+            const Text(
+              'Precio de venta (Bs)',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
+          const SizedBox(height: 8),
+          TextField(
+            key: const Key('club-sale-price-field'),
+            controller: _controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              hintText: 'Ej: 32.00',
+              prefixText: 'Bs ',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          if (_isGlobal) ...[
+            const SizedBox(height: 8),
+            TextButton(
+              key: const Key('usar-precio-sugerido'),
+              onPressed: () => Navigator.pop(context, 'suggested'),
+              child: const Text('Usar precio sugerido'),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancelar'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  key: const Key('guardar-precio-venta'),
+                  onPressed: () {
+                    final n = double.tryParse(
+                        _controller.text.trim().replaceAll(',', '.'));
+                    if (n == null || n <= 0) return;
+                    Navigator.pop(context, n);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Guardar'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
