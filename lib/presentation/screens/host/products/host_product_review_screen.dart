@@ -104,6 +104,7 @@ class _HostProductReviewScreenState extends State<HostProductReviewScreen> {
           imageUrl: updated.imageUrl.isNotEmpty
               ? updated.imageUrl
               : _product.imageUrl,
+          optionGroups: updated.optionGroups ?? _product.optionGroups,
           comentarioRevision:
               updated.comentarioRevision ?? _product.comentarioRevision,
           revisadoPorNombre:
@@ -194,6 +195,19 @@ class _HostProductReviewScreenState extends State<HostProductReviewScreen> {
                 fontSize: 16,
               ),
             ),
+            if (_product.optionGroups != null &&
+                _product.optionGroups!.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              const Text(
+                'Opciones del producto',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              for (final group in _product.optionGroups!) ...[
+                _OptionGroupReadOnly(group: group),
+                const SizedBox(height: 12),
+              ],
+            ],
             if (rejected) ...[
               const SizedBox(height: 24),
               Container(
@@ -310,6 +324,52 @@ class _HostProductReviewScreenState extends State<HostProductReviewScreen> {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _OptionGroupReadOnly extends StatelessWidget {
+  const _OptionGroupReadOnly({required this.group});
+
+  final ProductOptionGroup group;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            group.name,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            group.selectionRuleLabel,
+            style: const TextStyle(color: Colors.black87),
+          ),
+          if (group.allowRepeat) ...[
+            const SizedBox(height: 4),
+            const Text(
+              'Permite repetir',
+              style: TextStyle(fontSize: 13, color: Colors.black54),
+            ),
+          ],
+          const SizedBox(height: 8),
+          for (final option in group.options)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text('• ${option.name}'),
+            ),
+        ],
       ),
     );
   }

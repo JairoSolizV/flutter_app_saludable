@@ -47,6 +47,7 @@ class _FakeProductRemoteDataSource implements ProductRemoteDataSource {
     required String ingredientes,
     required int puntosValor,
     String? imagenUrl,
+    List<ProductOptionGroup>? optionGroups,
   }) async {}
 
   @override

@@ -130,6 +130,39 @@ void main() {
       expect(local.estadoAprobacion, 'RECHAZADO');
     }));
 
+    test('parsea gruposOpciones del ANFITRION', async_(() async {
+      adapter.stub('GET', '/productos', data: [], queryContains: {'tipo': 'GLOBAL'});
+      adapter.stub('GET', '/productos', data: [
+        {
+          'id': 6,
+          'nombre': 'Batido',
+          'tipo': 'LOCAL',
+          'estadoAprobacion': 'PENDIENTE',
+          'clubCreadorId': 3,
+          'gruposOpciones': [
+            {
+              'id': 1,
+              'nombre': 'Sabores',
+              'orden': 0,
+              'minSelecciones': 1,
+              'maxSelecciones': 2,
+              'permiteRepetir': true,
+              'opciones': [
+                {'id': 10, 'nombre': 'Frutilla', 'orden': 0, 'activo': true},
+                {'id': 11, 'nombre': 'Vainilla', 'orden': 1, 'activo': true},
+              ],
+            },
+          ],
+        },
+      ], queryContains: {'tipo': 'LOCAL'});
+
+      final products = await ds.getProducts(hubId: 1, clubId: 3);
+      final local = products.first;
+      expect(local.optionGroups, hasLength(1));
+      expect(local.optionGroups!.first.options.map((o) => o.name),
+          ['Frutilla', 'Vainilla']);
+    }));
+
     test('extrae de envoltorio content y data y productos', async_(() async {
       adapter.stub('GET', '/productos', data: {
         'content': [
@@ -272,6 +305,39 @@ void main() {
         imagenUrl: 'http://x.png',
       );
       expect(adapter.requests, hasLength(1));
+      final data = adapter.requests.single.data as Map;
+      expect(data.containsKey('gruposOpciones'), isFalse);
+    }));
+
+    test('incluye gruposOpciones cuando hay definición', async_(() async {
+      adapter.stub('POST', '/productos', statusCode: 201, data: {});
+      await ds.createProductProposal(
+        hubId: 1,
+        nombre: 'Batido',
+        descripcion: 'D',
+        ingredientes: 'I',
+        puntosValor: 10,
+        optionGroups: [
+          ProductOptionGroup(
+            name: 'Sabores',
+            orden: 0,
+            minSelections: 1,
+            maxSelections: null,
+            allowRepeat: true,
+            options: [
+              ProductOption(name: 'Frutilla', orden: 0),
+              ProductOption(name: 'Chocolate', orden: 1),
+            ],
+          ),
+        ],
+      );
+      final data = adapter.requests.single.data as Map;
+      expect(data['gruposOpciones'], isA<List>());
+      final group = (data['gruposOpciones'] as List).first as Map;
+      expect(group['nombre'], 'Sabores');
+      expect(group['maxSelecciones'], isNull);
+      expect(group['permiteRepetir'], isTrue);
+      expect((group['opciones'] as List).length, 2);
     }));
 
     test('sin imagenUrl no la incluye pero funciona', async_(() async {
@@ -326,12 +392,40 @@ void main() {
       expect(data['activo'], isTrue);
     }));
 
-    test('omite imagenUrl e ingredientes nulos para no borrar datos', async_(() async {
+    test('manda gruposOpciones completos incluyendo max null', async_(() async {
+      adapter.stub('PUT', '/productos/1', statusCode: 200, data: {});
+      await ds.updateProduct(Product(
+        id: '1',
+        name: 'Batido',
+        description: 'D',
+        ingredientes: 'I',
+        puntosValor: 10,
+        optionGroups: [
+          ProductOptionGroup(
+            name: 'Sabores',
+            orden: 0,
+            minSelections: 1,
+            maxSelections: null,
+            allowRepeat: true,
+            options: [
+              ProductOption(id: 10, name: 'Frutilla', orden: 0),
+            ],
+          ),
+        ],
+      ));
+      final data = adapter.requests.single.data as Map;
+      expect(data.containsKey('gruposOpciones'), isTrue);
+      expect((data['gruposOpciones'] as List).first['maxSelecciones'], isNull);
+      expect((data['gruposOpciones'] as List).first['nombre'], 'Sabores');
+    }));
+
+    test('omite gruposOpciones si optionGroups es null (preservar)', async_(() async {
       adapter.stub('PUT', '/productos/1', statusCode: 200, data: {});
       await ds.updateProduct(Product(id: '1', name: 'P', description: 'D'));
       final data = adapter.requests.single.data as Map;
       expect(data.containsKey('imagenUrl'), isFalse);
       expect(data.containsKey('ingredientes'), isFalse);
+      expect(data.containsKey('gruposOpciones'), isFalse);
     }));
 
     test('error se mapea', async_(() async {

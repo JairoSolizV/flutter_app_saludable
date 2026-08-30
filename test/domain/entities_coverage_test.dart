@@ -121,6 +121,39 @@ void main() {
       expect(p.shouldOpenHostReview, isTrue);
     });
 
+    test('fromMap parsea gruposOpciones y tolera payload viejo sin grupos', () {
+      final withGroups = Product.fromMap({
+        'id': 6,
+        'nombre': 'Batido',
+        'gruposOpciones': [
+          {
+            'id': 1,
+            'nombre': 'Sabores',
+            'orden': 0,
+            'minSelecciones': 1,
+            'maxSelecciones': null,
+            'permiteRepetir': true,
+            'opciones': [
+              {'id': 10, 'nombre': 'Frutilla', 'orden': 0, 'activo': true},
+            ],
+          },
+        ],
+      });
+      expect(withGroups.optionGroups, isNotNull);
+      expect(withGroups.optionGroups, hasLength(1));
+      expect(withGroups.optionGroups!.first.name, 'Sabores');
+      expect(withGroups.optionGroups!.first.maxSelections, isNull);
+      expect(withGroups.optionGroups!.first.allowRepeat, isTrue);
+      expect(withGroups.optionGroups!.first.options.first.name, 'Frutilla');
+
+      final legacy = Product.fromMap({
+        'id': '9',
+        'nombre': 'Té',
+        'descripcion': 'Caliente',
+      });
+      expect(legacy.optionGroups, isNull);
+    });
+
     test('fromMap tolera payloads antiguos sin campos de revisión', () {
       final p = Product.fromMap({
         'id': '9',
@@ -135,7 +168,7 @@ void main() {
       expect(p.shouldOpenHostReview, isFalse);
     });
 
-    test('toMap no incluye campos de revisión (SQLite)', () {
+    test('toMap no incluye campos de revisión ni grupos (SQLite)', () {
       final p = Product(
         id: '6',
         name: 'Frappe',
@@ -146,12 +179,20 @@ void main() {
         revisadoAt: DateTime(2026, 8, 29),
         tipo: 'LOCAL',
         estadoAprobacion: 'RECHAZADO',
+        optionGroups: [
+          ProductOptionGroup(
+            name: 'Sabores',
+            options: [ProductOption(name: 'Frutilla')],
+          ),
+        ],
       );
       final map = p.toMap();
       expect(map.containsKey('comentarioRevision'), isFalse);
       expect(map.containsKey('ingredientes'), isFalse);
       expect(map.containsKey('revisadoPorNombre'), isFalse);
       expect(map.containsKey('revisadoAt'), isFalse);
+      expect(map.containsKey('gruposOpciones'), isFalse);
+      expect(map.containsKey('optionGroups'), isFalse);
     });
   });
 

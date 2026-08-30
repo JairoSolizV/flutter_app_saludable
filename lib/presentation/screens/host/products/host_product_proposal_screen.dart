@@ -10,6 +10,7 @@ import '../../../../domain/entities/product.dart';
 import '../../../widgets/product_image.dart';
 import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'product_option_groups_section.dart';
 
 class HostProductProposalScreen extends StatefulWidget {
   final Product? product;
@@ -31,6 +32,7 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
   bool _isSubmitting = false;
   File? _pickedImage;
   String? _imagenUrl;
+  final List<ProductOptionGroupDraft> _optionGroups = [];
 
   bool get _isEditing => widget.product != null;
 
@@ -45,6 +47,12 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
       _puntosValorCtrl.text =
           existing.puntosValor > 0 ? existing.puntosValor.toString() : '';
       _imagenUrl = existing.imageUrl.isEmpty ? null : existing.imageUrl;
+      final groups = existing.optionGroups;
+      if (groups != null) {
+        for (final group in groups) {
+          _optionGroups.add(ProductOptionGroupDraft.fromGroup(group));
+        }
+      }
     }
   }
 
@@ -66,11 +74,42 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
     _descripcionCtrl.dispose();
     _ingredientesCtrl.dispose();
     _puntosValorCtrl.dispose();
+    for (final group in _optionGroups) {
+      group.dispose();
+    }
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (hasUnresolvedMax(_optionGroups)) {
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Indicá un máximo o marcá Sin límite'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final builtGroups = [
+      for (var i = 0; i < _optionGroups.length; i++)
+        _optionGroups[i].toGroup(orden: i),
+    ];
+    final groupIssues = ProductOptionGroupValidator.validate(builtGroups);
+    if (groupIssues.isNotEmpty) {
+      setState(() => applyOptionGroupIssues(_optionGroups, groupIssues));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(groupIssues.first.message),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    setState(() => applyOptionGroupIssues(_optionGroups, const []));
 
     final puntos = int.tryParse(_puntosValorCtrl.text.trim());
     if (puntos == null || puntos <= 0) {
@@ -107,6 +146,7 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
           imageUrl: (imagenUrlToSend != null && imagenUrlToSend.isNotEmpty)
               ? imagenUrlToSend
               : original.imageUrl,
+          optionGroups: builtGroups,
         );
         await dataSource.updateProduct(updated);
         if (!mounted) return;
@@ -134,6 +174,7 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
         ingredientes: _ingredientesCtrl.text.trim(),
         puntosValor: puntos,
         imagenUrl: imagenUrlToSend,
+        optionGroups: builtGroups.isEmpty ? null : builtGroups,
       );
 
       if (!mounted) return;
@@ -306,6 +347,28 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? 'Ingresa los puntos de valor'
                     : null,
+              ),
+              const SizedBox(height: 16),
+              if (_isEditing && widget.product!.isAprobado) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: const Text(
+                    'Al guardar cambios en la definición, el producto volverá a revisión.',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              ProductOptionGroupsSection(
+                groups: _optionGroups,
+                enabled: !_isSubmitting,
+                onChanged: () => setState(() {}),
               ),
               const SizedBox(height: 24),
               SizedBox(

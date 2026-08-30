@@ -15,6 +15,7 @@ abstract class ProductRemoteDataSource {
   Future<String> uploadProductImage(File imageFile);
 
   /// Enviar propuesta de producto. imagenUrl opcional (foto subida o URL).
+  /// [optionGroups] se envía solo si hay definición; no se manda null.
   Future<void> createProductProposal({
     required int hubId,
     required String nombre,
@@ -22,6 +23,7 @@ abstract class ProductRemoteDataSource {
     required String ingredientes,
     required int puntosValor,
     String? imagenUrl,
+    List<ProductOptionGroup>? optionGroups,
   });
   Future<void> updateProduct(Product product);
 
@@ -148,6 +150,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
             revisadoPorUsuarioId: _optionalInt(json['revisadoPorUsuarioId']),
             revisadoPorNombre: _optionalString(json['revisadoPorNombre']),
             revisadoAt: _optionalDateTime(json['revisadoAt']),
+            optionGroups: ProductOptionGroup.listFromJson(json['gruposOpciones']),
           );
         }
 
@@ -382,6 +385,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
     required String ingredientes,
     required int puntosValor,
     String? imagenUrl,
+    List<ProductOptionGroup>? optionGroups,
   }) async {
     try {
       final data = <String, dynamic>{
@@ -394,6 +398,10 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       };
       if (imagenUrl != null && imagenUrl.isNotEmpty) {
         data['imagenUrl'] = imagenUrl;
+      }
+      if (optionGroups != null && optionGroups.isNotEmpty) {
+        data['gruposOpciones'] =
+            optionGroups.map((g) => g.toApiMap()).toList();
       }
 
       debugPrint('[DEBUG PRODUCTOS] Enviando propuesta de producto: $data');
@@ -432,6 +440,10 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       }
       if (product.imageUrl.isNotEmpty) {
         data['imagenUrl'] = product.imageUrl;
+      }
+      if (product.optionGroups != null) {
+        data['gruposOpciones'] =
+            product.optionGroups!.map((g) => g.toApiMap()).toList();
       }
       // Endpoint PUT /api/productos/{id}
       await _client.put('/productos/${product.id}', data: data);

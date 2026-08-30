@@ -1,3 +1,7 @@
+import 'product_option.dart';
+
+export 'product_option.dart';
+
 class Product {
   final String id;
   final String name;
@@ -20,6 +24,9 @@ class Product {
   final String? revisadoPorNombre;
   final DateTime? revisadoAt;
 
+  /// Definición estructural de grupos/opciones. Remote-only.
+  final List<ProductOptionGroup>? optionGroups;
+
   Product({
     required this.id,
     required this.name,
@@ -39,6 +46,7 @@ class Product {
     this.revisadoPorUsuarioId,
     this.revisadoPorNombre,
     this.revisadoAt,
+    this.optionGroups,
   });
 
   bool get isLocal => tipo.toUpperCase() == 'LOCAL';
@@ -90,10 +98,11 @@ class Product {
       revisadoPorUsuarioId: _optionalInt(map['revisadoPorUsuarioId']),
       revisadoPorNombre: _optionalString(map['revisadoPorNombre']),
       revisadoAt: _optionalDateTime(map['revisadoAt']),
+      optionGroups: ProductOptionGroup.listFromJson(map['gruposOpciones']),
     );
   }
 
-  /// Solo columnas SQLite existentes. Los campos de revisión son remote-only.
+  /// Solo columnas SQLite existentes. Revisión y optionGroups son remote-only.
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -131,6 +140,7 @@ class Product {
     int? revisadoPorUsuarioId,
     String? revisadoPorNombre,
     DateTime? revisadoAt,
+    List<ProductOptionGroup>? optionGroups,
   }) {
     return Product(
       id: id ?? this.id,
@@ -151,6 +161,7 @@ class Product {
       revisadoPorUsuarioId: revisadoPorUsuarioId ?? this.revisadoPorUsuarioId,
       revisadoPorNombre: revisadoPorNombre ?? this.revisadoPorNombre,
       revisadoAt: revisadoAt ?? this.revisadoAt,
+      optionGroups: optionGroups ?? this.optionGroups,
     );
   }
 
