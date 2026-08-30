@@ -469,11 +469,6 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
             itemCount: _combos.length,
             itemBuilder: (context, index) {
               final combo = _combos[index];
-              final itemsText = combo.items.map((i) {
-                String label = '${i.cantidad}x ${i.productoNombre}';
-                if (i.saborNombre != null) label += ' (${i.saborNombre})';
-                return label;
-              }).join(', ');
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -494,19 +489,24 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (combo.descripcion != null && combo.descripcion!.isNotEmpty)
-                        Text(combo.descripcion!, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 2),
                       Text(
-                        itemsText,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        combo.hasConfiguredPrice
+                            ? BolivianPrice.formatBs(combo.price)
+                            : 'Precio no configurado',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: combo.hasConfiguredPrice
+                              ? Colors.black87
+                              : Colors.orange.shade800,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Puntos: ${combo.puntosValor}',
-                        style: const TextStyle(fontWeight: FontWeight.w500, color: AppTheme.primaryColor),
+                        '${combo.puntosValor} puntos',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: AppTheme.primaryColor,
+                        ),
                       ),
                     ],
                   ),

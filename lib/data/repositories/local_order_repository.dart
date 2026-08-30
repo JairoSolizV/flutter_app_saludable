@@ -4,6 +4,7 @@ import '../../core/database/database_helper.dart';
 import '../../core/utils/app_logger.dart';
 import '../../domain/entities/order_entity.dart';
 import '../../domain/entities/order_item_option.dart';
+import '../../domain/entities/order_combo.dart';
 import '../../domain/repositories/order_repository.dart';
 
 typedef DatabaseGetter = Future<Database> Function();
@@ -58,6 +59,30 @@ class LocalOrderRepository implements OrderRepository {
             'order_item_options',
             opt.toSqlMap(orderItemId: itemId),
           );
+        }
+      }
+
+      for (final combo in order.combos) {
+        final comboLocalId = await txn.insert('order_combos', {
+          'order_id': combo.orderId,
+          'combo_id': combo.comboId,
+          'combo_name': combo.comboName,
+          'quantity': combo.quantity,
+          'price_snapshot': combo.priceSnapshot,
+          'points_snapshot': combo.pointsSnapshot,
+        });
+        for (final component in combo.components) {
+          final componentId = await txn.insert('order_combo_components', {
+            'order_combo_id': comboLocalId,
+            'product_id': component.productId.toString(),
+            'product_name': component.productName,
+          });
+          for (final opt in component.options) {
+            await txn.insert(
+              'order_combo_component_options',
+              opt.toSqlMapForComboComponent(componentId: componentId),
+            );
+          }
         }
       }
     });
@@ -191,6 +216,40 @@ class LocalOrderRepository implements OrderRepository {
             itemIds,
           );
         }
+        final comboRows = await txn.rawQuery(
+          'SELECT id FROM order_combos WHERE order_id IN ($placeholders)',
+          chunk,
+        );
+        final comboIds = comboRows
+            .map((r) => r['id'])
+            .whereType<int>()
+            .toList();
+        if (comboIds.isNotEmpty) {
+          final comboPh = List.filled(comboIds.length, '?').join(',');
+          final componentRows = await txn.rawQuery(
+            'SELECT id FROM order_combo_components WHERE order_combo_id IN ($comboPh)',
+            comboIds,
+          );
+          final componentIds = componentRows
+              .map((r) => r['id'])
+              .whereType<int>()
+              .toList();
+          if (componentIds.isNotEmpty) {
+            final compPh = List.filled(componentIds.length, '?').join(',');
+            await txn.rawDelete(
+              'DELETE FROM order_combo_component_options WHERE component_id IN ($compPh)',
+              componentIds,
+            );
+          }
+          await txn.rawDelete(
+            'DELETE FROM order_combo_components WHERE order_combo_id IN ($comboPh)',
+            comboIds,
+          );
+          await txn.rawDelete(
+            'DELETE FROM order_combos WHERE id IN ($comboPh)',
+            comboIds,
+          );
+        }
         await txn.rawDelete(
           'DELETE FROM order_items WHERE order_id IN ($placeholders)',
           chunk,
@@ -223,7 +282,12 @@ class LocalOrderRepository implements OrderRepository {
     final itemsByOrderId = <String, List<OrderItem>>{
       for (final id in orderIds) id: <OrderItem>[],
     };
+    final combosByOrderId = <String, List<OrderCombo>>{
+      for (final id in orderIds) id: <OrderCombo>[],
+    };
     final optionsByItemId = <int, List<OrderItemOption>>{};
+    final optionsByComponentId = <int, List<OrderItemOption>>{};
+    final componentsByComboId = <int, List<OrderComboComponent>>{};
 
     for (final chunk in _chunks(orderIds, sqliteInChunkSize)) {
       if (chunk.isEmpty) continue;
@@ -297,13 +361,116 @@ class LocalOrderRepository implements OrderRepository {
       }
     }
 
+    for (final chunk in _chunks(orderIds, sqliteInChunkSize)) {
+      if (chunk.isEmpty) continue;
+      final placeholders = List.filled(chunk.length, '?').join(',');
+      _trackSql();
+      final comboRows = await db.rawQuery(
+        '''
+        SELECT *
+        FROM order_combos
+        WHERE order_id IN ($placeholders)
+        ORDER BY order_id ASC, id ASC
+        ''',
+        chunk,
+      );
+      final comboLocalIds = comboRows
+          .map((m) => _optionalInt(m['id']))
+          .whereType<int>()
+          .toList();
+      if (comboLocalIds.isNotEmpty) {
+        for (final idChunk in _chunks(comboLocalIds, sqliteInChunkSize)) {
+          final idPh = List.filled(idChunk.length, '?').join(',');
+          _trackSql();
+          final componentRows = await db.rawQuery(
+            '''
+            SELECT *
+            FROM order_combo_components
+            WHERE order_combo_id IN ($idPh)
+            ORDER BY order_combo_id ASC, id ASC
+            ''',
+            idChunk,
+          );
+          final componentIds = componentRows
+              .map((m) => _optionalInt(m['id']))
+              .whereType<int>()
+              .toList();
+          if (componentIds.isNotEmpty) {
+            for (final compChunk in _chunks(componentIds, sqliteInChunkSize)) {
+              final compPh = List.filled(compChunk.length, '?').join(',');
+              _trackSql();
+              final optRows = await db.rawQuery(
+                '''
+                SELECT *
+                FROM order_combo_component_options
+                WHERE component_id IN ($compPh)
+                ORDER BY component_id ASC, group_order ASC, option_order ASC
+                ''',
+                compChunk,
+              );
+              for (final row in optRows) {
+                final cid = _optionalInt(row['component_id']);
+                if (cid == null) continue;
+                optionsByComponentId.putIfAbsent(cid, () => []).add(
+                      OrderItemOption.fromComboComponentSqlMap(row),
+                    );
+              }
+            }
+          }
+          for (final m in componentRows) {
+            final comboLocalId = _optionalInt(m['order_combo_id']);
+            if (comboLocalId == null) continue;
+            final componentId = _optionalInt(m['id']);
+            componentsByComboId.putIfAbsent(comboLocalId, () => []).add(
+                  OrderComboComponent(
+                    localId: componentId?.toString(),
+                    productId: int.tryParse(m['product_id']?.toString() ?? '') ?? 0,
+                    productName: m['product_name']?.toString() ?? '',
+                    options: componentId != null
+                        ? (optionsByComponentId[componentId] ?? const [])
+                        : const [],
+                  ),
+                );
+          }
+        }
+      }
+      for (final m in comboRows) {
+        final orderId = m['order_id']?.toString();
+        if (orderId == null) continue;
+        final list = combosByOrderId[orderId];
+        if (list == null) continue;
+        final comboLocalId = _optionalInt(m['id']);
+        list.add(
+          OrderCombo(
+            localId: comboLocalId?.toString(),
+            orderId: orderId,
+            comboId: _optionalInt(m['combo_id']) ?? 0,
+            comboName: m['combo_name']?.toString() ?? '',
+            quantity: _optionalInt(m['quantity']) ?? 1,
+            priceSnapshot: _optionalDouble(m['price_snapshot']) ?? 0,
+            pointsSnapshot: _optionalInt(m['points_snapshot']) ?? 0,
+            components: comboLocalId != null
+                ? (componentsByComboId[comboLocalId] ?? const [])
+                : const [],
+          ),
+        );
+      }
+    }
+
     return [
       for (final row in orderRows)
         OrderEntity.fromMap(
           row,
           items: itemsByOrderId[row['id']?.toString()] ?? const [],
+          combos: combosByOrderId[row['id']?.toString()] ?? const [],
         ),
     ];
+  }
+
+  static double? _optionalDouble(Object? value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
   }
 
   static Iterable<List<T>> _chunks<T>(List<T> source, int size) sync* {

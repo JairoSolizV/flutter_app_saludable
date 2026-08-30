@@ -188,7 +188,7 @@ void main() {
       );
 
       await expectLater(
-        () => ds.sendOrder(order, const []),
+        () => ds.sendOrder(order, items: const [], combos: const []),
         throwsException,
       );
       expect(adapter.requests, isEmpty);
@@ -205,7 +205,7 @@ void main() {
       );
 
       await expectLater(
-        () => ds.sendOrder(order, const []),
+        () => ds.sendOrder(order, items: const [], combos: const []),
         throwsException,
       );
       expect(adapter.requests, isEmpty);
@@ -223,12 +223,12 @@ void main() {
       );
       final items = [OrderItem(orderId: 'o1', productId: '1', quantity: 2)];
 
-      await ds.sendOrder(order, items);
+      await ds.sendOrder(order, items: items, combos: const []);
 
       expect(adapter.requests, hasLength(1));
     }));
 
-    test('sendOrder con combo agrega comboId al item', async_(() async {
+    test('sendOrder moderno envía combos[]', async_(() async {
       adapter.stub('POST', '/pedidos/con-items', statusCode: 200, data: {});
       final order = OrderEntity(
         id: 'o1',
@@ -237,16 +237,29 @@ void main() {
         membresiaId: 5,
         status: 'pending',
         createdAt: DateTime(2024, 1, 1),
+        combos: [
+          OrderCombo(
+            orderId: 'o1',
+            comboId: 4,
+            comboName: 'Combo',
+            quantity: 2,
+            priceSnapshot: 38,
+            pointsSnapshot: 15,
+            components: [
+              OrderComboComponent(productId: 7, productName: 'Batido'),
+            ],
+          ),
+        ],
       );
-      final items = [
-        OrderItem(orderId: 'o1', productId: '1', quantity: 1, comboId: 9),
-      ];
 
-      await ds.sendOrder(order, items);
+      await ds.sendOrder(order, items: const [], combos: order.combos);
 
       final sentBody = adapter.requests.single.data as Map;
-      final sentItems = sentBody['items'] as List;
-      expect(sentItems.single['comboId'], 9);
+      final sentCombos = sentBody['combos'] as List;
+      expect(sentCombos, hasLength(1));
+      expect(sentCombos.single['comboId'], 4);
+      expect(sentCombos.single['cantidad'], 2);
+      expect(sentCombos.single.containsKey('precio'), isFalse);
     }));
 
     test('sendOrder con 401 lanza AppException', async_(() async {
@@ -262,7 +275,7 @@ void main() {
       final items = [OrderItem(orderId: 'o1', productId: '1', quantity: 1)];
 
       await expectLater(
-        () => ds.sendOrder(order, items),
+        () => ds.sendOrder(order, items: items, combos: const []),
         throwsA(isA<AppException>()),
       );
     }));

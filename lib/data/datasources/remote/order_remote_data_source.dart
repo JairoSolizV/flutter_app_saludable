@@ -6,7 +6,11 @@ import '../../../core/pagination/paged_result.dart';
 import '../../../domain/entities/order_entity.dart';
 
 abstract class OrderRemoteDataSource {
-  Future<void> sendOrder(OrderEntity order, List<OrderItem> items);
+  Future<void> sendOrder(
+    OrderEntity order, {
+    required List<OrderItem> items,
+    required List<OrderCombo> combos,
+  });
   Future<void> createCounterSale({
     required int clubId,
     String? socioCodigo,
@@ -104,7 +108,11 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
   }
 
   @override
-  Future<void> sendOrder(OrderEntity order, List<OrderItem> items) async {
+  Future<void> sendOrder(
+    OrderEntity order, {
+    required List<OrderItem> items,
+    required List<OrderCombo> combos,
+  }) async {
     // Validar que tenemos los IDs necesarios
     if (order.membresiaId == null) {
       throw Exception('Error: El pedido debe incluir membresiaId');
@@ -112,18 +120,18 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
     if (order.clubId == null) {
       throw Exception('Error: El pedido debe incluir clubId');
     }
-    if (items.isEmpty) {
-      throw Exception('Error: El pedido debe tener al menos un item');
+    if (items.isEmpty && combos.isEmpty) {
+      throw Exception('Error: El pedido debe tener al menos un producto o combo');
     }
 
     final int membresiaId = order.membresiaId!;
     final int clubId = order.clubId!;
 
     debugPrint(
-        '[DEBUG SEND] Enviando pedido con múltiples items - membresiaId: $membresiaId, clubId: $clubId, items: ${items.length}');
+        '[DEBUG SEND] Enviando pedido - membresiaId: $membresiaId, clubId: $clubId, items: ${items.length}, combos: ${combos.length}');
 
     try {
-      // Preparar items para el backend
+      // Preparar items sueltos (sin comboId legacy en flujo moderno)
       final List<Map<String, dynamic>> itemsData = [];
       for (var item in items) {
         final int productoId = int.parse(item.productId);
@@ -133,11 +141,10 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
           'nota': item.note,
           'opciones': item.options.map((o) => o.toApiMap()).toList(),
         };
-        if (item.comboId != null) {
-          itemMap['comboId'] = item.comboId;
-        }
         itemsData.add(itemMap);
       }
+
+      final combosData = combos.map((c) => c.toApiMap()).toList();
 
       // Preparar body del request
       final requestBody = {
@@ -145,6 +152,7 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
             order.tipoConsumo ?? 'EN_LUGAR', // 'EN_LUGAR' o 'PARA_RECOGER'
         'observaciones': order.observaciones ?? 'Pedido desde App Móvil',
         'items': itemsData,
+        if (combosData.isNotEmpty) 'combos': combosData,
       };
 
       debugPrint(

@@ -1,13 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_saludable/domain/entities/combo_cart_item.dart';
 import 'package:flutter_app_saludable/presentation/screens/member/widgets/member_cart_checkout.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 void main() {
   group('MemberCartTotals', () {
-    test('totalUnits suma cantidades producto', () {
+    test('totalUnits suma cantidades producto y combo', () {
       expect(
-        MemberCartTotals.totalUnits({'7#3:6:1': 2, '7#3:7:1': 1}),
+        MemberCartTotals.totalUnits(
+          productCart: {'7#3:6:1': 2},
+          comboCart: [
+            ComboCartItem(
+              comboId: 4,
+              comboName: 'Combo',
+              price: 38,
+              points: 15,
+              quantity: 1,
+              components: const [],
+            ),
+          ],
+        ),
         3,
       );
     });
@@ -17,16 +30,23 @@ void main() {
       expect(MemberCartTotals.productCountLabel(3), '3 productos');
     });
 
-    test('totalAmount usa precio efectivo por productId', () {
+    test('totalAmount usa precio efectivo por productId y combo', () {
       final total = MemberCartTotals.totalAmount(
-        {
-          '7#3:6:1|4:9:1': 1,
-          '7#3:7:1|4:10:1': 1,
-        },
-        (pid) => pid == '7' ? 20.0 : 0,
-        (pid) => pid == '7',
+        productCart: {'7#3:6:1|4:9:1': 1},
+        unitPriceFor: (pid) => pid == '7' ? 20.0 : 0,
+        isPriced: (pid) => pid == '7',
+        comboCart: [
+          ComboCartItem(
+            comboId: 4,
+            comboName: 'Combo',
+            price: 38,
+            points: 15,
+            quantity: 2,
+            components: const [],
+          ),
+        ],
       );
-      expect(total, 40.0);
+      expect(total, 96.0);
     });
   });
 

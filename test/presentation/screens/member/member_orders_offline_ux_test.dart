@@ -115,7 +115,7 @@ class _FakeOrderRemote implements OrderRemoteDataSource {
   }
 
   @override
-  Future<void> sendOrder(OrderEntity order, List<OrderItem> items) async {}
+  Future<void> sendOrder(OrderEntity order, {required List<OrderItem> items, required List<OrderCombo> combos}) async {}
 
   @override
   Future<void> createCounterSale({

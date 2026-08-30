@@ -36,7 +36,7 @@ class DatabaseHelper {
         join(await getDatabasesPath(), 'nutrilife_club.db');
     return await openDatabase(
       path,
-      version: 13,
+      version: 14,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -121,6 +121,44 @@ class DatabaseHelper {
         option_order INTEGER DEFAULT 0,
         quantity INTEGER DEFAULT 1,
         FOREIGN KEY(order_item_id) REFERENCES order_items(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE order_combos(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id TEXT NOT NULL,
+        combo_id INTEGER NOT NULL,
+        combo_name TEXT,
+        quantity INTEGER NOT NULL DEFAULT 1,
+        price_snapshot REAL DEFAULT 0,
+        points_snapshot INTEGER DEFAULT 0,
+        FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE order_combo_components(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_combo_id INTEGER NOT NULL,
+        product_id TEXT NOT NULL,
+        product_name TEXT,
+        FOREIGN KEY(order_combo_id) REFERENCES order_combos(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE order_combo_component_options(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        component_id INTEGER NOT NULL,
+        group_id INTEGER,
+        group_name TEXT,
+        group_order INTEGER DEFAULT 0,
+        option_id INTEGER,
+        option_name TEXT,
+        option_order INTEGER DEFAULT 0,
+        quantity INTEGER DEFAULT 1,
+        FOREIGN KEY(component_id) REFERENCES order_combo_components(id) ON DELETE CASCADE
       )
     ''');
 
@@ -278,6 +316,59 @@ class DatabaseHelper {
         );
       } catch (e) {
         logDebug('Error migrando order_item_options: $e');
+      }
+    }
+    if (oldVersion < 14) {
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS order_combos(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id TEXT NOT NULL,
+            combo_id INTEGER NOT NULL,
+            combo_name TEXT,
+            quantity INTEGER NOT NULL DEFAULT 1,
+            price_snapshot REAL DEFAULT 0,
+            points_snapshot INTEGER DEFAULT 0,
+            FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS order_combo_components(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_combo_id INTEGER NOT NULL,
+            product_id TEXT NOT NULL,
+            product_name TEXT,
+            FOREIGN KEY(order_combo_id) REFERENCES order_combos(id) ON DELETE CASCADE
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS order_combo_component_options(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            component_id INTEGER NOT NULL,
+            group_id INTEGER,
+            group_name TEXT,
+            group_order INTEGER DEFAULT 0,
+            option_id INTEGER,
+            option_name TEXT,
+            option_order INTEGER DEFAULT 0,
+            quantity INTEGER DEFAULT 1,
+            FOREIGN KEY(component_id) REFERENCES order_combo_components(id) ON DELETE CASCADE
+          )
+        ''');
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_order_combos_order_id '
+          'ON order_combos(order_id)',
+        );
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_order_combo_components_combo_id '
+          'ON order_combo_components(order_combo_id)',
+        );
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_order_combo_component_options_component_id '
+          'ON order_combo_component_options(component_id)',
+        );
+      } catch (e) {
+        logDebug('Error migrando tablas order_combos v14: $e');
       }
     }
   }

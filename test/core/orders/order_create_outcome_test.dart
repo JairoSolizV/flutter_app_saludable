@@ -72,7 +72,7 @@ class _FakeRemote implements OrderRemoteDataSource {
   final List<String> sentIds = [];
 
   @override
-  Future<void> sendOrder(OrderEntity order, List<OrderItem> items) async {
+  Future<void> sendOrder(OrderEntity order, {required List<OrderItem> items, required List<OrderCombo> combos}) async {
     sentIds.add(order.id);
   }
 

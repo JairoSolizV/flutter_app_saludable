@@ -11,13 +11,13 @@ import '../../../domain/entities/order_item_option.dart';
 import '../../../domain/entities/product.dart';
 import '../../../domain/entities/club_membership.dart';
 import '../../../domain/entities/combo.dart';
-import '../../../domain/entities/sabor.dart';
+import '../../../domain/entities/combo_cart_item.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 import '../../../data/datasources/remote/combo_remote_data_source.dart';
-import '../../../data/datasources/remote/sabor_remote_data_source.dart';
 import '../../widgets/product_image.dart';
 import '../../../domain/entities/product_option_selection.dart';
 import 'member_product_detail_screen.dart';
+import 'member_combo_detail_screen.dart';
 import 'widgets/member_cart_checkout.dart';
 import 'package:flutter_app_saludable/core/orders/order_offline_messages.dart';
 import 'package:flutter_app_saludable/core/orders/order_submit_outcome.dart';
@@ -44,20 +44,10 @@ class MemberClubProductsScreen extends StatefulWidget {
 class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
   // ── Cart ──
   final Map<String, int> _cart = {};
-  final Map<String, String> _selectedSabores = {};
   final Map<String, String> _productNotes = {};
-  final Map<String, int> _productComboIds = {};
-  /// Selecciones estructuradas in-memory (001c/001). No van a SQLite ni a `nota`.
   final Map<String, List<ProductOptionSelection>> _cartSelections = {};
   final Map<String, Product> _cartProducts = {};
-
-  // ── Sabores cache (productId -> available sabores) ──
-  final Map<String, List<Sabor>> _saboresCache = {};
-
-  // ── Combo wizard ──
-  int? _expandedComboId;
-  int _comboStep = 0;
-  final Map<int, String> _comboTempSabores = {}; // itemIndex -> saborName
+  final Map<String, ComboCartItem> _comboCart = {};
 
   // ── Membership / loading ──
   ClubMembership? _membership;
@@ -145,34 +135,17 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
     }
   }
 
-  /// Load sabores for combo products that might not be in main list yet.
-  Future<void> _ensureComboSaboresLoaded(Combo combo) async {
-    final ds = Provider.of<SaborRemoteDataSource>(context, listen: false);
-    bool changed = false;
-    for (final item in combo.items) {
-      final pid = item.productoId.toString();
-      if (!_saboresCache.containsKey(pid)) {
-        try {
-          final s = await ds.getSaboresDeProductoEnClub(
-              widget.clubId, item.productoId);
-          _saboresCache[pid] = s.where((x) => x.disponible).toList();
-          changed = true;
-        } catch (_) {
-          _saboresCache[pid] = [];
-          changed = true;
-        }
-      }
-    }
-    if (changed && mounted) setState(() {});
+  Map<String, Product> _productsById() {
+    final products =
+        Provider.of<ProductProvider>(context, listen: false).products;
+    return {for (final p in products) p.id: p};
   }
 
   // ═══════════════════════ CART HELPERS ═══════════════════════
 
   void _updateQuantity(String productId, int delta) {
     setState(() {
-      final sabor = _selectedSabores[productId] ?? '';
-      final key = sabor.isNotEmpty ? '${productId}_$sabor' : productId;
-      _adjustCartKey(key, delta, productId: productId);
+      _adjustCartKey(productId, delta, productId: productId);
     });
   }
 
@@ -183,16 +156,24 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
     } else {
       _cart.remove(key);
       _productNotes.remove(key);
-      _productComboIds.remove(key);
       _cartSelections.remove(key);
-      bool hasAny = _cart.keys.any((k) =>
+      final hasAny = _cart.keys.any((k) =>
           k == productId ||
-          k.startsWith('${productId}_') ||
           k.startsWith('$productId#'));
       if (!hasAny) {
-        _selectedSabores.remove(productId);
         _cartProducts.remove(productId);
       }
+    }
+  }
+
+  void _adjustComboQuantity(String configKey, int delta) {
+    final existing = _comboCart[configKey];
+    if (existing == null) return;
+    final next = (existing.quantity + delta).clamp(0, 99);
+    if (next > 0) {
+      _comboCart[configKey] = existing.copyWith(quantity: next);
+    } else {
+      _comboCart.remove(configKey);
     }
   }
 
@@ -282,21 +263,24 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
     }
   }
 
-  int get _totalItems => MemberCartTotals.totalUnits(_cart);
+  int get _totalItems => MemberCartTotals.totalUnits(
+        productCart: _cart,
+        comboCart: _comboCart.values,
+      );
 
   double get _cartTotalAmount => MemberCartTotals.totalAmount(
-        _cart,
-        (pid) => _lookupProduct(pid)?.effectivePrice ?? 0,
-        (pid) => _lookupProduct(pid)?.hasConfiguredSalePrice == true,
+        productCart: _cart,
+        unitPriceFor: (pid) => _lookupProduct(pid)?.effectivePrice ?? 0,
+        isPriced: (pid) => _lookupProduct(pid)?.hasConfiguredSalePrice == true,
+        comboCart: _comboCart.values,
       );
 
   List<MemberCartLineViewModel> _cartLineViewModels() {
-    return _cart.entries.map((e) {
+    final lines = _cart.entries.map((e) {
       final pid = _productIdFromCartKey(e.key);
       final product = _lookupProduct(pid);
       final sels = _cartSelections[e.key] ?? const [];
-      final options =
-          sels.map((s) => s.toOrderItemOption()).toList();
+      final options = sels.map((s) => s.toOrderItemOption()).toList();
       return MemberCartLineViewModel(
         cartKey: e.key,
         productId: pid,
@@ -307,6 +291,23 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
         priced: product?.hasConfiguredSalePrice == true,
       );
     }).toList();
+
+    lines.addAll(_comboCart.entries.map((e) {
+      final combo = e.value;
+      return MemberCartLineViewModel(
+        cartKey: e.key,
+        productId: combo.comboId.toString(),
+        productName: combo.comboName,
+        optionsSummary: '',
+        quantity: combo.quantity,
+        unitPrice: combo.price,
+        priced: combo.hasConfiguredPrice,
+        isCombo: true,
+        comboComponentLines: combo.componentSummaryLines(),
+      );
+    }));
+
+    return lines;
   }
 
   void _clearCart() {
@@ -314,114 +315,40 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
     _cartSelections.clear();
     _cartProducts.clear();
     _productNotes.clear();
-    _productComboIds.clear();
-    _selectedSabores.clear();
+    _comboCart.clear();
   }
 
   String _buildItemNote(String cartKey) {
-    final parts = <String>[];
-    // No convertir selecciones estructuradas (`id#...`) en `nota: "Sabor: ..."`.
-    // Esa persistencia llega en 001d. El split `_` solo aplica a líneas legacy.
-    if (!cartKey.contains('#')) {
-      final partsKey = cartKey.split('_');
-      if (partsKey.length > 1) {
-        parts.add('Sabor: ${partsKey[1]}');
-      }
-    }
     final n = _productNotes[cartKey];
-    if (n != null && n.isNotEmpty) parts.add(n);
-    return parts.join(' | ');
+    return n ?? '';
   }
 
-  // ═══════════════════════ COMBO WIZARD ═══════════════════════
-
-  Future<void> _startComboConfig(Combo combo) async {
-    await _ensureComboSaboresLoaded(combo);
-    if (!mounted) return;
-
-    _comboTempSabores.clear();
-
-    // Pre-fill sabores that the combo creator already chose
-    for (int i = 0; i < combo.items.length; i++) {
-      if (combo.items[i].saborNombre != null) {
-        _comboTempSabores[i] = combo.items[i].saborNombre!;
-      }
-    }
-
-    // Find first step that actually needs user input
-    int first = _findNextStepNeedingInput(combo, -1);
-
-    if (first >= combo.items.length) {
-      // Every product either has no sabores or was pre-filled → add directly
-      _finalizeCombo(combo);
-      return;
-    }
-
+  Future<void> _openComboDetail(Combo combo) async {
+    if (!combo.hasConfiguredPrice) return;
+    final result = await Navigator.of(context).push<ComboCartItem>(
+      MaterialPageRoute(
+        builder: (_) => MemberComboDetailScreen(
+          combo: combo,
+          productsById: _productsById(),
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
     setState(() {
-      _expandedComboId = combo.id;
-      _comboStep = first;
-    });
-  }
-
-  int _findNextStepNeedingInput(Combo combo, int currentStep) {
-    int next = currentStep + 1;
-    if (next < combo.items.length) {
-      return next;
-    }
-    return next; // past the end → done
-  }
-
-  void _onComboSaborSelected(Combo combo, int itemIndex, String saborName) {
-    setState(() => _comboTempSabores[itemIndex] = saborName);
-
-    // Brief delay so user sees their chip turn green
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (!mounted || _expandedComboId != combo.id) return;
-
-      final next = _findNextStepNeedingInput(combo, itemIndex);
-      if (next >= combo.items.length) {
-        _finalizeCombo(combo);
+      final key = result.configKey;
+      final existing = _comboCart[key];
+      if (existing != null) {
+        _comboCart[key] = existing.copyWith(
+          quantity: existing.quantity + result.quantity,
+        );
       } else {
-        setState(() => _comboStep = next);
+        _comboCart[key] = result;
       }
     });
-  }
-
-  void _cancelComboConfig() {
-    setState(() {
-      _expandedComboId = null;
-      _comboStep = 0;
-      _comboTempSabores.clear();
-    });
-  }
-
-  void _finalizeCombo(Combo combo) {
-    setState(() {
-      for (int i = 0; i < combo.items.length; i++) {
-        final item = combo.items[i];
-        final pid = item.productoId.toString();
-        final sabor = _comboTempSabores[i] ?? '';
-        final key = sabor.isNotEmpty ? '${pid}_$sabor' : pid;
-        
-        _cart[key] = (_cart[key] ?? 0) + item.cantidad;
-        _productComboIds[key] = combo.id!;
-        if (sabor.isNotEmpty) _selectedSabores[pid] = sabor;
-      }
-      _expandedComboId = null;
-      _comboStep = 0;
-      _comboTempSabores.clear();
-    });
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(children: [
-          const Icon(LucideIcons.checkCircle, color: Colors.white, size: 18),
-          const SizedBox(width: 8),
-          Text('Combo "${combo.nombre}" agregado'),
-        ]),
+        content: Text('Combo "${combo.nombre}" agregado'),
         backgroundColor: AppTheme.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(milliseconds: 1500),
       ),
     );
@@ -500,9 +427,9 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
 
   Future<bool> _createOrder() async {
     if (_isCreatingOrder) return false;
-    if (_cart.isEmpty) {
+    if (_cart.isEmpty && _comboCart.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Selecciona al menos un producto'),
+          content: Text('Selecciona al menos un producto o combo'),
           backgroundColor: Colors.orange));
       return false;
     }
@@ -545,11 +472,13 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
           productId: pid,
           quantity: e.value,
           note: _buildItemNote(e.key),
-          comboId: _productComboIds[e.key],
           productName: product?.name ?? '',
           options: selections.map((s) => s.toOrderItemOption()).toList(),
         ));
       }
+
+      final combos =
+          _comboCart.values.map((c) => c.toOrderCombo(orderId)).toList();
 
       final outcome = await orderProv.createOrder(OrderEntity(
         id: orderId,
@@ -561,6 +490,7 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
         status: 'pending',
         createdAt: DateTime.now(),
         items: items,
+        combos: combos,
         isSynced: false,
       ));
 
@@ -631,28 +561,36 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
                   isCreatingOrder: _isCreatingOrder,
                   onQuantityChanged: (key, delta) {
                     setState(() {
-                      _adjustCartKey(
-                        key,
-                        delta,
-                        productId: _productIdFromCartKey(key),
-                      );
+                      if (key.startsWith('combo:')) {
+                        _adjustComboQuantity(key, delta);
+                      } else {
+                        _adjustCartKey(
+                          key,
+                          delta,
+                          productId: _productIdFromCartKey(key),
+                        );
+                      }
                     });
-                    if (_cart.isEmpty) {
+                    if (_cart.isEmpty && _comboCart.isEmpty) {
                       Navigator.pop(sheetContext);
                     } else {
                       refreshSheet();
                     }
                   },
                   onRemoveLine: (key) {
-                    final qty = _cart[key] ?? 0;
                     setState(() {
-                      _adjustCartKey(
-                        key,
-                        -qty,
-                        productId: _productIdFromCartKey(key),
-                      );
+                      if (key.startsWith('combo:')) {
+                        _comboCart.remove(key);
+                      } else {
+                        final qty = _cart[key] ?? 0;
+                        _adjustCartKey(
+                          key,
+                          -qty,
+                          productId: _productIdFromCartKey(key),
+                        );
+                      }
                     });
-                    if (_cart.isEmpty) {
+                    if (_cart.isEmpty && _comboCart.isEmpty) {
                       Navigator.pop(sheetContext);
                     } else {
                       refreshSheet();
@@ -817,389 +755,107 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
   // ═══════════════════════ COMBO CARD ═══════════════════════
 
   Widget _comboCard(Combo combo) {
-    final isExpanded = _expandedComboId == combo.id;
+    final purchasable = combo.hasConfiguredPrice;
+    final inCartQty = _comboCart.values
+        .where((c) => c.comboId == combo.id)
+        .fold(0, (sum, c) => sum + c.quantity);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
-      elevation: isExpanded ? 4 : 0,
-      shadowColor: isExpanded
-          ? AppTheme.primaryColor.withOpacity(0.25)
-          : Colors.transparent,
+      elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: BorderSide(
-          color: isExpanded
-              ? AppTheme.primaryColor
-              : AppTheme.primaryColor.withOpacity(0.25),
-          width: isExpanded ? 1.5 : 1,
-        ),
+        side: BorderSide(color: AppTheme.primaryColor.withOpacity(0.25)),
       ),
-      color: isExpanded ? Colors.white : AppTheme.primaryColor.withOpacity(0.04),
-      clipBehavior: Clip.antiAlias,
-      child: AnimatedSize(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        alignment: Alignment.topCenter,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ── Header (always visible) ──
-            _comboHeader(combo, isExpanded),
-            // ── Wizard (only when expanded) ──
-            if (isExpanded) _comboWizard(combo),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _comboHeader(Combo combo, bool isExpanded) {
-    final itemsText = combo.items
-        .map((i) => '${i.cantidad}x ${i.productoNombre}')
-        .join('  ·  ');
-
-    return InkWell(
-      onTap: () =>
-          isExpanded ? _cancelComboConfig() : _startComboConfig(combo),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            // Icon
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
+      color: AppTheme.primaryColor.withOpacity(0.04),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: purchasable ? () => _openComboDetail(combo) : null,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
                     colors: AppTheme.primaryGradient,
                     begin: Alignment.topLeft,
-                    end: Alignment.bottomRight),
-                borderRadius: BorderRadius.circular(12),
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(LucideIcons.zap, color: Colors.white, size: 22),
               ),
-              child:
-                  const Icon(LucideIcons.zap, color: Colors.white, size: 22),
-            ),
-            const SizedBox(width: 12),
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(combo.nombre,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      combo.nombre,
                       style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 3),
-                  Text(itemsText,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      combo.itemsSummary,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style:
-                          TextStyle(fontSize: 12, color: Colors.grey[600])),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
-                    child: Text('${combo.puntosValor} pts',
+                    const SizedBox(height: 6),
+                    Text(
+                      purchasable
+                          ? BolivianPrice.formatBs(combo.price)
+                          : 'Precio no configurado',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: purchasable
+                            ? AppTheme.primaryColor
+                            : Colors.orange.shade800,
+                      ),
+                    ),
+                    if (combo.puntosValor > 0) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '${combo.puntosValor} puntos',
                         style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.primaryColor)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Button
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              decoration: BoxDecoration(
-                color: isExpanded
-                    ? Colors.grey[200]
-                    : AppTheme.primaryColor,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Icon(
-                  isExpanded ? LucideIcons.x : LucideIcons.plus,
-                  color: isExpanded ? Colors.grey[600] : Colors.white,
-                  size: 20,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─────────── Combo stepper wizard ───────────
-
-  Widget _comboWizard(Combo combo) {
-    return Column(
-      children: [
-        // Subtle divider
-        Container(
-          height: 1,
-          margin: const EdgeInsets.symmetric(horizontal: 14),
-          color: AppTheme.primaryColor.withOpacity(0.12),
-        ),
-        // Instruction
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
-          child: Row(
-            children: [
-              Icon(LucideIcons.mousePointerClick,
-                  size: 14, color: Colors.grey[500]),
-              const SizedBox(width: 6),
-              Text('Selecciona el sabor de cada producto',
-                  style:
-                      TextStyle(fontSize: 12, color: Colors.grey[500])),
+              if (inCartQty > 0)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$inCartQty',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                )
+              else if (purchasable)
+                Icon(LucideIcons.chevronRight, color: Colors.grey[400]),
             ],
           ),
         ),
-        // Steps
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
-          child: Column(
-            children: List.generate(combo.items.length, (i) {
-              return _comboStepRow(combo, i);
-            }),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _comboStepRow(Combo combo, int index) {
-    final item = combo.items[index];
-    final pid = item.productoId.toString();
-    final sabores = _saboresCache[pid] ?? [];
-    final selectedSabor = _comboTempSabores[index];
-    final isActive = index == _comboStep;
-    final isCompleted = selectedSabor != null && index < _comboStep;
-    final isSkipped = sabores.isEmpty && index < _comboStep;
-    final isPending = index > _comboStep;
-    final isLast = index == combo.items.length - 1;
-
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Step indicator column ──
-          SizedBox(
-            width: 32,
-            child: Column(
-              children: [
-                // Circle
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: (isCompleted || isSkipped)
-                        ? AppTheme.primaryColor
-                        : isActive
-                            ? AppTheme.primaryColor
-                            : Colors.grey[200],
-                    shape: BoxShape.circle,
-                    boxShadow: isActive
-                        ? [
-                            BoxShadow(
-                                color: AppTheme.primaryColor.withOpacity(0.3),
-                                blurRadius: 8,
-                                spreadRadius: 1)
-                          ]
-                        : null,
-                  ),
-                  child: Center(
-                    child: (isCompleted || isSkipped)
-                        ? const Icon(Icons.check,
-                            color: Colors.white, size: 16)
-                        : Text('${index + 1}',
-                            style: TextStyle(
-                              color: isActive
-                                  ? Colors.white
-                                  : Colors.grey[500],
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            )),
-                  ),
-                ),
-                // Vertical line
-                if (!isLast)
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      margin: const EdgeInsets.symmetric(vertical: 2),
-                      color: (isCompleted || isSkipped)
-                          ? AppTheme.primaryColor.withOpacity(0.5)
-                          : Colors.grey[200],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          // ── Content ──
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Product name
-                  Text(
-                    '${item.cantidad}x ${item.productoNombre}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: isPending ? Colors.grey[400] : Colors.black87,
-                    ),
-                  ),
-
-                  // ── COMPLETED: show selected sabor ──
-                  if (isCompleted)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4, bottom: 8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(LucideIcons.check,
-                                size: 12, color: AppTheme.primaryColor),
-                            const SizedBox(width: 4),
-                            Text(selectedSabor,
-                                style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.primaryColor,
-                                    fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                  // ── SKIPPED (no sabores): show subtle label ──
-                  if (isSkipped)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2, bottom: 8),
-                      child: Text('Sin sabores',
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey[400],
-                              fontStyle: FontStyle.italic)),
-                    ),
-
-                  // ── ACTIVE: show sabor dropdown ──
-                  if (isActive && sabores.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8, bottom: 8),
-                      child: DropdownButtonFormField<String>(
-                        decoration: InputDecoration(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
-                          ),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        value: selectedSabor != null && sabores.any((s) => s.nombre == selectedSabor)
-                            ? selectedSabor
-                            : null,
-                        hint: const Text('Selecciona un sabor', style: TextStyle(fontSize: 13)),
-                        icon: const Icon(LucideIcons.chevronDown, size: 18),
-                        items: sabores.map((sabor) {
-                          return DropdownMenuItem<String>(
-                            value: sabor.nombre,
-                            child: Text(sabor.nombre, style: const TextStyle(fontSize: 14)),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            _onComboSaborSelected(combo, index, value);
-                          }
-                        },
-                      ),
-                    ),
-
-                  // ── ACTIVE but loading or no sabores ──
-                  if (isActive && sabores.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4, bottom: 8),
-                      child: !_saboresCache.containsKey(pid)
-                          ? Row(mainAxisSize: MainAxisSize.min, children: [
-                              SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.grey[400])),
-                              const SizedBox(width: 8),
-                              Text('Cargando sabores...',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[400])),
-                            ])
-                          : Row(children: [
-                              Text('Sin sabores disponibles',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[400],
-                                      fontStyle: FontStyle.italic)),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: () {
-                                  // Skip this step manually
-                                  final next = _findNextStepNeedingInput(
-                                      combo, index);
-                                  if (next >= combo.items.length) {
-                                    _finalizeCombo(combo);
-                                  } else {
-                                    setState(() => _comboStep = next);
-                                  }
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[100],
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text('Continuar',
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey[600],
-                                          fontWeight: FontWeight.w600)),
-                                ),
-                              ),
-                            ]),
-                    ),
-
-                  // ── PENDING: just space ──
-                  if (isPending) const SizedBox(height: 10),
-                ],
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1374,29 +1030,6 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
                   ),
                 ),
                 const Spacer(),
-                // Combo badge
-                if (_productComboIds.containsKey(cartKey) && qty > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.accent.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(LucideIcons.zap,
-                            size: 12, color: AppTheme.accent),
-                        const SizedBox(width: 4),
-                        Text('Combo',
-                            style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.accent)),
-                      ],
-                    ),
-                  ),
               ],
             ),
           ],

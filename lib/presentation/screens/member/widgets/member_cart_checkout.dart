@@ -3,8 +3,9 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/bolivian_price.dart';
+import 'package:flutter_app_saludable/domain/entities/combo_cart_item.dart';
 
-/// Una línea del carrito = una configuración distinta ([OrderItem.lineKey]).
+/// Una línea del carrito = producto suelto o combo configurado.
 class MemberCartLineViewModel {
   final String cartKey;
   final String productId;
@@ -13,6 +14,8 @@ class MemberCartLineViewModel {
   final int quantity;
   final double unitPrice;
   final bool priced;
+  final bool isCombo;
+  final List<String> comboComponentLines;
 
   const MemberCartLineViewModel({
     required this.cartKey,
@@ -22,28 +25,42 @@ class MemberCartLineViewModel {
     required this.quantity,
     required this.unitPrice,
     required this.priced,
+    this.isCombo = false,
+    this.comboComponentLines = const [],
   });
 
   double get lineTotal => priced ? unitPrice * quantity : 0;
 }
 
-/// Totales del carrito SOCIO (unidades = suma de cantidades producto).
+/// Totales del carrito SOCIO.
 class MemberCartTotals {
   MemberCartTotals._();
 
-  static int totalUnits(Map<String, int> cart) =>
-      cart.values.fold(0, (sum, q) => sum + q);
+  static int totalUnits({
+    required Map<String, int> productCart,
+    required Iterable<ComboCartItem> comboCart,
+  }) {
+    final productUnits = productCart.values.fold(0, (sum, q) => sum + q);
+    final comboUnits = comboCart.fold(0, (sum, c) => sum + c.quantity);
+    return productUnits + comboUnits;
+  }
 
-  static double totalAmount(
-    Map<String, int> cart,
-    double Function(String productId) unitPriceFor,
-    bool Function(String productId) isPriced,
-  ) {
+  static double totalAmount({
+    required Map<String, int> productCart,
+    required double Function(String productId) unitPriceFor,
+    required bool Function(String productId) isPriced,
+    required Iterable<ComboCartItem> comboCart,
+  }) {
     var total = 0.0;
-    for (final e in cart.entries) {
+    for (final e in productCart.entries) {
       final pid = _productIdFromCartKey(e.key);
       if (isPriced(pid)) {
         total += unitPriceFor(pid) * e.value;
+      }
+    }
+    for (final combo in comboCart) {
+      if (combo.hasConfiguredPrice) {
+        total += combo.lineTotal;
       }
     }
     return total;
@@ -331,7 +348,7 @@ class MemberCartCheckoutSheet extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        line.productName,
+                        line.isCombo ? 'Combo ${line.productName}' : line.productName,
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 15,
@@ -348,7 +365,18 @@ class MemberCartCheckoutSheet extends StatelessWidget {
                       ),
                   ],
                 ),
-                if (line.optionsSummary.isNotEmpty) ...[
+                if (line.comboComponentLines.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  ...line.comboComponentLines.map(
+                    (l) => Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Text(
+                        l,
+                        style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                      ),
+                    ),
+                  ),
+                ] else if (line.optionsSummary.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     line.optionsSummary,

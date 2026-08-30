@@ -43,6 +43,7 @@ class ComboRemoteDataSource {
     String? descripcion,
     String? imagenUrl,
     int? puntosValor,
+    required double precio,
     required List<Map<String, dynamic>> items,
   }) async {
     try {
@@ -51,6 +52,7 @@ class ComboRemoteDataSource {
         if (descripcion != null) 'descripcion': descripcion,
         if (imagenUrl != null) 'imagenUrl': imagenUrl,
         if (puntosValor != null) 'puntosValor': puntosValor,
+        'precio': precio,
         'items': items,
       };
       final response = await _client.post('/clubes/$clubId/combos', data: body);
@@ -68,6 +70,7 @@ class ComboRemoteDataSource {
     String? descripcion,
     String? imagenUrl,
     int? puntosValor,
+    required double precio,
     required List<Map<String, dynamic>> items,
   }) async {
     try {
@@ -76,6 +79,7 @@ class ComboRemoteDataSource {
         if (descripcion != null) 'descripcion': descripcion,
         if (imagenUrl != null) 'imagenUrl': imagenUrl,
         if (puntosValor != null) 'puntosValor': puntosValor,
+        'precio': precio,
         'items': items,
       };
       final response = await _client.put('/clubes/$clubId/combos/$comboId', data: body);

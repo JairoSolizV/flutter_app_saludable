@@ -58,6 +58,7 @@ class Combo {
   final String? descripcion;
   final String? imagenUrl;
   final int puntosValor;
+  final double price;
   final bool activo;
   final List<ComboItem> items;
 
@@ -69,9 +70,31 @@ class Combo {
     this.descripcion,
     this.imagenUrl,
     this.puntosValor = 0,
+    this.price = 0,
     this.activo = true,
     this.items = const [],
   });
+
+  bool get hasConfiguredPrice => price > 0;
+
+  /// Suma de precios efectivos de referencia (solo UI host).
+  static double referenceSeparateTotal(
+    Iterable<ComboItem> items,
+    double Function(int productoId) unitPriceFor,
+  ) {
+    var total = 0.0;
+    for (final item in items) {
+      total += unitPriceFor(item.productoId) * item.cantidad;
+    }
+    return total;
+  }
+
+  String get itemsSummary => items
+      .map((i) {
+        final label = i.cantidad > 1 ? '${i.cantidad}x ${i.productoNombre}' : i.productoNombre;
+        return label;
+      })
+      .join(' + ');
 
   factory Combo.fromMap(Map<String, dynamic> map) {
     return Combo(
@@ -86,12 +109,19 @@ class Combo {
       puntosValor: map['puntosValor'] is int
           ? map['puntosValor']
           : int.tryParse(map['puntosValor'].toString()) ?? 0,
+      price: _parsePrice(map['precio'] ?? map['price']),
       activo: map['activo'] == true,
       items: (map['items'] as List<dynamic>?)
               ?.map((e) => ComboItem.fromMap(e as Map<String, dynamic>))
               .toList() ??
           [],
     );
+  }
+
+  static double _parsePrice(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString()) ?? 0;
   }
 
   Map<String, dynamic> toMap() {
@@ -102,6 +132,7 @@ class Combo {
       if (descripcion != null) 'descripcion': descripcion,
       if (imagenUrl != null) 'imagenUrl': imagenUrl,
       'puntosValor': puntosValor,
+      'precio': price,
       'activo': activo,
       'items': items.map((e) => e.toMap()).toList(),
     };
@@ -115,6 +146,7 @@ class Combo {
     String? descripcion,
     String? imagenUrl,
     int? puntosValor,
+    double? price,
     bool? activo,
     List<ComboItem>? items,
   }) {
@@ -126,6 +158,7 @@ class Combo {
       descripcion: descripcion ?? this.descripcion,
       imagenUrl: imagenUrl ?? this.imagenUrl,
       puntosValor: puntosValor ?? this.puntosValor,
+      price: price ?? this.price,
       activo: activo ?? this.activo,
       items: items ?? this.items,
     );

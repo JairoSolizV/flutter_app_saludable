@@ -1,6 +1,8 @@
 import 'order_item_option.dart';
+import 'order_combo.dart';
 
 export 'order_item_option.dart';
+export 'order_combo.dart';
 
 class OrderEntity {
   final String id;
@@ -14,6 +16,7 @@ class OrderEntity {
   final bool isSynced;
   final int? tiempoEstimadoMinutos; // min
   final List<OrderItem> items;
+  final List<OrderCombo> combos;
 
   OrderEntity({
     required this.id,
@@ -27,6 +30,7 @@ class OrderEntity {
     this.isSynced = false,
     this.tiempoEstimadoMinutos,
     this.items = const [],
+    this.combos = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -44,7 +48,11 @@ class OrderEntity {
     };
   }
 
-  factory OrderEntity.fromMap(Map<String, dynamic> map, {List<OrderItem> items = const []}) {
+  factory OrderEntity.fromMap(
+    Map<String, dynamic> map, {
+    List<OrderItem> items = const [],
+    List<OrderCombo> combos = const [],
+  }) {
     return OrderEntity(
       id: map['id'],
       userId: map['user_id'],
@@ -57,6 +65,7 @@ class OrderEntity {
       isSynced: map['is_synced'] == 1,
       tiempoEstimadoMinutos: map['tiempoEstimadoMinutos'],
       items: items,
+      combos: combos,
     );
   }
 }

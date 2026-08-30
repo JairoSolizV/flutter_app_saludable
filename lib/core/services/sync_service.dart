@@ -93,7 +93,11 @@ class SyncService {
   Future<void> _syncOrder(OrderEntity order) async {
     try {
       logDebug('[DEBUG SYNC] Syncing order ${order.id}...');
-      await _orderRemoteDataSource.sendOrder(order, order.items);
+      await _orderRemoteDataSource.sendOrder(
+        order,
+        items: order.items,
+        combos: order.combos,
+      );
       await _orderRepository.markAsSynced(order.id);
       logDebug('[DEBUG SYNC] Order ${order.id} synced successfully.');
     } catch (e) {

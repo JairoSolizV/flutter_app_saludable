@@ -10,7 +10,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 Future<Database> _openOrderTestDb({
   String? path,
-  int version = 13,
+  int version = 14,
 }) async {
   return databaseFactoryFfi.openDatabase(
     path ?? inMemoryDatabasePath,
@@ -61,6 +61,40 @@ Future<Database> _openOrderTestDb({
             FOREIGN KEY(order_item_id) REFERENCES order_items(id) ON DELETE CASCADE
           )
         ''');
+        if (v >= 14) {
+          await db.execute('''
+            CREATE TABLE order_combos(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              order_id TEXT NOT NULL,
+              combo_id INTEGER NOT NULL,
+              combo_name TEXT,
+              quantity INTEGER NOT NULL DEFAULT 1,
+              price_snapshot REAL DEFAULT 0,
+              points_snapshot INTEGER DEFAULT 0
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE order_combo_components(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              order_combo_id INTEGER NOT NULL,
+              product_id TEXT NOT NULL,
+              product_name TEXT
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE order_combo_component_options(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              component_id INTEGER NOT NULL,
+              group_id INTEGER,
+              group_name TEXT,
+              group_order INTEGER DEFAULT 0,
+              option_id INTEGER,
+              option_name TEXT,
+              option_order INTEGER DEFAULT 0,
+              quantity INTEGER DEFAULT 1
+            )
+          ''');
+        }
         if (v >= 11) {
           await db.execute(
             'CREATE INDEX IF NOT EXISTS idx_orders_user_synced '
@@ -155,7 +189,7 @@ class _FakeRemoteOrders implements OrderRemoteDataSource {
   final Set<String> failIds = {};
 
   @override
-  Future<void> sendOrder(OrderEntity order, List<OrderItem> items) async {
+  Future<void> sendOrder(OrderEntity order, {required List<OrderItem> items, required List<OrderCombo> combos}) async {
     if (failIds.contains(order.id)) {
       throw Exception('network fail ${order.id}');
     }
@@ -254,7 +288,7 @@ void main() {
       expect(orders, hasLength(1));
       expect(orders.first.items, isEmpty);
       // orders query + 1 items batch (sin query de opciones si no hay items)
-      expect(repo.sqlCallCount, 2);
+      expect(repo.sqlCallCount, 3);
     });
 
     test('una orden con varios items (nombres vía JOIN)', () async {
@@ -392,7 +426,7 @@ void main() {
       final orders = await repo.getOrdersByUser('A');
       expect(orders, hasLength(10));
       // 1 orders + 1 items batch + 1 options batch
-      expect(repo.sqlCallCount, lessThanOrEqualTo(3));
+      expect(repo.sqlCallCount, lessThanOrEqualTo(4));
       expect(repo.sqlCallCount, isNot(10 + 1));
     });
 
@@ -414,7 +448,7 @@ void main() {
       final orders = await repo.getOrdersByUser('A');
       expect(orders, hasLength(100));
       expect(orders.every((o) => o.items.length == 2), isTrue);
-      expect(repo.sqlCallCount, lessThanOrEqualTo(3));
+      expect(repo.sqlCallCount, lessThanOrEqualTo(4));
     });
 
     test('más del chunk size: crece por chunks, no por orden', () async {
@@ -434,8 +468,8 @@ void main() {
       repo.resetSqlCallCount();
       final orders = await repo.getOrdersByUser('A');
       expect(orders, hasLength(n));
-      // 1 orders + 2 item chunks + 2 option chunks (501 líneas)
-      expect(repo.sqlCallCount, 5);
+      // 1 orders + 2 item chunks + 2 option chunks + 2 combo chunks
+      expect(repo.sqlCallCount, 7);
       expect(repo.sqlCallCount, lessThan(n));
     });
 

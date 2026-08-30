@@ -11,6 +11,7 @@ import 'host_counter_sale_screen.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/order_item_options_display.dart';
 import 'package:flutter_app_saludable/domain/entities/order_item_option.dart';
+import 'package:flutter_app_saludable/presentation/widgets/order_history_lines.dart';
 import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 // Nota: los pedidos offline pendientes de sincronizar NO se mezclan en este
@@ -179,6 +180,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
     // El backend ahora devuelve pedidos con múltiples items
     // Agrupar por pedidoId para mostrar todos los items de cada pedido
     final Map<String, List<Map<String, dynamic>>> groupedOrders = {};
+    final Map<String, List<dynamic>> pedidoCombosByKey = {};
 
     for (var order in ordersData) {
       try {
@@ -304,6 +306,9 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                 'cantidad': cantidad,
                 'nota': itemMap['nota']?.toString() ?? '',
                 'opciones': OrderItemOptionsDisplay.parseFromHistoryItem(itemMap),
+                if (itemMap['pedidoComboId'] != null)
+                  'pedidoComboId': itemMap['pedidoComboId'],
+                if (itemMap['comboId'] != null) 'comboId': itemMap['comboId'],
               });
             }
           }
@@ -339,29 +344,54 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
         debugPrint(
             '[DEBUG HOST] Pedido #$pedidoId - Total items procesados: ${itemsDelPedido.length}');
 
-        // Solo agregar al grupo si hay items
-        if (itemsDelPedido.isNotEmpty) {
+        final bool hasCombos =
+            order['combos'] is List && (order['combos'] as List).isNotEmpty;
+        if (hasCombos) {
+          pedidoCombosByKey[groupKey] = List<dynamic>.from(order['combos'] as List);
+        }
+
+        // Agregar al grupo si hay items sueltos o combos modernos
+        if (itemsDelPedido.isNotEmpty || hasCombos) {
           // Inicializar el grupo si no existe
           if (!groupedOrders.containsKey(groupKey)) {
             groupedOrders[groupKey] = [];
           }
 
-          // Agregar todos los items del pedido al grupo
-          for (var item in itemsDelPedido) {
+          if (itemsDelPedido.isEmpty) {
             groupedOrders[groupKey]!.add({
               'pedidoId': pedidoId,
-              'productoNombre': item['productoNombre'] as String,
-              'cantidad': item['cantidad'] as int,
+              'productoNombre': '',
+              'cantidad': 0,
               'estado': estado,
               'tipoConsumo': order['tipoConsumo']?.toString() ?? 'EN_LUGAR',
               'observaciones': order['observaciones']?.toString() ?? '',
-              'nota': item['nota']?.toString() ?? '',
-              'opciones': item['opciones'] ?? const <OrderItemOption>[],
+              'nota': '',
+              'opciones': const <OrderItemOption>[],
               'customerName': customerName,
               'numeroSocio': numeroSocio,
               'isVip': isVip,
               'time': time,
             });
+          } else {
+            for (var item in itemsDelPedido) {
+              groupedOrders[groupKey]!.add({
+                'pedidoId': pedidoId,
+                'productoNombre': item['productoNombre'] as String,
+                'cantidad': item['cantidad'] as int,
+                'estado': estado,
+                'tipoConsumo': order['tipoConsumo']?.toString() ?? 'EN_LUGAR',
+                'observaciones': order['observaciones']?.toString() ?? '',
+                'nota': item['nota']?.toString() ?? '',
+                'opciones': item['opciones'] ?? const <OrderItemOption>[],
+                if (item['pedidoComboId'] != null)
+                  'pedidoComboId': item['pedidoComboId'],
+                if (item['comboId'] != null) 'comboId': item['comboId'],
+                'customerName': customerName,
+                'numeroSocio': numeroSocio,
+                'isVip': isVip,
+                'time': time,
+              });
+            }
           }
           debugPrint(
               '[DEBUG HOST] Pedido #$pedidoId - Items agregados al grupo. Total en grupo: ${groupedOrders[groupKey]!.length}');
@@ -396,13 +426,20 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
       // Mantener items exactamente como vinieron, o agrupar solo si (nombre y nota) son idénticos.
       // Lo más seguro es mantenerlos separados para que la cocina lea todo textual.
       for (var item in items) {
+        if ((item['productoNombre'] as String?)?.isEmpty ?? false) {
+          continue;
+        }
         itemsList.add({
           'productoNombre': item['productoNombre'],
           'cantidad': item['cantidad'],
           'nota': item['nota'],
           'opciones': item['opciones'] ?? const <OrderItemOption>[],
+          if (item['pedidoComboId'] != null) 'pedidoComboId': item['pedidoComboId'],
+          if (item['comboId'] != null) 'comboId': item['comboId'],
         });
       }
+
+      final combos = pedidoCombosByKey[entry.key];
 
       return {
         'id': pedidoId.toString(),
@@ -410,6 +447,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
         'customer': customerName,
         'numeroSocio': numeroSocio,
         'items': itemsList,
+        if (combos != null) 'combos': combos,
         'status': estado,
         'time': time,
         'isVip': isVip,
@@ -839,85 +877,10 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                                               color: Colors.grey[50],
                                               borderRadius:
                                                   BorderRadius.circular(8)),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: (order['items']
-                                                    as List<dynamic>)
-                                                .map((itemMap) {
-                                              final item = itemMap
-                                                  as Map<String, dynamic>;
-                                              final nombreItem =
-                                                  '${item['cantidad']} x ${item['productoNombre']}';
-                                              final notaItem = item['nota']
-                                                      ?.toString()
-                                                      .trim() ??
-                                                  '';
-                                              final options = (item['opciones']
-                                                      as List<OrderItemOption>?) ??
-                                                  const [];
-                                              final optionLines =
-                                                  OrderItemOptionsDisplay
-                                                      .hostBulletLines(options);
-
-                                              return Padding(
-                                                  padding:
-                                                      const EdgeInsets.only(
-                                                          bottom: 12.0),
-                                                  child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Text('• $nombreItem',
-                                                            style: const TextStyle(
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                                fontSize: 16,
-                                                                color: Colors
-                                                                    .black87)),
-                                                        for (final line
-                                                            in optionLines)
-                                                          Padding(
-                                                            padding:
-                                                                const EdgeInsets
-                                                                    .only(
-                                                                    left: 12.0,
-                                                                    top: 4.0),
-                                                            child: Text(
-                                                              line,
-                                                              style: TextStyle(
-                                                                color: Colors
-                                                                    .grey[800],
-                                                                fontSize: 14,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        if (notaItem.isNotEmpty)
-                                                          Padding(
-                                                            padding:
-                                                                const EdgeInsets
-                                                                    .only(
-                                                                    left: 12.0,
-                                                                    top: 4.0),
-                                                            child: Text(
-                                                                'Nota: $notaItem',
-                                                                style: TextStyle(
-                                                                    color: Colors
-                                                                            .red[
-                                                                        700],
-                                                                    fontStyle:
-                                                                        FontStyle
-                                                                            .italic,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w600,
-                                                                    fontSize:
-                                                                        14)),
-                                                          )
-                                                      ]));
-                                            }).toList(),
+                                          child: OrderHistoryLines(
+                                            order: order,
+                                            showPrice: false,
+                                            hostPreparationStyle: true,
                                           ),
                                         ),
                                         // Tipo de consumo

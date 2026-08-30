@@ -13,7 +13,7 @@ import '../../../domain/entities/order_entity.dart';
 import '../../../domain/repositories/order_repository.dart';
 import 'package:flutter_app_saludable/core/orders/order_offline_messages.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
-import 'package:flutter_app_saludable/core/utils/order_item_options_display.dart';
+import 'package:flutter_app_saludable/presentation/widgets/order_history_lines.dart';
 import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 import 'member_local_order_mapper.dart';
 
@@ -230,6 +230,7 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
       'observaciones': observaciones,
       'tiempoEstimadoMinutos': tiempoEstimadoMinutos,
       'items': items,
+      if (order['combos'] is List) 'combos': order['combos'],
     };
   }
 
@@ -590,86 +591,16 @@ class _OrdersList extends StatelessWidget {
                   ],
                 ),
                 const Divider(height: 24),
-                // Detalle de productos (pedido_items)
-                if (items.isEmpty)
-                  const Text(
-                    'Sin detalle de productos',
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
-                  )
-                else
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Productos:',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: Color(0xFF333333)),
-                      ),
-                      const SizedBox(height: 8),
-                      ...items.map((item) {
-                        final int cantidad = item['cantidad'] as int? ?? 1;
-                        // El backend devuelve productoNombre directamente en el item
-                        final String productoNombre =
-                            item['productoNombre']?.toString() ??
-                                (item['producto'] is Map
-                                    ? (item['producto'] as Map)['nombre']
-                                            ?.toString() ??
-                                        'Producto'
-                                    : 'Producto');
-                        final String? nota = item['nota']?.toString();
-                        final options =
-                            OrderItemOptionsDisplay.parseFromHistoryItem(
-                                Map<String, dynamic>.from(item));
-                        final optionLines =
-                            OrderItemOptionsDisplay.groupLines(options);
-
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '• $cantidad x $productoNombre',
-                                    style: const TextStyle(
-                                        color: Color(0xFF333333), fontSize: 13),
-                                  ),
-                                  if (nota != null && nota.isNotEmpty) ...[
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        '($nota)',
-                                        style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[600],
-                                            fontStyle: FontStyle.italic),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              for (final line in optionLines)
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                      left: 12, top: 2),
-                                  child: Text(
-                                    line,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[700],
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ],
+                const Text(
+                  'Productos:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Color(0xFF333333),
                   ),
+                ),
+                const SizedBox(height: 8),
+                OrderHistoryLines(order: order),
                 if (observaciones.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),

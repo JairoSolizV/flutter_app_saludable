@@ -96,6 +96,33 @@ class OrderItemOption {
     };
   }
 
+  Map<String, dynamic> toSqlMapForComboComponent({required int componentId}) {
+    return {
+      if (localId != null) 'id': localId,
+      'component_id': componentId,
+      'group_id': groupId,
+      'group_name': groupName,
+      'group_order': groupOrder,
+      'option_id': optionId,
+      'option_name': optionName,
+      'option_order': optionOrder,
+      'quantity': quantity,
+    };
+  }
+
+  factory OrderItemOption.fromComboComponentSqlMap(Map<String, dynamic> map) {
+    return OrderItemOption(
+      localId: _optionalInt(map['id']),
+      groupId: _optionalInt(map['group_id']),
+      groupName: map['group_name']?.toString() ?? '',
+      groupOrder: _optionalInt(map['group_order']) ?? 0,
+      optionId: _optionalInt(map['option_id']),
+      optionName: map['option_name']?.toString() ?? '',
+      optionOrder: _optionalInt(map['option_order']) ?? 0,
+      quantity: _optionalInt(map['quantity']) ?? 1,
+    );
+  }
+
   OrderItemOption copyWith({
     int? localId,
     int? orderItemLocalId,

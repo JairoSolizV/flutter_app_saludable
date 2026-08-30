@@ -111,7 +111,7 @@ class _FakeOrderRemoteDataSource implements OrderRemoteDataSource {
   bool shouldFail = false;
 
   @override
-  Future<void> sendOrder(OrderEntity order, List<OrderItem> items) async {
+  Future<void> sendOrder(OrderEntity order, {required List<OrderItem> items, required List<OrderCombo> combos}) async {
     if (shouldFail) throw Exception('fallo de red simulado');
     sentOrderIds.add(order.id);
   }

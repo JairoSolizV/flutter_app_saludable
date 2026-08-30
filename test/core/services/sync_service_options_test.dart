@@ -71,7 +71,7 @@ class _CapturingRemote implements OrderRemoteDataSource {
   Object? throwOnSend;
 
   @override
-  Future<void> sendOrder(OrderEntity order, List<OrderItem> items) async {
+  Future<void> sendOrder(OrderEntity order, {required List<OrderItem> items, required List<OrderCombo> combos}) async {
     if (throwOnSend != null) throw throwOnSend!;
     lastItemsPayload = items
         .map((i) => {
