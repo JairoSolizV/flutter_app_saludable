@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../domain/entities/product.dart';
 import '../../../providers/product_provider.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 
 /// Pantalla legacy. El anfitrión no debe usarla para disponibilidad ni borrado.
 /// Disponibilidad: switch del listado → PATCH /clubes/{clubId}/productos/{id}/toggle.
@@ -98,14 +99,19 @@ class _HostEditProductScreenState extends State<HostEditProductScreen> {
             children: [
               TextFormField(
                 controller: _nameCtrl,
-                decoration:
-                    const InputDecoration(labelText: 'Nombre del Producto'),
+                maxLength: 255,
+                inputFormatters: AppFormatters.largo(255),
+                decoration: const InputDecoration(
+                    labelText: 'Nombre del Producto', counterText: ''),
                 validator: (v) => v!.isEmpty ? 'Requerido' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _descCtrl,
-                decoration: const InputDecoration(labelText: 'Descripción'),
+                maxLength: 2000,
+                inputFormatters: AppFormatters.largo(2000),
+                decoration: const InputDecoration(
+                    labelText: 'Descripción', counterText: ''),
                 maxLines: 3,
               ),
               const SizedBox(height: 16),

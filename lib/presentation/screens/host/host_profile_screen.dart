@@ -9,6 +9,7 @@ import 'club/host_club_edit_screen.dart';
 
 import 'package:intl/intl.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 
 class HostProfileScreen extends StatefulWidget {
   const HostProfileScreen({super.key});
@@ -80,18 +81,24 @@ class _HostProfileScreenState extends State<HostProfileScreen> {
                       children: [
                           TextField(
                               controller: nameCtrl,
-                              decoration: const InputDecoration(labelText: 'Nombre'),
+                              maxLength: 255,
+                              inputFormatters: AppFormatters.letras(255),
+                              decoration: const InputDecoration(labelText: 'Nombre', counterText: ''),
                           ),
                           const SizedBox(height: 16),
                           TextField(
                               controller: phoneCtrl,
-                              decoration: const InputDecoration(labelText: 'Teléfono'),
+                              maxLength: 8,
+                              inputFormatters: AppFormatters.telefono,
+                              decoration: const InputDecoration(labelText: 'Teléfono', counterText: ''),
                               keyboardType: TextInputType.phone,
                           ),
                           const SizedBox(height: 16),
                           TextField(
                               controller: instagramCtrl,
-                              decoration: const InputDecoration(labelText: 'Instagram (@usuario)'),
+                              maxLength: 255,
+                              inputFormatters: AppFormatters.sinEspacios(255),
+                              decoration: const InputDecoration(labelText: 'Instagram (@usuario)', counterText: ''),
                           ),
                           const SizedBox(height: 16),
                           GestureDetector(
@@ -122,6 +129,7 @@ class _HostProfileScreenState extends State<HostProfileScreen> {
                             child: AbsorbPointer(
                               child: TextField(
                                   controller: birthDateCtrl,
+                                  readOnly: true,
                                   decoration: const InputDecoration(
                                     labelText: 'Fecha de Nacimiento',
                                     suffixIcon: Icon(LucideIcons.calendar),

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../../data/datasources/remote/compras_remote_data_source.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 
 class HostRegisterPurchaseScreen extends StatefulWidget {
   final int membresiaId;
@@ -87,10 +88,13 @@ class _HostRegisterPurchaseScreenState extends State<HostRegisterPurchaseScreen>
             children: [
               TextFormField(
                 controller: _descripcionCtrl,
+                maxLength: 2000,
+                inputFormatters: AppFormatters.largo(2000),
                 decoration: const InputDecoration(
                   labelText: 'Descripción',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.description_outlined),
+                  counterText: '',
                 ),
                 maxLines: 2,
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'La descripción es requerida' : null,
@@ -98,6 +102,7 @@ class _HostRegisterPurchaseScreenState extends State<HostRegisterPurchaseScreen>
               const SizedBox(height: 16),
               TextFormField(
                 controller: _montoCtrl,
+                inputFormatters: AppFormatters.decimal(enteros: 5),
                 decoration: const InputDecoration(
                   labelText: 'Monto (Bs.)',
                   border: OutlineInputBorder(),

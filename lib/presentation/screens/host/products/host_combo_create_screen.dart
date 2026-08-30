@@ -6,6 +6,7 @@ import '../../../../data/datasources/remote/combo_remote_data_source.dart';
 import '../../../../data/datasources/remote/product_remote_data_source.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/bolivian_price.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import '../../../widgets/product_image.dart';
 
 /// Pantalla para crear o editar un combo personalizado del club.
@@ -286,6 +287,8 @@ class _HostComboCreateScreenState extends State<HostComboCreateScreen> {
                 children: [
                   TextFormField(
                     controller: _nombreController,
+                    maxLength: 150,
+                    inputFormatters: AppFormatters.largo(150),
                     decoration: InputDecoration(
                       labelText: 'Nombre del combo *',
                       hintText: 'Ej: Combo Energía',
@@ -294,6 +297,7 @@ class _HostComboCreateScreenState extends State<HostComboCreateScreen> {
                       ),
                       filled: true,
                       fillColor: Colors.grey[50],
+                      counterText: '',
                     ),
                     validator: (v) => (v == null || v.trim().isEmpty)
                         ? 'El nombre es requerido'
@@ -302,6 +306,8 @@ class _HostComboCreateScreenState extends State<HostComboCreateScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _descripcionController,
+                    maxLength: 2000,
+                    inputFormatters: AppFormatters.largo(2000),
                     decoration: InputDecoration(
                       labelText: 'Descripción (opcional)',
                       border: OutlineInputBorder(
@@ -309,6 +315,7 @@ class _HostComboCreateScreenState extends State<HostComboCreateScreen> {
                       ),
                       filled: true,
                       fillColor: Colors.grey[50],
+                      counterText: '',
                     ),
                     maxLines: 2,
                   ),
@@ -471,6 +478,7 @@ class _HostComboCreateScreenState extends State<HostComboCreateScreen> {
                     controller: _precioController,
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: AppFormatters.decimal(enteros: 5),
                     decoration: InputDecoration(
                       labelText: 'Precio de venta del combo (Bs) *',
                       border: OutlineInputBorder(
@@ -582,6 +590,8 @@ class _ProductSelectorSheetState extends State<_ProductSelectorSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: TextField(
                 onChanged: (v) => setState(() => _search = v),
+                maxLength: 100,
+                inputFormatters: AppFormatters.largo(100),
                 decoration: InputDecoration(
                   hintText: 'Buscar...',
                   prefixIcon: const Icon(Icons.search),
@@ -591,6 +601,7 @@ class _ProductSelectorSheetState extends State<_ProductSelectorSheet> {
                   filled: true,
                   fillColor: Colors.grey[100],
                   isDense: true,
+                  counterText: '',
                 ),
               ),
             ),

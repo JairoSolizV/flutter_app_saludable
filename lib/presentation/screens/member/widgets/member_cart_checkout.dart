@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/bolivian_price.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import 'package:flutter_app_saludable/domain/entities/combo_cart_item.dart';
 
 /// Una línea del carrito = producto suelto o combo configurado.
@@ -235,7 +236,10 @@ class MemberCartCheckoutSheet extends StatelessWidget {
                   key: const Key('member-cart-general-note'),
                   controller: notaController,
                   style: const TextStyle(fontSize: 14),
+                  maxLength: 500,
+                  inputFormatters: AppFormatters.largo(500),
                   decoration: InputDecoration(
+                    counterText: '',
                     hintText: 'Nota general del pedido (opcional)',
                     hintStyle: TextStyle(fontSize: 13, color: Colors.grey[400]),
                     prefixIcon: Icon(

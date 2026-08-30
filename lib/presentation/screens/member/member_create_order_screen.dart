@@ -16,6 +16,7 @@ import '../../../data/datasources/remote/combo_remote_data_source.dart';
 import 'package:flutter_app_saludable/core/orders/order_offline_messages.dart';
 import 'package:flutter_app_saludable/core/orders/order_submit_outcome.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 
 class MemberCreateOrderScreen extends StatefulWidget {
   const MemberCreateOrderScreen({super.key});
@@ -563,11 +564,14 @@ class _MemberCreateOrderScreenState extends State<MemberCreateOrderScreen> {
                   // Nota general del pedido
                   TextField(
                     controller: _notaController,
+                    maxLength: 500,
+                    inputFormatters: AppFormatters.largo(500),
                     decoration: const InputDecoration(
                       labelText: 'Notas u observaciones (opcional)',
                       hintText: 'Ej: Sin hielo, extra dulce...',
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.note),
+                      counterText: '',
                     ),
                     maxLines: 2,
                   ),

@@ -12,6 +12,7 @@ import '../../../widgets/product_image.dart';
 import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/bolivian_price.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 import 'host_combo_create_screen.dart';
 
@@ -234,7 +235,10 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                             padding: const EdgeInsets.all(16.0),
                             child: TextField(
                               controller: _searchController,
+                              maxLength: 100,
+                              inputFormatters: AppFormatters.largo(100),
                               decoration: InputDecoration(
+                                counterText: '',
                                 hintText: 'Buscar productos...',
                                 prefixIcon: const Icon(Icons.search),
                                 suffixIcon: _searchQuery.isNotEmpty

@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:latlong2/latlong.dart';
@@ -8,6 +9,7 @@ import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../widgets/schedule_selector.dart';
 import '../../../widgets/location_picker_dialog.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 
 class HostClubEditScreen extends StatefulWidget {
   final Club club;
@@ -251,6 +253,8 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                 controller: _addressCtrl,
                 icon: LucideIcons.mapPin,
                 validator: (v) => v!.isEmpty ? "Requerido" : null,
+                maxLength: 255,
+                inputFormatters: AppFormatters.largo(255),
               ),
               const SizedBox(height: 24),
 
@@ -270,6 +274,8 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                 icon: LucideIcons.image,
                 hint: "https://ejemplo.com/foto.jpg",
                 maxLines: 1,
+                maxLength: 255,
+                inputFormatters: AppFormatters.sinEspacios(255),
               ),
 
               // Preview de la imagen si hay URL
@@ -333,12 +339,16 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
     int maxLines = 1,
     bool readOnly = false,
     String? helperText,
+    int? maxLength,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TextFormField(
       controller: controller,
       validator: validator,
       maxLines: maxLines,
       readOnly: readOnly,
+      maxLength: maxLength,
+      inputFormatters: inputFormatters,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
@@ -347,6 +357,7 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         filled: readOnly,
         fillColor: readOnly ? Colors.grey[100] : null,
+        counterText: '',
       ),
     );
   }

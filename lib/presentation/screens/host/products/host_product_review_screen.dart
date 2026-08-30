@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/bolivian_price.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import 'package:flutter_app_saludable/data/datasources/remote/product_remote_data_source.dart';
 import 'package:flutter_app_saludable/domain/entities/product.dart';
 import 'package:flutter_app_saludable/presentation/widgets/product_image.dart';
@@ -696,6 +697,7 @@ class _ClubSalePriceSheetState extends State<_ClubSalePriceSheet> {
             key: const Key('club-sale-price-field'),
             controller: _controller,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: AppFormatters.decimal(enteros: 5),
             decoration: const InputDecoration(
               hintText: 'Ej: 32.00',
               prefixText: 'Bs ',

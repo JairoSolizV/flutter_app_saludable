@@ -11,6 +11,7 @@ import '../../../../domain/entities/club_membership.dart';
 import '../../../providers/user_provider.dart';
 import '../pre_socios/host_pre_socios_list_screen.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 class HostMembersListScreen extends StatefulWidget {
@@ -292,7 +293,10 @@ class _HostMembersListScreenState extends State<HostMembersListScreen>
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: TextField(
               controller: _searchController,
+              maxLength: 100,
+              inputFormatters: AppFormatters.largo(100),
               decoration: InputDecoration(
+                counterText: '',
                 hintText: 'Buscar por nombre o número...',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchController.text.isNotEmpty

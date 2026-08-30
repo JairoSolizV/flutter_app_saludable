@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/pagination/paged_result.dart';
 import '../../domain/entities/club_membership.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 
 class MemberPickerField extends StatelessWidget {
   final List<ClubMembership> members;
@@ -263,7 +264,10 @@ class _MemberPickerSheetState extends State<_MemberPickerSheet> {
               child: TextField(
                 controller: _searchCtrl,
                 autofocus: true,
+                maxLength: 100,
+                inputFormatters: AppFormatters.largo(100),
                 decoration: InputDecoration(
+                  counterText: '',
                   hintText: 'Buscar por nombre o número...',
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _searchCtrl.text.isNotEmpty

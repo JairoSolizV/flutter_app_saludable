@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../../providers/support_provider.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 class SupportCenterScreen extends StatefulWidget {
@@ -157,10 +158,13 @@ class _SupportCenterScreenState extends State<SupportCenterScreen> with SingleTi
             // Asunto
             TextFormField(
               controller: _asuntoController,
+              maxLength: 255,
+              inputFormatters: AppFormatters.largo(255),
               decoration: const InputDecoration(
                 labelText: 'Asunto (Breve resumen)',
                 border: OutlineInputBorder(),
                 hintText: 'Ej. No puedo completar mi pedido',
+                counterText: '',
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -170,15 +174,18 @@ class _SupportCenterScreenState extends State<SupportCenterScreen> with SingleTi
               },
             ),
             const SizedBox(height: 16),
-            
+
             // Mensaje
             TextFormField(
               controller: _mensajeController,
               maxLines: 5,
+              maxLength: 2000,
+              inputFormatters: AppFormatters.largo(2000),
               decoration: const InputDecoration(
                 labelText: 'Descripción detallada del mensaje',
                 border: OutlineInputBorder(),
                 alignLabelWithHint: true,
+                counterText: '',
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {

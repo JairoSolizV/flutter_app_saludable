@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -396,7 +397,9 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                           const SizedBox(height: 16),
                           TextField(
                               controller: phoneCtrl,
-                              decoration: const InputDecoration(labelText: 'Teléfono'),
+                              maxLength: 8,
+                              inputFormatters: AppFormatters.telefono,
+                              decoration: const InputDecoration(labelText: 'Teléfono', counterText: ''),
                               keyboardType: TextInputType.phone,
                           ),
                           const SizedBox(height: 16),
@@ -428,6 +431,7 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                             child: AbsorbPointer(
                               child: TextField(
                                   controller: birthDateCtrl,
+                                  readOnly: true,
                                   decoration: const InputDecoration(
                                     labelText: 'Fecha de Nacimiento',
                                     suffixIcon: Icon(LucideIcons.calendar),

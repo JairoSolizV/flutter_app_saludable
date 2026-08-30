@@ -7,6 +7,7 @@ import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../../presentation/widgets/member_picker_field.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 
 class HostPreSocioCreateScreen extends StatefulWidget {
   final int clubId;
@@ -100,10 +101,13 @@ class _HostPreSocioCreateScreenState extends State<HostPreSocioCreateScreen> {
             children: [
               TextFormField(
                 controller: _nombreCtrl,
+                maxLength: 255,
+                inputFormatters: AppFormatters.letras(255),
                 decoration: const InputDecoration(
                   labelText: 'Nombre completo',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.person_outline),
+                  counterText: '',
                 ),
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? 'El nombre es requerido'
@@ -112,10 +116,13 @@ class _HostPreSocioCreateScreenState extends State<HostPreSocioCreateScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _telefonoCtrl,
+                maxLength: 8,
+                inputFormatters: AppFormatters.telefono,
                 decoration: const InputDecoration(
                   labelText: 'Teléfono',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.phone_outlined),
+                  counterText: '',
                 ),
                 keyboardType: TextInputType.phone,
                 validator: (v) => (v == null || v.trim().isEmpty)

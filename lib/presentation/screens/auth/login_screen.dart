@@ -5,6 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/validators.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -72,10 +73,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 32),
                       TextFormField(
                         controller: _emailCtrl,
+                        maxLength: 100,
+                        keyboardType: TextInputType.emailAddress,
+                        inputFormatters: AppFormatters.sinEspacios(100),
                         decoration: const InputDecoration(
                           labelText: 'Correo Electrónico',
                           prefixIcon: Icon(Icons.email),
                           border: OutlineInputBorder(),
+                          counterText: '',
                         ),
                         validator: (v) => v!.isEmpty ? 'Campo requerido' : null,
                         onChanged: (value) {

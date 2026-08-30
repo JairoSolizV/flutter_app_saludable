@@ -10,6 +10,7 @@ import '../../../../domain/entities/product.dart';
 import '../../../widgets/product_image.dart';
 import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import 'product_option_groups_section.dart';
 
 class HostProductProposalScreen extends StatefulWidget {
@@ -324,11 +325,14 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: TextFormField(
+                      maxLength: 1024,
+                      inputFormatters: AppFormatters.sinEspacios(1024),
                       decoration: const InputDecoration(
                         labelText: 'O pega la URL de la imagen',
                         hintText: 'https://...',
                         border: OutlineInputBorder(),
                         isDense: true,
+                        counterText: '',
                       ),
                       onChanged: (v) => setState(() =>
                           _imagenUrl = v.trim().isEmpty ? null : v.trim()),
@@ -339,10 +343,13 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _nombreCtrl,
+                maxLength: 255,
+                inputFormatters: AppFormatters.largo(255),
                 decoration: const InputDecoration(
                   labelText: 'Nombre del Producto',
                   prefixIcon: Icon(LucideIcons.coffee),
                   border: OutlineInputBorder(),
+                  counterText: '',
                 ),
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? 'El nombre es obligatorio'
@@ -351,22 +358,28 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _descripcionCtrl,
+                maxLength: 2000,
+                inputFormatters: AppFormatters.largo(2000),
                 decoration: const InputDecoration(
                   labelText: 'Descripción',
                   alignLabelWithHint: true,
                   border: OutlineInputBorder(),
+                  counterText: '',
                 ),
                 maxLines: 3,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _ingredientesCtrl,
+                maxLength: 2000,
+                inputFormatters: AppFormatters.largo(2000),
                 decoration: const InputDecoration(
                   labelText: 'Ingredientes (obligatorio)',
                   hintText: 'Ej: Té verde, aloe, proteína, hielo...',
                   alignLabelWithHint: true,
                   prefixIcon: Icon(LucideIcons.list),
                   border: OutlineInputBorder(),
+                  counterText: '',
                 ),
                 maxLines: 4,
                 validator: (v) => (v == null || v.trim().isEmpty)
@@ -378,6 +391,7 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
                 TextFormField(
                   key: const Key('precio-venta-field'),
                   controller: _precioCtrl,
+                  inputFormatters: AppFormatters.decimal(enteros: 5),
                   decoration: const InputDecoration(
                     labelText: 'Precio de venta (Bs)',
                     hintText: 'Ej: 32.00',
@@ -399,6 +413,7 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _puntosValorCtrl,
+                inputFormatters: AppFormatters.entero(5),
                 decoration: const InputDecoration(
                   labelText: 'Puntos de fidelización',
                   hintText: 'Ej: 10',

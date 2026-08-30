@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import 'package:flutter_app_saludable/core/utils/validators.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -163,15 +164,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       
                       TextFormField(
                         controller: _firstNameCtrl,
-                        decoration: const InputDecoration(labelText: 'Nombre', prefixIcon: Icon(Icons.person), border: OutlineInputBorder()),
+                        maxLength: 60,
+                        inputFormatters: AppFormatters.letras(60),
+                        decoration: const InputDecoration(labelText: 'Nombre', prefixIcon: Icon(Icons.person), border: OutlineInputBorder(), counterText: ''),
                         validator: Validators.validateName,
                         onChanged: (_) => _clearAuthError(),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       TextFormField(
                         controller: _lastNameCtrl,
-                        decoration: const InputDecoration(labelText: 'Apellido', prefixIcon: Icon(Icons.person_outline), border: OutlineInputBorder()),
+                        maxLength: 60,
+                        inputFormatters: AppFormatters.letras(60),
+                        decoration: const InputDecoration(labelText: 'Apellido', prefixIcon: Icon(Icons.person_outline), border: OutlineInputBorder(), counterText: ''),
                         validator: Validators.validateName,
                         onChanged: (_) => _clearAuthError(),
                       ),
@@ -180,10 +185,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       TextFormField(
                         controller: _emailCtrl,
                         focusNode: _emailFocusNode,
+                        maxLength: 100,
+                        keyboardType: TextInputType.emailAddress,
+                        inputFormatters: AppFormatters.sinEspacios(100),
                         decoration: InputDecoration(
                           labelText: 'Correo Electrónico',
                           prefixIcon: const Icon(Icons.email),
                           border: const OutlineInputBorder(),
+                          counterText: '',
                           suffixIcon: _checkingEmail
                               ? const SizedBox(
                                   width: 20,
@@ -254,7 +263,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       TextFormField(
                         controller: _phoneCtrl,
-                        decoration: const InputDecoration(labelText: 'Teléfono', prefixIcon: Icon(Icons.phone), border: OutlineInputBorder()),
+                        maxLength: 8,
+                        inputFormatters: AppFormatters.telefono,
+                        decoration: const InputDecoration(labelText: 'Teléfono', prefixIcon: Icon(Icons.phone), border: OutlineInputBorder(), counterText: ''),
                         validator: Validators.validateBolivianPhone,
                         keyboardType: TextInputType.phone,
                         onChanged: (_) => _clearAuthError(),

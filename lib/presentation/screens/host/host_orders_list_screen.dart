@@ -8,6 +8,7 @@ import '../../../data/datasources/remote/order_remote_data_source.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../providers/user_provider.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import 'package:flutter_app_saludable/core/utils/order_item_options_display.dart';
 import 'package:flutter_app_saludable/domain/entities/order_item_option.dart';
 import 'package:flutter_app_saludable/presentation/widgets/order_history_lines.dart';
@@ -547,10 +548,13 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                 TextFormField(
                   controller: timeController,
                   keyboardType: TextInputType.number,
+                  maxLength: 3,
+                  inputFormatters: AppFormatters.entero(3),
                   decoration: const InputDecoration(
                     labelText: 'Minutos',
                     border: OutlineInputBorder(),
                     suffixText: 'min',
+                    counterText: '',
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {

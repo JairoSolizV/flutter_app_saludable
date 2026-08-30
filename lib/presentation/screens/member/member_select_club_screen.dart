@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
 class MemberSelectClubScreen extends StatefulWidget {
@@ -84,7 +85,10 @@ class _MemberSelectClubScreenState extends State<MemberSelectClubScreen> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
+              maxLength: 100,
+              inputFormatters: AppFormatters.largo(100),
               decoration: InputDecoration(
+                counterText: '',
                 hintText: 'Buscar club por nombre o dirección...',
                 prefixIcon: const Icon(LucideIcons.search),
                 border: OutlineInputBorder(

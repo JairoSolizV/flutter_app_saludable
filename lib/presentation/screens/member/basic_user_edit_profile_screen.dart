@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../../providers/user_provider.dart';
 import 'package:flutter_app_saludable/core/utils/validators.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class BasicUserEditProfileScreen extends StatefulWidget {
@@ -181,35 +183,36 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
 
               // Campos Generales
               _buildSectionTitle("Información Personal"),
-              _buildTextField(label: "Nombre Completo", controller: _nameController, icon: Icons.person_outline, validator: Validators.validateName),
+              _buildTextField(label: "Nombre Completo", controller: _nameController, icon: Icons.person_outline, validator: Validators.validateName, maxLength: 255, inputFormatters: AppFormatters.letras(255)),
               const SizedBox(height: 16),
               _buildTextField(label: "Correo Electrónico", controller: _emailController, icon: Icons.email_outlined, readOnly: true), // Email read-only usually
               const SizedBox(height: 16),
-              _buildTextField(label: "Número de Celular", controller: _phoneController, icon: Icons.phone_android, validator: Validators.validateBolivianPhone, keyboardType: TextInputType.phone),
+              _buildTextField(label: "Número de Celular", controller: _phoneController, icon: Icons.phone_android, validator: Validators.validateBolivianPhone, keyboardType: TextInputType.phone, maxLength: 8, inputFormatters: AppFormatters.telefono),
               const SizedBox(height: 16),
-              
+
               // Fecha Nacimiento
                GestureDetector(
                 onTap: () => _selectDate(context),
                 child: AbsorbPointer(
                   child: _buildTextField(
-                    label: "Fecha de Nacimiento", 
-                    controller: _birthDateController, 
+                    label: "Fecha de Nacimiento",
+                    controller: _birthDateController,
                     icon: Icons.calendar_today,
+                    readOnly: true,
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 30),
 
               // Redes Sociales
               _buildSectionTitle("Redes Sociales (Usuarios)"),
-              _buildTextField(label: "Instagram", controller: _instagramController, icon: LucideIcons.instagram),
+              _buildTextField(label: "Instagram", controller: _instagramController, icon: LucideIcons.instagram, maxLength: 255, inputFormatters: AppFormatters.sinEspacios(255)),
               const SizedBox(height: 16),
-              _buildTextField(label: "Facebook", controller: _facebookController, icon: LucideIcons.facebook),
+              _buildTextField(label: "Facebook", controller: _facebookController, icon: LucideIcons.facebook, maxLength: 255, inputFormatters: AppFormatters.sinEspacios(255)),
               const SizedBox(height: 16),
               // Lucide doesn't have tiktok in this version likely, using generic or material
-              _buildTextField(label: "TikTok", controller: _tiktokController, icon: Icons.music_note),
+              _buildTextField(label: "TikTok", controller: _tiktokController, icon: Icons.music_note, maxLength: 255, inputFormatters: AppFormatters.sinEspacios(255)),
 
               const SizedBox(height: 40),
 
@@ -250,12 +253,14 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
   }
 
   Widget _buildTextField({
-    required String label, 
-    required TextEditingController controller, 
+    required String label,
+    required TextEditingController controller,
     required IconData icon,
     bool readOnly = false,
     String? Function(String?)? validator,
     TextInputType? keyboardType,
+    int? maxLength,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return Container(
        decoration: BoxDecoration(
@@ -268,6 +273,8 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
             readOnly: readOnly,
             keyboardType: keyboardType,
             validator: validator,
+            maxLength: maxLength,
+            inputFormatters: inputFormatters,
             decoration: InputDecoration(
               labelText: label,
               prefixIcon: Icon(icon, color: Colors.grey[400]),
@@ -275,6 +282,7 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               floatingLabelBehavior: FloatingLabelBehavior.auto,
               errorStyle: const TextStyle(height: 0.5), // Reduce space if needed
+              counterText: '',
             ),
           ),
     );

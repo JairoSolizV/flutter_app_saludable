@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/validators.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -101,10 +102,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         controller: _emailCtrl,
                         keyboardType: TextInputType.emailAddress,
                         autofillHints: const [AutofillHints.email],
+                        maxLength: 100,
+                        inputFormatters: AppFormatters.sinEspacios(100),
                         decoration: const InputDecoration(
                           labelText: 'Correo electrónico',
                           prefixIcon: Icon(Icons.email),
                           border: OutlineInputBorder(),
+                          counterText: '',
                         ),
                         validator: Validators.validateEmail,
                         onChanged: (_) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -8,6 +9,7 @@ import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../widgets/schedule_selector.dart';
 import '../../widgets/location_picker_dialog.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 
 class RequestClubScreen extends StatefulWidget {
   const RequestClubScreen({super.key});
@@ -168,15 +170,19 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
                 hint: "Ej. Club Vida Sana",
                 icon: LucideIcons.tag,
                 validator: (v) => v == null || v.isEmpty ? "Ingresa un nombre" : null,
+                maxLength: 100,
+                inputFormatters: AppFormatters.largo(100),
               ),
               const SizedBox(height: 16),
-              
+
               _buildTextField(
                 controller: _addressController,
                 label: "Dirección",
                 hint: "Calle, número y barrio",
                 icon: LucideIcons.mapPin,
                 validator: (v) => v == null || v.isEmpty ? "Ingresa una dirección" : null,
+                maxLength: 200,
+                inputFormatters: AppFormatters.largo(200),
               ),
               const SizedBox(height: 24),
               const Divider(),
@@ -294,6 +300,8 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
     required IconData icon,
     String? Function(String?)? validator,
     int maxLines = 1,
+    int? maxLength,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TextFormField(
       controller: controller,
@@ -312,9 +320,12 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
         ),
         fillColor: Colors.white,
         filled: true,
+        counterText: '',
       ),
       validator: validator,
       maxLines: maxLines,
+      maxLength: maxLength,
+      inputFormatters: inputFormatters,
     );
   }
 }

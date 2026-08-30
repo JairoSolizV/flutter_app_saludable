@@ -23,6 +23,7 @@ import 'package:flutter_app_saludable/core/orders/order_offline_messages.dart';
 import 'package:flutter_app_saludable/core/orders/order_submit_outcome.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/bolivian_price.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import 'package:flutter_app_saludable/core/utils/order_item_options_display.dart';
 import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 
@@ -384,7 +385,10 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
               controller: ctrl,
               autofocus: true,
               maxLines: 3,
+              maxLength: 500,
+              inputFormatters: AppFormatters.largo(500),
               decoration: InputDecoration(
+                counterText: '',
                 hintText: 'Ej: Sin azucar, extra hielo...',
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12)),

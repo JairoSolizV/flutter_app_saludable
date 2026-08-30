@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_app_saludable/core/constants/counter_sale_payment_types.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/bolivian_price.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import '../../providers/counter_sale_provider.dart';
 
 class HostCounterSaleTicketScreen extends StatefulWidget {
@@ -217,10 +218,14 @@ class _HostCounterSaleTicketScreenState
                                       initialValue: line.note,
                                       onChanged: (v) =>
                                           provider.setLineNote(key, v),
+                                      maxLength: 500,
+                                      inputFormatters:
+                                          AppFormatters.largo(500),
                                       decoration: const InputDecoration(
                                         hintText: 'Nota del ítem (opcional)',
                                         isDense: true,
                                         border: OutlineInputBorder(),
+                                        counterText: '',
                                       ),
                                     ),
                                   ],
@@ -299,9 +304,12 @@ class _HostCounterSaleTicketScreenState
                           controller: _obsCtrl,
                           onChanged: provider.setObservaciones,
                           maxLines: 3,
+                          maxLength: 500,
+                          inputFormatters: AppFormatters.largo(500),
                           decoration: const InputDecoration(
                             hintText: 'Observaciones de la venta (opcional)',
                             border: OutlineInputBorder(),
+                            counterText: '',
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -394,10 +402,13 @@ class _SocioBlock extends StatelessWidget {
                 key: const Key('counter-socio-code'),
                 controller: socioCtrl,
                 keyboardType: TextInputType.text,
+                maxLength: 30,
+                inputFormatters: AppFormatters.largo(30),
                 decoration: const InputDecoration(
                   labelText: 'Código de socio (opcional)',
                   border: OutlineInputBorder(),
                   isDense: true,
+                  counterText: '',
                 ),
                 onChanged: onCodeChanged,
               ),

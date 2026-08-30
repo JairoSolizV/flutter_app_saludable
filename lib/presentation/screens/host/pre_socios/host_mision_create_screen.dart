@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 
 class HostMisionCreateScreen extends StatefulWidget {
   final int preSocioId;
@@ -84,32 +85,41 @@ class _HostMisionCreateScreenState extends State<HostMisionCreateScreen> {
             children: [
               TextFormField(
                 controller: _nombreCtrl,
+                maxLength: 255,
+                inputFormatters: AppFormatters.largo(255),
                 decoration: const InputDecoration(
                   labelText: 'Nombre de la misión',
                   hintText: 'Ej: Consumir 3 combos en una semana',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.flag_outlined),
+                  counterText: '',
                 ),
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'El nombre es requerido' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _descripcionCtrl,
+                maxLength: 2000,
+                inputFormatters: AppFormatters.largo(2000),
                 decoration: const InputDecoration(
                   labelText: 'Descripción (Opcional)',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.description_outlined),
+                  counterText: '',
                 ),
                 maxLines: 2,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _metaCtrl,
+                maxLength: 4,
+                inputFormatters: AppFormatters.entero(4),
                 decoration: const InputDecoration(
                   labelText: 'Meta (cantidad)',
                   hintText: 'Ej: 3',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.track_changes),
+                  counterText: '',
                 ),
                 keyboardType: TextInputType.number,
                 validator: (v) {

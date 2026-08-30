@@ -8,6 +8,7 @@ import '../../../../data/datasources/remote/pre_socio_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../../presentation/widgets/member_picker_field.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 
 class HostMemberRegistrationScreen extends StatefulWidget {
   final String qrPayload;
@@ -153,10 +154,13 @@ class _HostMemberRegistrationScreenState
               const SizedBox(height: 16),
               TextFormField(
                 controller: _conocioCtrl,
+                maxLength: 255,
+                inputFormatters: AppFormatters.largo(255),
                 decoration: const InputDecoration(
                   labelText: '¿Cómo conoció el Club? (Opcional)',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.question_answer_outlined),
+                  counterText: '',
                 ),
               ),
               const SizedBox(height: 16),
