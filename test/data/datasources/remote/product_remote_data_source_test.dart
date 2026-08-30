@@ -370,26 +370,12 @@ void main() {
   });
 
   group('deleteProduct', () {
-    test('éxito hace PATCH desactivar', async_(() async {
-      adapter.stub('PATCH', '/productos/1/desactivar', statusCode: 200, data: {});
-      await ds.deleteProduct('1');
-      expect(adapter.requests, hasLength(1));
-    }));
-
-    test('404 en patch cae a DELETE de fallback', async_(() async {
-      adapter.stub('PATCH', '/productos/2/desactivar', statusCode: 404, data: {});
-      adapter.stub('DELETE', '/productos/2', statusCode: 200, data: {});
-      await ds.deleteProduct('2');
-      expect(adapter.requests, hasLength(2));
-      expect(adapter.requests.last.method, 'DELETE');
-    }));
-
-    test('error distinto de 404 se mapea sin fallback', async_(() async {
-      adapter.stub('PATCH', '/productos/3/desactivar', statusCode: 500, data: {});
+    test('no llama /desactivar ni DELETE', async_(() async {
       await expectLater(
-        () => ds.deleteProduct('3'),
-        throwsA(isA<AppException>()),
+        () => ds.deleteProduct('1'),
+        throwsA(isA<UnsupportedError>()),
       );
+      expect(adapter.requests, isEmpty);
     }));
   });
 }

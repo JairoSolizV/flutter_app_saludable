@@ -5,6 +5,9 @@ import '../../../../domain/entities/product.dart';
 import '../../../providers/product_provider.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
+/// Pantalla legacy. El anfitrión no debe usarla para disponibilidad ni borrado.
+/// Disponibilidad: switch del listado → PATCH /clubes/{clubId}/productos/{id}/toggle.
+/// Alta de LOCAL: HostProductProposalScreen.
 class HostEditProductScreen extends StatefulWidget {
   final int clubId;
   final Product? product; // Optional for edit mode
@@ -19,7 +22,6 @@ class _HostEditProductScreenState extends State<HostEditProductScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameCtrl;
   late TextEditingController _descCtrl;
-  bool _isActive = true;
 
   bool _isSaving = false;
 
@@ -28,7 +30,13 @@ class _HostEditProductScreenState extends State<HostEditProductScreen> {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.product?.name ?? '');
     _descCtrl = TextEditingController(text: widget.product?.description ?? '');
-    _isActive = widget.product?.active ?? true;
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _descCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _save() async {
@@ -41,65 +49,37 @@ class _HostEditProductScreenState extends State<HostEditProductScreen> {
         id: widget.product?.id ?? '0',
         name: _nameCtrl.text,
         description: _descCtrl.text,
-        // Backend no soporta estos, mandamos defaults
-        price: 0, 
+        price: 0,
         category: 'General',
         imageUrl: '',
-        active: _isActive,
+        active: widget.product?.active ?? true,
       );
 
       if (widget.product == null) {
-        // Create
-        await Provider.of<ProductProvider>(context, listen: false).createProduct(product, widget.clubId);
+        await Provider.of<ProductProvider>(context, listen: false)
+            .createProduct(product, widget.clubId);
       } else {
-        // Update
-        await Provider.of<ProductProvider>(context, listen: false).updateProduct(product, widget.clubId); // Note: updateProduct signature in provider might need update if it doesn't take clubId? Wait, provider usually delegates.
+        await Provider.of<ProductProvider>(context, listen: false)
+            .updateProduct(product, widget.clubId);
       }
 
       if (mounted) {
         context.pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(widget.product == null ? 'Producto creado' : 'Producto actualizado')),
+          SnackBar(
+              content: Text(widget.product == null
+                  ? 'Producto creado'
+                  : 'Producto actualizado')),
         );
       }
     } catch (e) {
       if (mounted) {
-         ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: ${e.toString()}')),
         );
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  Future<void> _delete() async {
-    final confirm = await showDialog<bool>(
-      context: context, 
-      builder: (context) => AlertDialog(
-        title: const Text('Eliminar Producto'),
-        content: const Text('¿Estás seguro de que quieres eliminar este producto?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Eliminar', style: TextStyle(color: Colors.red))),
-        ],
-      )
-    );
-
-    if (confirm != true) return;
-
-    setState(() => _isSaving = true);
-    try {
-      await Provider.of<ProductProvider>(context, listen: false).deleteProduct(widget.product!.id, widget.clubId);
-      if (mounted) {
-        context.pop();
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Producto eliminado')));
-      }
-    } catch(e) {
-      if (mounted) {
-         setState(() => _isSaving = false);
-         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
     }
   }
 
@@ -109,9 +89,6 @@ class _HostEditProductScreenState extends State<HostEditProductScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(isEdit ? 'Editar Producto' : 'Nuevo Producto'),
-        actions: isEdit ? [
-          IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: _isSaving ? null : _delete)
-        ] : null,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -121,7 +98,8 @@ class _HostEditProductScreenState extends State<HostEditProductScreen> {
             children: [
               TextFormField(
                 controller: _nameCtrl,
-                decoration: const InputDecoration(labelText: 'Nombre del Producto'),
+                decoration:
+                    const InputDecoration(labelText: 'Nombre del Producto'),
                 validator: (v) => v!.isEmpty ? 'Requerido' : null,
               ),
               const SizedBox(height: 16),
@@ -131,28 +109,23 @@ class _HostEditProductScreenState extends State<HostEditProductScreen> {
                 maxLines: 3,
               ),
               const SizedBox(height: 16),
-              SwitchListTile(
-                title: const Text('Disponible / Activo'),
-                subtitle: const Text('Si se desactiva, no aparecerá en el menú'),
-                value: _isActive,
-                activeThumbColor: AppTheme.primaryColor,
-                onChanged: (val) {
-                  setState(() => _isActive = val);
-                },
+              const Text(
+                'La disponibilidad en tu club se gestiona desde el listado '
+                '(Disponible en mi club), no desde esta pantalla.',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
-              const SizedBox(height: 16),
-              // Price, Category, Image omitted as per backend limitations
-              const Text('Nota: Los precios e imágenes se gestionarán en una futura actualización.', style: TextStyle(color: Colors.grey, fontSize: 12)),
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _save,
-                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
-                  child: _isSaving 
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor),
+                  child: _isSaving
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Guardar Producto', style: TextStyle(fontSize: 16)),
+                      : const Text('Guardar Producto',
+                          style: TextStyle(fontSize: 16)),
                 ),
               )
             ],

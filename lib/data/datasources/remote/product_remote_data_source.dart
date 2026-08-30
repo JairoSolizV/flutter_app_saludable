@@ -28,6 +28,8 @@ abstract class ProductRemoteDataSource {
   /// PATCH /productos/{id}/reenviar — solo LOCAL RECHAZADO del propietario.
   Future<Product> reenviarProducto(String productId);
 
+  /// Legacy. El anfitrión no desactiva productos globalmente.
+  /// No llama PATCH /productos/{id}/desactivar ni DELETE.
   Future<void> deleteProduct(String id);
   Future<void> toggleProductAvailability(int clubId, String productId);
 }
@@ -484,22 +486,9 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
 
   @override
   Future<void> deleteProduct(String id) async {
-    try {
-      // Usaremos patch/desactivar o delete según backend. Asumimos delete o desactivar.
-      // El usuario mencionó "desactivar" en un paso anterior mío, pero la API standard suele ser DELETE.
-      // Voy a usar DELETE y si falla manejo error. O mejor, uso el endpoint de desactivar si sé que existe.
-      // En el paso 758 puse: await _client.patch('/productos/$id/desactivar');
-      // Voy a mantener eso.
-      await _client.patch('/productos/$id/desactivar');
-    } on DioException catch (e, st) {
-      // Si falla ruta no encontrada, intentamos DELETE estándar como fallback
-      if (e.response?.statusCode == 404) {
-        try {
-          await _client.delete('/productos/$id');
-          return;
-        } catch (_) {}
-      }
-      throwDioAsApp(e, fallback: 'Error al eliminar producto', stackTrace: st);
-    }
+    throw UnsupportedError(
+      'El anfitrión no puede desactivar ni borrar productos de forma global. '
+      'Usa PATCH /clubes/{clubId}/productos/{productoId}/toggle.',
+    );
   }
 }

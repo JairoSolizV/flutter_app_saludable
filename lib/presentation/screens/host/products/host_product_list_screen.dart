@@ -9,6 +9,7 @@ import '../../../providers/user_provider.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../data/datasources/remote/combo_remote_data_source.dart';
 import '../../../widgets/product_image.dart';
+import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/presentation/widgets/refreshable_scroll_view.dart';
 import 'host_product_sabores_screen.dart';
@@ -150,6 +151,26 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
     }
   }
 
+  Future<void> _onToggleClubAvailability(Product product) async {
+    if (_clubId == null || _hubId == null) return;
+    final provider = Provider.of<ProductProvider>(context, listen: false);
+    if (provider.isToggling(product.id)) return;
+    try {
+      await provider.toggleAvailability(_clubId!, product.id, _hubId!);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ErrorMapper.publicMessage(e,
+                fallback: 'No se pudo cambiar la disponibilidad en tu club'),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -281,6 +302,7 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                 elevation: 2,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: ListTile(
+                  isThreeLine: true,
                   leading: _buildProductImage(product),
                   title: Text(
                     product.name, 
@@ -321,58 +343,52 @@ class _HostProductListScreenState extends State<HostProductListScreen> {
                         )
                     ],
                   ),
-                  trailing: Switch(
-                    activeThumbColor: AppTheme.primaryColor,
-                    value: product.available && product.estadoAprobacion == 'APROBADO',
-                    onChanged: product.estadoAprobacion == 'APROBADO' ? (bool value) {
-                      provider.toggleAvailability(_clubId!, product.id, _hubId!);
-                    } : null,
+                  trailing: Semantics(
+                    label: 'Disponible en mi club',
+                    button: true,
+                    child: Switch(
+                      key: ValueKey('club-avail-${product.id}'),
+                      activeThumbColor: AppTheme.primaryColor,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      value: product.available &&
+                          product.estadoAprobacion == 'APROBADO',
+                      onChanged: product.estadoAprobacion == 'APROBADO' &&
+                              !provider.isToggling(product.id)
+                          ? (_) => _onToggleClubAvailability(product)
+                          : null,
+                    ),
                   ),
-                  onTap: _clubId != null ? () async {
-                    final estadoAbreRevision = product.shouldOpenHostReview;
-                    if (estadoAbreRevision) {
-                      final changed = await context.push<bool>(
-                        '/host/products/review',
-                        extra: {
-                          'clubId': _clubId!,
-                          'product': product,
+                  onTap: _clubId == null
+                      ? null
+                      : () async {
+                          if (provider.isToggling(product.id)) return;
+                          final estadoAbreRevision = product.shouldOpenHostReview;
+                          if (estadoAbreRevision) {
+                            final changed = await context.push<bool>(
+                              '/host/products/review',
+                              extra: {
+                                'clubId': _clubId!,
+                                'product': product,
+                              },
+                            );
+                            if (changed == true && mounted) {
+                              await _refreshProducts();
+                            }
+                            return;
+                          }
+                          if (!mounted) return;
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => HostProductSaboresScreen(
+                                clubId: _clubId!,
+                                product: product,
+                              ),
+                            ),
+                          );
                         },
-                      );
-                      if (changed == true && mounted) {
-                        await _refreshProducts();
-                      }
-                      return;
-                    }
-                    if (!mounted) return;
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => HostProductSaboresScreen(
-                          clubId: _clubId!,
-                          product: product,
-                        ),
-                      ),
-                    );
-                  } : null,
-                  // LOCAL en revisión va al detalle nuevo, no al editor legacy.
-                  onLongPress: !isGlobal ? () async {
-                    if (product.shouldOpenHostReview && _clubId != null) {
-                      final changed = await context.push<bool>(
-                        '/host/products/review',
-                        extra: {
-                          'clubId': _clubId!,
-                          'product': product,
-                        },
-                      );
-                      if (changed == true && mounted) {
-                        await _refreshProducts();
-                      }
-                      return;
-                    }
-                    context.push('/host/products/edit', extra: {
-                      'clubId': _clubId!,
-                      'product': product,
-                    });
-                  } : null,
+                  onLongPress: () {
+                    if (provider.isToggling(product.id)) return;
+                  },
                 ),
               );
             },

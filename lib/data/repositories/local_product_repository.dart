@@ -98,12 +98,10 @@ class LocalProductRepository implements ProductRepository {
 
   @override
   Future<void> deleteProduct(String id) async {
-    if (_remoteDataSource != null) {
-      await _remoteDataSource.deleteProduct(id);
-    }
-    // Delete from local cache
-    final db = await _dbHelper.database;
-    await db.delete('products', where: 'id = ?', whereArgs: [id]);
+    throw UnsupportedError(
+      'El anfitrión no borra ni desactiva productos de forma global. '
+      'Usa toggleProductAvailability (disponibilidad en el club).',
+    );
   }
 
   @override

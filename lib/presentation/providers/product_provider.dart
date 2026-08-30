@@ -11,6 +11,7 @@ class ProductProvider extends ChangeNotifier implements SessionScopedState {
   List<Product> _products = [];
   bool _isLoading = false;
   String? _error;
+  final Set<String> _productsToggling = {};
 
   ProductProvider(this._repository);
 
@@ -18,12 +19,15 @@ class ProductProvider extends ChangeNotifier implements SessionScopedState {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  bool isToggling(String productId) => _productsToggling.contains(productId);
+
   @override
   Future<void> clearSessionState() async {
     // Catálogo puede incluir productos LOCAL de un club / permisos de host.
     _products = [];
     _isLoading = false;
     _error = null;
+    _productsToggling.clear();
     notifyListeners();
   }
 
@@ -71,44 +75,36 @@ class ProductProvider extends ChangeNotifier implements SessionScopedState {
     String productId,
     int hubId,
   ) async {
+    if (_productsToggling.contains(productId)) return;
+
     final index = _products.indexWhere((p) => p.id == productId);
     if (index == -1) return;
 
-    final original = _products[index];
-    final updated = Product(
-      id: original.id,
-      name: original.name,
-      description: original.description,
-      price: original.price,
-      puntosValor: original.puntosValor,
-      category: original.category,
-      imageUrl: original.imageUrl,
-      hubId: original.hubId,
-      clubCreadorId: original.clubCreadorId,
-      tipo: original.tipo,
-      estadoAprobacion: original.estadoAprobacion,
-      active: original.active,
-      available: !original.available,
-      ingredientes: original.ingredientes,
-      comentarioRevision: original.comentarioRevision,
-      revisadoPorUsuarioId: original.revisadoPorUsuarioId,
-      revisadoPorNombre: original.revisadoPorNombre,
-      revisadoAt: original.revisadoAt,
-    );
+    _productsToggling.add(productId);
+    notifyListeners();
 
+    final original = _products[index];
+    final updated = original.copyWith(available: !original.available);
     _products[index] = updated;
     notifyListeners();
 
     try {
       await _repository.toggleProductAvailability(clubId, productId);
-      await loadProducts(hubId: hubId, clubId: clubId);
+      try {
+        _products = await _repository.getProducts(hubId: hubId, clubId: clubId);
+      } catch (e) {
+        logDebug('Error refreshing products after toggle');
+      }
     } catch (e) {
-      _products[index] = original;
-      if (shouldPresentErrorToUser(e)) {
-        _error = ErrorMapper.publicMessage(e);
+      final currentIndex = _products.indexWhere((p) => p.id == productId);
+      if (currentIndex != -1) {
+        _products[currentIndex] = original;
       }
       notifyListeners();
       rethrow;
+    } finally {
+      _productsToggling.remove(productId);
+      notifyListeners();
     }
   }
 
@@ -119,6 +115,12 @@ class ProductProvider extends ChangeNotifier implements SessionScopedState {
   Future<void> updateProduct(Product product, int clubId) async =>
       throw UnimplementedError();
 
+  /// Legacy. El anfitrión no desactiva ni borra productos.
+  /// Disponibilidad: [toggleAvailability] → PATCH /clubes/{clubId}/productos/{id}/toggle.
+  @Deprecated('Usar toggleAvailability. No llama /activar ni /desactivar.')
   Future<void> deleteProduct(String id, int clubId) async =>
-      throw UnimplementedError();
+      throw UnsupportedError(
+        'El anfitrión no puede desactivar productos de forma global. '
+        'Usa el switch de disponibilidad del club.',
+      );
 }

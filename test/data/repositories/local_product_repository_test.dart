@@ -205,17 +205,20 @@ void main() {
       expect(updated!.name, 'Nuevo');
     }));
 
-    test('deleteProduct elimina remoto y de caché local', async_(() async {
+    test('deleteProduct no borra ni llama desactivar', async_(() async {
       final db = await dbHelper.database;
       await db.insert(
         'products',
         Product(id: '1', name: 'P', description: '').toMap(),
       );
 
-      await repo.deleteProduct('1');
+      await expectLater(
+        () => repo.deleteProduct('1'),
+        throwsA(isA<UnsupportedError>()),
+      );
 
-      expect(remote.deleteCalls, 1);
-      expect(await repo.getProductById('1'), isNull);
+      expect(remote.deleteCalls, 0);
+      expect(await repo.getProductById('1'), isNotNull);
     }));
 
     test('toggleProductAvailability delega al remoto', async_(() async {

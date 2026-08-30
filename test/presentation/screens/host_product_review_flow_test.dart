@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -46,6 +47,9 @@ Product _local({
 
 class _FakeProductRepo implements ProductRepository {
   List<Product> products = [];
+  int toggleCalls = 0;
+  Completer<void>? toggleGate;
+  Object? toggleError;
 
   @override
   Future<List<Product>> getProducts(
@@ -71,7 +75,13 @@ class _FakeProductRepo implements ProductRepository {
   Future<void> deleteProduct(String id) async {}
 
   @override
-  Future<void> toggleProductAvailability(int clubId, String productId) async {}
+  Future<void> toggleProductAvailability(int clubId, String productId) async {
+    toggleCalls++;
+    if (toggleGate != null) {
+      await toggleGate!.future;
+    }
+    if (toggleError != null) throw toggleError!;
+  }
 }
 
 class _FakeClubDs extends ClubRemoteDataSource {
@@ -171,8 +181,10 @@ class _FakeProductRemote implements ProductRemoteDataSource {
 Widget _listApp({
   required List<Product> products,
   required _FakeProductRemote remote,
+  _FakeProductRepo? repo,
 }) {
-  final repo = _FakeProductRepo()..products = products;
+  final productRepo = repo ?? _FakeProductRepo();
+  productRepo.products = products;
   final user = User(
     id: '20',
     name: 'Host',
@@ -219,7 +231,7 @@ Widget _listApp({
           return p;
         },
       ),
-      ChangeNotifierProvider(create: (_) => ProductProvider(repo)),
+      ChangeNotifierProvider(create: (_) => ProductProvider(productRepo)),
       Provider<ClubRemoteDataSource>.value(value: _FakeClubDs()),
       Provider<ComboRemoteDataSource>.value(value: _FakeComboDs()),
       Provider<SaborRemoteDataSource>.value(value: _FakeSaborDs()),

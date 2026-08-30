@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_app_saludable/core/auth/session_owner.dart';
 import 'package:flutter_app_saludable/core/database/database_helper.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
@@ -170,6 +172,7 @@ class _FakeProductRepository implements ProductRepository {
   Object? loadError;
   bool toggleShouldFail = false;
   int toggleCalls = 0;
+  Completer<void>? toggleGate;
   List<Product>? productsAfterReload;
 
   @override
@@ -205,6 +208,9 @@ class _FakeProductRepository implements ProductRepository {
   @override
   Future<void> toggleProductAvailability(int clubId, String productId) async {
     toggleCalls++;
+    if (toggleGate != null) {
+      await toggleGate!.future;
+    }
     if (toggleShouldFail) {
       throw ServerException('No se pudo cambiar disponibilidad');
     }
@@ -451,7 +457,43 @@ void main() {
       );
 
       expect(provider.products.single.available, isFalse);
-      expect(provider.error, isNotNull);
+      expect(provider.isToggling('1'), isFalse);
+    }));
+
+    test('toggleAvailability ignora un segundo llamado concurrente',
+        async_(() async {
+      repo.products = [
+        Product(
+            id: '1',
+            name: 'A',
+            description: '',
+            active: true,
+            available: false),
+      ];
+      await provider.loadProducts(hubId: 1, clubId: 1);
+      repo.toggleGate = Completer<void>();
+
+      final first = provider.toggleAvailability(1, '1', 1);
+      await provider.toggleAvailability(1, '1', 1);
+
+      expect(repo.toggleCalls, 1);
+      expect(provider.isToggling('1'), isTrue);
+
+      repo.toggleGate!.complete();
+      await first;
+
+      expect(provider.isToggling('1'), isFalse);
+      expect(repo.toggleCalls, 1);
+    }));
+
+    test('deleteProduct lanza UnsupportedError y no toca el repositorio',
+        async_(() async {
+      await expectLater(
+        // ignore: deprecated_member_use_from_same_package
+        () => provider.deleteProduct('1', 1),
+        throwsA(isA<UnsupportedError>()),
+      );
+      expect(repo.toggleCalls, 0);
     }));
 
     test('clearSessionState limpia productos y error', async_(() async {
