@@ -25,7 +25,6 @@ import '../../presentation/screens/member/basic_user_main_screen.dart'; // Basic
 import '../../presentation/screens/member/member_home_screen.dart';
 import '../../presentation/screens/member/member_main_screen.dart';
 import '../../presentation/screens/member/member_orders_list_screen.dart';
-import '../../presentation/screens/member/member_create_order_screen.dart';
 import '../../presentation/screens/member/member_select_club_screen.dart';
 import '../../presentation/screens/member/member_club_products_screen.dart';
 import '../../presentation/screens/member/member_profile_screen.dart';
@@ -180,10 +179,10 @@ final appRouter = GoRouter(
                   ),
                 ],
               ),
-              // Mantener ruta legacy para compatibilidad
+              // Deep links antiguos → flujo canónico de nuevo pedido
               GoRoute(
                 path: 'legacy',
-                builder: (context, state) => const MemberCreateOrderScreen(),
+                redirect: (context, state) => '/member-orders/new',
               ),
             ]
         ),
