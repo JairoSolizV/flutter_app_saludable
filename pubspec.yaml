@@ -87,6 +87,9 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   sqflite_common_ffi: ^2.4.0+3
 
+  # Generacion de los iconos de lanzador (ver tool/generate_app_icon.ps1)
+  flutter_launcher_icons: ^0.14.3
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -130,3 +133,18 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Iconos de lanzador. Las dos imagenes fuente las produce
+# tool/generate_app_icon.ps1 a partir de assets/icon/source_isotipo_512.png.
+# Regenerar con:  dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  # El foreground ya viene dimensionado para la zona segura (R/W = 0.30),
+  # asi que no queremos que la herramienta lo encoja otra vez.
+  adaptive_icon_foreground_inset: 0
+  min_sdk_android: 24
