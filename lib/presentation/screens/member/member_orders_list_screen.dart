@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_saludable/core/utils/order_status_display.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -687,44 +688,8 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color color;
-    String text;
-
-    final statusUpper = status.toUpperCase();
-    switch (statusUpper) {
-      case 'LOCAL_PENDING':
-        color = Colors.amber;
-        text = 'Pendiente de envío';
-        break;
-      case 'RECIBIDO':
-      case 'PENDING':
-        color = Colors.orange;
-        text = 'Recibido';
-        break;
-      case 'PREPARANDO':
-      case 'PREPARING':
-        color = Colors.blue;
-        text = 'Preparando';
-        break;
-      case 'LISTO':
-      case 'READY':
-        color = Colors.green;
-        text = 'Listo';
-        break;
-      case 'ENTREGADO':
-      case 'COMPLETED':
-        color = Colors.grey;
-        text = 'Entregado';
-        break;
-      case 'CANCELADO':
-      case 'CANCELLED':
-        color = Colors.red;
-        text = 'Cancelado';
-        break;
-      default:
-        color = Colors.grey;
-        text = status;
-    }
+    final color = OrderStatusDisplay.memberBadgeColor(status);
+    final text = OrderStatusDisplay.memberLabel(status);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

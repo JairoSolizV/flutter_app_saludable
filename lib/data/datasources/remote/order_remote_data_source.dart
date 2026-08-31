@@ -507,24 +507,17 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
           '[DEBUG PATCH] Actualizando estado del pedido $pedidoId a $newStatus');
 
       final Map<String, dynamic> queryParams = {'estado': newStatus};
-      final Map<String, dynamic> bodyData = {};
 
       if (estimatedTime != null) {
         queryParams['tiempoEstimadoMinutos'] = estimatedTime;
-        bodyData['tiempoEstimadoMinutos'] = estimatedTime;
-
-        // Also add the snake_case version just in case, since the error explicitly asked for it
-        queryParams['tiempo_estimado_minutos'] = estimatedTime;
-        bodyData['tiempo_estimado_minutos'] = estimatedTime;
       }
 
       debugPrint(
-          '[DEBUG PATCH] Endpoint: PATCH /api/pedidos/$pedidoId/estado con params: $queryParams y body: $bodyData');
+          '[DEBUG PATCH] Endpoint: PATCH /api/pedidos/$pedidoId/estado con params: $queryParams');
 
       final response = await _client.patch(
         '/pedidos/$pedidoId/estado',
         queryParameters: queryParams,
-        data: bodyData.isNotEmpty ? bodyData : null,
       );
 
       debugPrint(

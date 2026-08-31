@@ -264,6 +264,43 @@ void main() {
       expect(find.textContaining('Error:'), findsOneWidget);
     });
 
+    testWidgets('RECIBIDO se muestra como Pendiente en badge', (tester) async {
+      final membresiaDs = _FakeMembresiaRemoteDataSource()
+        ..membresias = [_membresia(9)];
+      final orderDs = _FakeOrderRemoteDataSource()
+        ..pageToReturn = PagedResult<Map<String, dynamic>>(
+          content: [
+            {
+              'id': 1,
+              'estado': 'RECIBIDO',
+              'clubNombre': 'Club Norte',
+              'fechaPedido': '2024-01-01T10:00:00',
+              'items': [
+                {'productoNombre': 'Batido', 'cantidad': 1},
+              ],
+            },
+          ],
+          page: 0,
+          size: 20,
+          totalElements: 1,
+          totalPages: 1,
+          first: true,
+          last: true,
+          hasNext: false,
+          hasPrevious: false,
+        );
+
+      await tester.pumpWidget(_buildApp(
+        membresiaDs: membresiaDs,
+        orderDs: orderDs,
+        user: User(id: '1', name: 'Ana', email: 'a@a.com', role: 'member'),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Pendiente'), findsOneWidget);
+      expect(find.text('Recibido'), findsNothing);
+    });
+
     testWidgets('con pedidos activos los muestra con badge de estado',
         (tester) async {
       final membresiaDs = _FakeMembresiaRemoteDataSource()

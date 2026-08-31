@@ -140,16 +140,45 @@ void main() {
       expect(page.first, isTrue);
     }));
 
-    test('updateOrderStatus envía PATCH con estado y tiempo estimado',
+    test('updateOrderStatus PREPARANDO envía solo query params con tiempo',
         async_(() async {
       adapter.stub('PATCH', '/pedidos/10/estado', statusCode: 200, data: {});
 
-      await ds.updateOrderStatus(10, 'LISTO', estimatedTime: 15);
+      await ds.updateOrderStatus(10, 'PREPARANDO', estimatedTime: 8);
 
       final sent = adapter.requests.last;
       expect(sent.method, 'PATCH');
+      expect(sent.queryParameters['estado'], 'PREPARANDO');
+      expect(sent.queryParameters['tiempoEstimadoMinutos'], 8);
+      expect(sent.queryParameters.containsKey('tiempo_estimado_minutos'),
+          isFalse);
+      expect(sent.data, isNull);
+    }));
+
+    test('updateOrderStatus LISTO no envía tiempo ni body', async_(() async {
+      adapter.stub('PATCH', '/pedidos/10/estado', statusCode: 200, data: {});
+
+      await ds.updateOrderStatus(10, 'LISTO');
+
+      final sent = adapter.requests.last;
       expect(sent.queryParameters['estado'], 'LISTO');
-      expect(sent.queryParameters['tiempoEstimadoMinutos'], 15);
+      expect(sent.queryParameters.containsKey('tiempoEstimadoMinutos'),
+          isFalse);
+      expect(sent.queryParameters.containsKey('tiempo_estimado_minutos'),
+          isFalse);
+      expect(sent.data, isNull);
+    }));
+
+    test('updateOrderStatus ENTREGADO no envía tiempo ni body', async_(() async {
+      adapter.stub('PATCH', '/pedidos/10/estado', statusCode: 200, data: {});
+
+      await ds.updateOrderStatus(10, 'ENTREGADO');
+
+      final sent = adapter.requests.last;
+      expect(sent.queryParameters['estado'], 'ENTREGADO');
+      expect(sent.queryParameters.containsKey('tiempoEstimadoMinutos'),
+          isFalse);
+      expect(sent.data, isNull);
     }));
 
     test('createCounterSale con items y combos vacíos lanza sin llamar a la red',
@@ -469,17 +498,6 @@ void main() {
     test('getAllOrders con error se mapea', async_(() async {
       adapter.stub('GET', '/pedidos', statusCode: 500, data: {});
       await expectLater(() => ds.getAllOrders(), throwsA(isA<AppException>()));
-    }));
-
-    test('updateOrderStatus con tiempoEstimado envía query y body',
-        async_(() async {
-      adapter.stub('PATCH', '/pedidos/10/estado', statusCode: 204, data: {});
-
-      await ds.updateOrderStatus(10, 'LISTO', estimatedTime: 20);
-
-      final sent = adapter.requests.single;
-      expect(sent.queryParameters['tiempoEstimadoMinutos'], 20);
-      expect((sent.data as Map)['tiempoEstimadoMinutos'], 20);
     }));
 
     test('updateOrderStatus con 401 lanza AppException', async_(() async {
