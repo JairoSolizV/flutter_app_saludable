@@ -56,6 +56,24 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
 
   OrderRemoteDataSourceImpl(this._client);
 
+  /// UUID canónico (RFC 4122); acepta mayúsculas/minúsculas. No transforma el valor.
+  static final RegExp _canonicalUuidPattern = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+  );
+
+  static String _requireClientOrderId(String orderId) {
+    final clientOrderId = orderId.trim();
+    if (clientOrderId.isEmpty) {
+      throw ValidationException(
+        'El pedido local no tiene identificador válido para sincronizar',
+      );
+    }
+    if (!_canonicalUuidPattern.hasMatch(clientOrderId)) {
+      throw ValidationException('clientOrderId inválido');
+    }
+    return clientOrderId;
+  }
+
   String _extractBackendMessage(dynamic data,
       {String fallback = 'Error desconocido'}) {
     if (data is Map<String, dynamic>) {
@@ -131,6 +149,8 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
       throw Exception('Error: El pedido debe tener al menos un producto o combo');
     }
 
+    final clientOrderId = _requireClientOrderId(order.id);
+
     final int membresiaId = order.membresiaId!;
     final int clubId = order.clubId!;
 
@@ -155,6 +175,7 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
 
       // Preparar body del request
       final requestBody = {
+        'clientOrderId': clientOrderId,
         'tipoConsumo':
             order.tipoConsumo ?? 'EN_LUGAR', // 'EN_LUGAR' o 'PARA_RECOGER'
         'observaciones': order.observaciones ?? 'Pedido desde App Móvil',

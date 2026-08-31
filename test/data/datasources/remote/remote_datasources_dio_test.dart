@@ -10,6 +10,8 @@ import 'package:flutter_app_saludable/data/datasources/remote/support_remote_dat
 import 'package:flutter_app_saludable/domain/entities/order_entity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+const _sendOrderUuid = '550e8400-e29b-41d4-a716-446655440000';
+
 class _Stub {
   _Stub(this.method, this.pathContains, this.statusCode, this.data);
   final String method;
@@ -290,24 +292,28 @@ void main() {
     test('sendOrder válido hace POST a /pedidos/con-items', async_(() async {
       adapter.stub('POST', '/pedidos/con-items', statusCode: 201, data: {});
       final order = OrderEntity(
-        id: 'o1',
+        id: _sendOrderUuid,
         userId: 'u1',
         clubId: 1,
         membresiaId: 5,
         status: 'pending',
         createdAt: DateTime(2024, 1, 1),
       );
-      final items = [OrderItem(orderId: 'o1', productId: '1', quantity: 2)];
+      final items = [
+        OrderItem(orderId: _sendOrderUuid, productId: '1', quantity: 2),
+      ];
 
       await ds.sendOrder(order, items: items, combos: const []);
 
       expect(adapter.requests, hasLength(1));
+      final body = adapter.requests.single.data as Map<String, dynamic>;
+      expect(body['clientOrderId'], _sendOrderUuid);
     }));
 
     test('sendOrder moderno envía combos[]', async_(() async {
       adapter.stub('POST', '/pedidos/con-items', statusCode: 200, data: {});
       final order = OrderEntity(
-        id: 'o1',
+        id: _sendOrderUuid,
         userId: 'u1',
         clubId: 1,
         membresiaId: 5,
@@ -315,7 +321,7 @@ void main() {
         createdAt: DateTime(2024, 1, 1),
         combos: [
           OrderCombo(
-            orderId: 'o1',
+            orderId: _sendOrderUuid,
             comboId: 4,
             comboName: 'Combo',
             quantity: 2,
@@ -331,6 +337,7 @@ void main() {
       await ds.sendOrder(order, items: const [], combos: order.combos);
 
       final sentBody = adapter.requests.single.data as Map;
+      expect(sentBody['clientOrderId'], _sendOrderUuid);
       final sentCombos = sentBody['combos'] as List;
       expect(sentCombos, hasLength(1));
       expect(sentCombos.single['comboId'], 4);
@@ -341,14 +348,16 @@ void main() {
     test('sendOrder con 401 lanza AppException', async_(() async {
       adapter.stub('POST', '/pedidos/con-items', statusCode: 401, data: {});
       final order = OrderEntity(
-        id: 'o1',
+        id: _sendOrderUuid,
         userId: 'u1',
         clubId: 1,
         membresiaId: 5,
         status: 'pending',
         createdAt: DateTime(2024, 1, 1),
       );
-      final items = [OrderItem(orderId: 'o1', productId: '1', quantity: 1)];
+      final items = [
+        OrderItem(orderId: _sendOrderUuid, productId: '1', quantity: 1),
+      ];
 
       await expectLater(
         () => ds.sendOrder(order, items: items, combos: const []),
