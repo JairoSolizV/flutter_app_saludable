@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_app_saludable/core/clubs/club_location.dart';
+import 'package:flutter_app_saludable/core/clubs/club_prefix.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/core/errors/throw_app_error.dart';
 import 'package:flutter_app_saludable/core/utils/app_logger.dart';
@@ -40,6 +41,7 @@ class Club {
   final String horario;
   final double? lat;
   final double? lng;
+  final String? prefijoSocio;
   final String estado;
 
   Club({
@@ -53,11 +55,14 @@ class Club {
     required this.horario,
     this.lat,
     this.lng,
+    this.prefijoSocio,
     required this.estado,
   });
 
   bool get hasValidLocation =>
       ClubLocationValidation.isValidCoordinates(lat, lng);
+
+  bool get hasValidPrefix => ClubPrefixValidation.isValid(prefijoSocio);
 
   factory Club.fromJson(Map<String, dynamic> json) {
     double? parseCoordinate(dynamic value) {
@@ -78,6 +83,7 @@ class Club {
       horario: json['horario']?.toString() ?? '',
       lat: parseCoordinate(json['lat']),
       lng: parseCoordinate(json['lng']),
+      prefijoSocio: json['prefijoSocio']?.toString(),
       estado: json['estado']?.toString() ?? 'ACTIVO',
     );
   }
@@ -403,12 +409,18 @@ class ClubRemoteDataSource {
     required String horario,
     required double lat,
     required double lng,
+    required String prefijoSocio,
     int hubId = 1,
   }) async {
     try {
       if (!ClubLocationValidation.isValidCoordinates(lat, lng)) {
         throw Exception('Las coordenadas de ubicación no son válidas');
       }
+      if (!ClubPrefixValidation.isValid(prefijoSocio)) {
+        throw Exception(ClubPrefixFormMessages.invalid);
+      }
+
+      final normalizedPrefix = ClubPrefixValidation.normalize(prefijoSocio);
 
       debugPrint('[CLUB DS] Solicitud de creación de club:');
       debugPrint('[CLUB DS]   nombreClub: $nombreClub');
@@ -416,6 +428,7 @@ class ClubRemoteDataSource {
       debugPrint('[CLUB DS]   horario: $horario');
       debugPrint('[CLUB DS]   lat: $lat (tipo: ${lat.runtimeType})');
       debugPrint('[CLUB DS]   lng: $lng (tipo: ${lng.runtimeType})');
+      debugPrint('[CLUB DS]   prefijoSocio: $normalizedPrefix');
       debugPrint('[CLUB DS]   hubId: $hubId');
       debugPrint('[CLUB DS]   anfitrionId: $anfitrionId');
 
@@ -425,6 +438,7 @@ class ClubRemoteDataSource {
         'horario': horario,
         'lat': lat,
         'lng': lng,
+        'prefijoSocio': normalizedPrefix,
         'estado': 'PENDIENTE',
       };
 

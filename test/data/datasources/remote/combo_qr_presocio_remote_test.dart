@@ -183,18 +183,19 @@ void main() {
       ds = QRRemoteDataSourceImpl(_buildDio(adapter));
     });
 
-    test('getSocioQR 200 parsea QrResponse', async_(() async {
+    test('getSocioQR 200 parsea QrResponse con numeroSocio string', async_(() async {
       adapter.stub('GET', '/socios/me/qr', data: {
         'tipo': 'SOCIO',
-        'qrPayload': 'SOCIO:C1-0001',
-        'numeroSocio': 1,
+        'qrPayload': 'SOCIO:CV-00000123',
+        'numeroSocio': 'CV-00000123',
         'clubId': 1,
         'clubNombre': 'Club',
         'hubId': 1,
       });
       final qr = await ds.getSocioQR();
       expect(qr.tipo, 'SOCIO');
-      expect(qr.qrPayload, 'SOCIO:C1-0001');
+      expect(qr.qrPayload, 'SOCIO:CV-00000123');
+      expect(qr.numeroSocio, 'CV-00000123');
     }));
 
     test('getSocioQR 401 lanza UnauthorizedException', async_(() async {

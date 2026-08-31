@@ -9,6 +9,7 @@ import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../widgets/schedule_selector.dart';
 import '../../widgets/location_picker_dialog.dart';
 import 'package:flutter_app_saludable/core/clubs/club_location.dart';
+import 'package:flutter_app_saludable/core/clubs/club_prefix.dart';
 import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
@@ -23,20 +24,45 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
+  final _prefixController = TextEditingController();
   
   String _schedule = '';
   double? _lat;
   double? _lng;
+  bool _prefixEditedManually = false;
   
   bool _isLoading = false;
 
   bool get _hasValidLocation =>
       ClubLocationValidation.isValidCoordinates(_lat, _lng);
 
+  bool get _hasValidPrefix =>
+      ClubPrefixValidation.isValid(_prefixController.text);
+
+  bool get _canSubmit => _hasValidLocation && _hasValidPrefix;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController.addListener(_onClubNameChanged);
+  }
+
+  void _onClubNameChanged() {
+    if (_prefixEditedManually) return;
+    final suggestion =
+        ClubPrefixSuggestion.fromClubName(_nameController.text);
+    if (suggestion == null || suggestion == _prefixController.text) return;
+    _prefixController.text = suggestion;
+    _prefixController.selection =
+        TextSelection.collapsed(offset: suggestion.length);
+  }
+
   @override
   void dispose() {
+    _nameController.removeListener(_onClubNameChanged);
     _nameController.dispose();
     _addressController.dispose();
+    _prefixController.dispose();
     super.dispose();
   }
 
@@ -54,6 +80,16 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(ClubLocationFormMessages.selectLocation),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (!_hasValidPrefix) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(ClubPrefixFormMessages.required),
           backgroundColor: Colors.orange,
         ),
       );
@@ -79,6 +115,7 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
       debugPrint('[REQUEST CLUB]   horario: $_schedule');
       debugPrint('[REQUEST CLUB]   lat: $_lat');
       debugPrint('[REQUEST CLUB]   lng: $_lng');
+      debugPrint('[REQUEST CLUB]   prefijoSocio: ${_prefixController.text}');
       debugPrint('[REQUEST CLUB]   hubId: 1');
       debugPrint('[REQUEST CLUB]   anfitrionId: ${user.id}');
       
@@ -93,6 +130,7 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
         horario: _schedule,
         lat: _lat!,
         lng: _lng!,
+        prefijoSocio: ClubPrefixValidation.normalize(_prefixController.text),
         hubId: 1, // Default HUB Santa Cruz----------------------------------------------------------- Esto puede cambiarse a HUBID de la BD cuando se extienda por  hubs
       );
       if (mounted) {
@@ -180,6 +218,23 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
                 validator: (v) => v == null || v.isEmpty ? "Ingresa un nombre" : null,
                 maxLength: 100,
                 inputFormatters: AppFormatters.largo(100),
+              ),
+              const SizedBox(height: 16),
+
+              _buildTextField(
+                controller: _prefixController,
+                label: 'Iniciales del club',
+                hint: 'Ej. CV',
+                icon: LucideIcons.badgeCheck,
+                helperText: ClubPrefixFormMessages.helper,
+                validator: ClubPrefixValidation.validateForm,
+                maxLength: 2,
+                inputFormatters: [ClubPrefixInputFormatter()],
+                onChanged: (_) {
+                  if (!_prefixEditedManually) {
+                    setState(() => _prefixEditedManually = true);
+                  }
+                },
               ),
               const SizedBox(height: 16),
 
@@ -304,7 +359,7 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: (_isLoading || !_hasValidLocation) ? null : _submitRequest,
+                  onPressed: (_isLoading || !_canSubmit) ? null : _submitRequest,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
                     foregroundColor: Colors.white,
@@ -332,12 +387,16 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
     int maxLines = 1,
     int? maxLength,
     List<TextInputFormatter>? inputFormatters,
+    String? helperText,
+    void Function(String)? onChanged,
   }) {
     return TextFormField(
       controller: controller,
+      onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
+        helperText: helperText,
         prefixIcon: Icon(icon, color: Colors.grey),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(

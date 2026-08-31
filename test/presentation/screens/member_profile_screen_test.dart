@@ -26,7 +26,7 @@ class _FakeQrRemoteDataSource implements QRRemoteDataSource {
   Future<QrResponse> getSocioQR() async => QrResponse(
         qrPayload: 'SOCIO:TEST-001',
         tipo: 'SOCIO',
-        numeroSocio: 1,
+        numeroSocio: 'TEST-001',
         clubId: 3,
         clubNombre: 'Club prueba',
       );

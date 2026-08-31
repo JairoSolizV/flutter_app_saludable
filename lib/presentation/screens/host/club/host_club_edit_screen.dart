@@ -9,6 +9,7 @@ import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../widgets/schedule_selector.dart';
 import '../../../widgets/location_picker_dialog.dart';
 import 'package:flutter_app_saludable/core/clubs/club_location.dart';
+import 'package:flutter_app_saludable/core/clubs/club_prefix.dart';
 import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
@@ -27,6 +28,7 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
   late TextEditingController _nameCtrl;
   late TextEditingController _addressCtrl;
   late TextEditingController _imageCtrl;
+  late TextEditingController _prefixCtrl;
 
   String _schedule = '';
   double? _lat;
@@ -44,6 +46,9 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
       _lat = widget.club.lat;
       _lng = widget.club.lng;
     }
+    _prefixCtrl = TextEditingController(
+      text: widget.club.hasValidPrefix ? widget.club.prefijoSocio : '',
+    );
     _imageCtrl = TextEditingController(); // Initially empty, will fetch
     _loadCurrentPhoto();
   }
@@ -70,12 +75,17 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
   void dispose() {
     _nameCtrl.dispose();
     _addressCtrl.dispose();
+    _prefixCtrl.dispose();
     _imageCtrl.dispose();
     super.dispose();
   }
 
   bool get _hasValidLocation =>
       ClubLocationValidation.isValidCoordinates(_lat, _lng);
+
+  bool get _hasValidPrefix => ClubPrefixValidation.isValid(_prefixCtrl.text);
+
+  bool get _canSave => _hasValidLocation && _hasValidPrefix;
 
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
@@ -104,12 +114,24 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
         return;
       }
 
+      if (!_hasValidPrefix) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(ClubPrefixFormMessages.editNeedsPrefix),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
       final Map<String, dynamic> data = {
         'nombreClub': _nameCtrl.text.trim(),
         'direccion': _addressCtrl.text.trim(),
         'horario': _schedule,
         'lat': _lat,
         'lng': _lng,
+        'prefijoSocio': ClubPrefixValidation.normalize(_prefixCtrl.text),
         // 'fotoUrl': _imageCtrl.text.trim(), // REMOVED: Managed separately
       };
 
@@ -169,6 +191,20 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                 readOnly: true,
                 helperText:
                     "El nombre del club no se puede cambiar libremente. Por favor, comunícate con soporte.",
+              ),
+              const SizedBox(height: 16),
+
+              _buildTextField(
+                label: 'Iniciales del club',
+                controller: _prefixCtrl,
+                icon: LucideIcons.badgeCheck,
+                hint: 'Ej. CV',
+                helperText: widget.club.hasValidPrefix
+                    ? null
+                    : ClubPrefixFormMessages.editNeedsPrefix,
+                validator: ClubPrefixValidation.validateForm,
+                maxLength: 2,
+                inputFormatters: [ClubPrefixInputFormatter()],
               ),
               const SizedBox(height: 24),
 
@@ -323,7 +359,7 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: (_isLoading || !_hasValidLocation) ? null : _saveChanges,
+                  onPressed: (_isLoading || !_canSave) ? null : _saveChanges,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
                     shape: RoundedRectangleBorder(

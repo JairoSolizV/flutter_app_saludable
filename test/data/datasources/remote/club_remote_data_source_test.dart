@@ -349,6 +349,7 @@ void main() {
           horario: '8-18',
           lat: double.nan,
           lng: -63.0,
+          prefijoSocio: 'CV',
         ),
         throwsException,
       );
@@ -364,13 +365,30 @@ void main() {
           horario: '8-18',
           lat: 95,
           lng: -63.0,
+          prefijoSocio: 'CV',
         ),
         throwsException,
       );
       expect(adapter.requests, isEmpty);
     }));
 
-    test('éxito envía lat/lng en body', async_(() async {
+    test('prefijo inválido lanza sin llamar a la red', async_(() async {
+      await expectLater(
+        () => ds.solicitarCreacionClub(
+          anfitrionId: 1,
+          nombreClub: 'X',
+          direccion: 'Y',
+          horario: '8-18',
+          lat: -17.0,
+          lng: -63.0,
+          prefijoSocio: 'C',
+        ),
+        throwsException,
+      );
+      expect(adapter.requests, isEmpty);
+    }));
+
+    test('éxito envía lat/lng y prefijoSocio en body', async_(() async {
       adapter.stub('POST', '/clubes', statusCode: 201, data: {});
       await ds.solicitarCreacionClub(
         anfitrionId: 1,
@@ -379,11 +397,13 @@ void main() {
         horario: '8-18',
         lat: -17.0,
         lng: -63.0,
+        prefijoSocio: 'cv',
       );
       expect(adapter.requests, hasLength(1));
       final body = adapter.requests.single.data as Map<String, dynamic>;
       expect(body['lat'], -17.0);
       expect(body['lng'], -63.0);
+      expect(body['prefijoSocio'], 'CV');
     }));
 
     test('error del servidor lanza excepción', async_(() async {
@@ -396,6 +416,7 @@ void main() {
           horario: '8-18',
           lat: -17.0,
           lng: -63.0,
+          prefijoSocio: 'CV',
         ),
         throwsA(isA<AppException>()),
       );
@@ -409,12 +430,14 @@ void main() {
         'nombreClub': 'Nuevo',
         'lat': -17.5,
         'lng': -63.2,
+        'prefijoSocio': 'CV',
         'fotoUrl': 'x',
       });
       expect(adapter.requests, hasLength(1));
       final body = adapter.requests.single.data as Map<String, dynamic>;
       expect(body['lat'], -17.5);
       expect(body['lng'], -63.2);
+      expect(body['prefijoSocio'], 'CV');
       expect(body.containsKey('fotoUrl'), isFalse);
     }));
 

@@ -121,7 +121,7 @@ class QRRemoteDataSourceImpl implements QRRemoteDataSource {
 class QrResponse {
   final String tipo; // "ACTIVACION" o "SOCIO"
   final String qrPayload; // "ACTIVATE:{userId}" o "SOCIO:{numeroSocio}"
-  final int? numeroSocio;
+  final String? numeroSocio;
   final int? clubId;
   final String? clubNombre;
   final int? hubId;
@@ -139,7 +139,7 @@ class QrResponse {
     return QrResponse(
       tipo: json['tipo']?.toString() ?? '',
       qrPayload: json['qrPayload']?.toString() ?? '',
-      numeroSocio: json['numeroSocio'] as int?,
+      numeroSocio: json['numeroSocio']?.toString(),
       clubId: json['clubId'] as int?,
       clubNombre: json['clubNombre']?.toString(),
       hubId: json['hubId'] as int?,

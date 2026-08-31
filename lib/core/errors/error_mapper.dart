@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_app_saludable/core/api/public_api_paths.dart';
 import 'package:flutter_app_saludable/core/attendance/attendance_error_messages.dart';
 import 'package:flutter_app_saludable/core/clubs/club_location.dart';
+import 'package:flutter_app_saludable/core/clubs/club_prefix.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 
 /// Mapea [DioException] y respuestas del backend a [AppException] seguras.
@@ -87,6 +88,14 @@ class ErrorMapper {
             cause: e.type,
           );
         }
+        if (ClubPrefixErrorCodes.isClubPrefixCode(parsed.code)) {
+          return ValidationException(
+            ClubPrefixErrorMessages.forCode(parsed.code!),
+            statusCode: status,
+            code: parsed.code,
+            cause: e.type,
+          );
+        }
         return ValidationException(
           message ?? _validation,
           statusCode: status,
@@ -126,6 +135,14 @@ class ErrorMapper {
         if (ClubLocationErrorCodes.isClubLocationCode(parsed.code)) {
           return ValidationException(
             ClubLocationErrorMessages.forCode(parsed.code!),
+            statusCode: status,
+            code: parsed.code,
+            cause: e.type,
+          );
+        }
+        if (ClubPrefixErrorCodes.isClubPrefixCode(parsed.code)) {
+          return ValidationException(
+            ClubPrefixErrorMessages.forCode(parsed.code!),
             statusCode: status,
             code: parsed.code,
             cause: e.type,
