@@ -6,12 +6,12 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
 import '../../../../data/datasources/remote/membresia_remote_data_source.dart';
-import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../domain/entities/club_membership.dart';
 import '../../../providers/user_provider.dart';
+import 'package:flutter_app_saludable/core/attendance/attendance_location_params.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
+import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 /// Extra de navegación al catálogo del club de la membresía (no el del QR).
@@ -277,12 +277,6 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
     );
   }
 
-  /// Calcula la distancia en metros entre dos coordenadas usando la fórmula de Haversine
-  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-    const Distance distance = Distance();
-    return distance.as(LengthUnit.Meter, LatLng(lat1, lon1), LatLng(lat2, lon2));
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -385,78 +379,18 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
       final user = Provider.of<UserProvider>(context, listen: false).currentUser;
       if (user == null) throw Exception("Usuario no autenticado");
 
-      // Capturar DataSources ANTES de cualquier await para evitar usar context tras gaps async
-      final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
-      final membresiaDataSource = Provider.of<MembresiaRemoteDataSource>(context, listen: false);
+      // Capturar DataSource ANTES de cualquier await
+      final membresiaDataSource =
+          Provider.of<MembresiaRemoteDataSource>(context, listen: false);
 
       // 1. Solicitar permisos de ubicación
       await _requestLocationPermission();
 
       // 2. Obtener ubicación actual del usuario
       final Position userPosition = await _getCurrentLocation();
-      final double userLat = userPosition.latitude;
-      final double userLng = userPosition.longitude;
+      final location = AttendanceLocationParams.fromPosition(userPosition);
 
-      // 3. Obtener coordenadas del club
-      Club? club;
-      if (mounted) {
-        club = await clubDataSource.getClubById(clubId);
-      } else {
-        return;
-      }
-      
-      if (club == null) {
-        throw Exception("No se pudo obtener la información del club");
-      }
-
-      // 4. Calcular distancia entre usuario y club
-      final double distance = _calculateDistance(
-        userLat, 
-        userLng, 
-        club.lat, 
-        club.lng
-      );
-
-      // 5. Validar que esté dentro de 40 metros (opcional - comentado para asistencias globales)
-      // Las asistencias globales permiten registrar en cualquier club activo
-      // La validación de distancia es opcional y puede ser removida si se desea
-      const double maxDistanceMeters = 40.0;
-      if (distance > maxDistanceMeters) {
-        if (!mounted) return;
-        // Mostrar advertencia pero permitir continuar (asistencias globales)
-        final shouldContinue = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Advertencia de Distancia'),
-            content: Text(
-              "Estás a ${distance.toStringAsFixed(1)}m del club. "
-              "¿Deseas registrar la asistencia de todas formas?",
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancelar'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Continuar'),
-              ),
-            ],
-          ),
-        );
-        if (shouldContinue != true) {
-          if (mounted) {
-            setState(() => _isProcessing = false);
-          }
-          return;
-        }
-      }
-
-      // 6. Obtener membresía del usuario (asistencias globales - cualquier club activo)
+      // 3. Obtener membresía del usuario (asistencias globales - cualquier club activo)
       if (!mounted) return;
       final List<ClubMembership> membresias =
           await membresiaDataSource.getMembresiasPorUsuario(int.parse(user.id));
@@ -468,14 +402,15 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
       // Usar la primera membresía activa (asistencias globales - sin restricción de HUB/club)
       final membership = membresias.first;
 
-      // 7. Registrar Asistencia
+      // 4. Registrar asistencia (validación de distancia en backend)
       late final AsistenciaResponse asistenciaResponse;
       try {
         asistenciaResponse = await membresiaDataSource.registrarAsistencia(
           membresiaId: membership.id,
-          clubId: clubId, // Club del QR escaneado (cualquier club activo)
-          latitud: userLat,
-          longitud: userLng,
+          clubId: clubId,
+          latitud: location.latitud,
+          longitud: location.longitud,
+          precisionMetros: location.precisionMetros,
         );
       } on ComboRequiredException {
         if (!mounted) return;
@@ -571,9 +506,9 @@ class _MemberQrScanScreenState extends State<MemberQrScanScreen> {
     } catch (e) {
       if (!mounted) return;
       
-      final errorMessage = e.toString().replaceAll('Exception: ', '');
+      final errorMessage = ErrorMapper.publicMessage(e);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $errorMessage"), backgroundColor: Colors.red),
+        SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
       );
       // Retardo para permitir intentar de nuevo
       await Future.delayed(const Duration(seconds: 2));

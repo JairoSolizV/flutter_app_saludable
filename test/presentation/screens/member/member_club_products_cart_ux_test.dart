@@ -83,6 +83,7 @@ class _FakeMembresiaDs implements MembresiaRemoteDataSource {
     required int clubId,
     required double latitud,
     required double longitud,
+    double? precisionMetros,
   }) =>
       throw UnimplementedError();
 

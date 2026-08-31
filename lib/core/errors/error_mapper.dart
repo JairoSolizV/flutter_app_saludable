@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_app_saludable/core/api/public_api_paths.dart';
+import 'package:flutter_app_saludable/core/attendance/attendance_error_messages.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 
 /// Mapea [DioException] y respuestas del backend a [AppException] seguras.
@@ -67,6 +68,14 @@ class ErrorMapper {
         if (parsed.code == ComboRequiredException.errorCode) {
           return ComboRequiredException(
             message ?? ComboRequiredException.defaultMessage,
+          );
+        }
+        if (AttendanceErrorCodes.isAttendanceCode(parsed.code)) {
+          return ValidationException(
+            AttendanceErrorMessages.forCode(parsed.code!),
+            statusCode: status,
+            code: parsed.code,
+            cause: e.type,
           );
         }
         return ValidationException(
@@ -210,6 +219,14 @@ class ErrorMapper {
         }
       } else if (map['error'] is String && map['message'] != null) {
         code = sanitizePublicMessage(map['error'] as String);
+      } else if (map['error'] is String) {
+        final err = (map['error'] as String).trim();
+        if (err.isNotEmpty && _looksLikeStableErrorCode(err)) {
+          code = err.toUpperCase();
+          if (message == err) {
+            message = null;
+          }
+        }
       } else if (map['code'] is String || map['code'] is num) {
         code = sanitizePublicMessage(map['code'].toString());
       }
@@ -238,6 +255,10 @@ class ErrorMapper {
 
     // Listas u otros: no exponer crudo.
     return const _ParsedBody();
+  }
+
+  static bool _looksLikeStableErrorCode(String value) {
+    return RegExp(r'^[A-Z][A-Z0-9_]+$').hasMatch(value.trim().toUpperCase());
   }
 
   static bool _looksLikeHtml(String value) {

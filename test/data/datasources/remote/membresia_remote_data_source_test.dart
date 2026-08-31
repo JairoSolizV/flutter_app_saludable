@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter_app_saludable/core/attendance/attendance_error_messages.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/data/datasources/remote/membresia_remote_data_source.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -199,6 +200,70 @@ void main() {
   });
 
   group('registrarAsistencia', () {
+    test('envía latitud, longitud y precisionMetros en query', async_(() async {
+      adapter.stub('POST', '/asistencias/registrar', data: {
+        'rachaActual': 1,
+      });
+      await ds.registrarAsistencia(
+        membresiaId: 1,
+        clubId: 2,
+        latitud: -17.7833,
+        longitud: -63.1821,
+        precisionMetros: 12.5,
+      );
+
+      final req = adapter.requests.single;
+      expect(req.method, 'POST');
+      expect(req.queryParameters['membresiaId'], 1);
+      expect(req.queryParameters['clubId'], 2);
+      expect(req.queryParameters['latitud'], -17.7833);
+      expect(req.queryParameters['longitud'], -63.1821);
+      expect(req.queryParameters['precisionMetros'], 12.5);
+      expect(req.data, isNull);
+    }));
+
+    test('no envía precisionMetros si es null', async_(() async {
+      adapter.stub('POST', '/asistencias/registrar', data: {'mensaje': 'ok'});
+      await ds.registrarAsistencia(
+        membresiaId: 1,
+        clubId: 2,
+        latitud: -17.7,
+        longitud: -63.1,
+      );
+      expect(
+        adapter.requests.single.queryParameters.containsKey('precisionMetros'),
+        isFalse,
+      );
+    }));
+
+    test('no envía precisionMetros si es NaN o Infinity', async_(() async {
+      adapter.stub('POST', '/asistencias/registrar', data: {'mensaje': 'ok'});
+      await ds.registrarAsistencia(
+        membresiaId: 1,
+        clubId: 2,
+        latitud: -17.7,
+        longitud: -63.1,
+        precisionMetros: double.nan,
+      );
+      expect(
+        adapter.requests.single.queryParameters.containsKey('precisionMetros'),
+        isFalse,
+      );
+
+      adapter.requests.clear();
+      await ds.registrarAsistencia(
+        membresiaId: 1,
+        clubId: 2,
+        latitud: -17.7,
+        longitud: -63.1,
+        precisionMetros: double.infinity,
+      );
+      expect(
+        adapter.requests.single.queryParameters.containsKey('precisionMetros'),
+        isFalse,
+      );
+    }));
+
     test('200 con Map parsea AsistenciaResponse', async_(() async {
       adapter.stub('POST', '/asistencias/registrar', data: {
         'rachaActual': 3,
@@ -256,6 +321,94 @@ void main() {
             (e) => e.message,
             'message',
             contains('Combo'),
+          ),
+        ),
+      );
+    }));
+
+    test('400 ATTENDANCE_OUT_OF_RANGE mapea mensaje UX', async_(() async {
+      adapter.stub('POST', '/asistencias/registrar', statusCode: 400, data: {
+        'error': 'ATTENDANCE_OUT_OF_RANGE',
+        'message': 'raw backend',
+      });
+      await expectLater(
+        () => ds.registrarAsistencia(
+          membresiaId: 1,
+          clubId: 2,
+          latitud: 0,
+          longitud: 0,
+        ),
+        throwsA(
+          isA<ValidationException>().having(
+            (e) => e.message,
+            'message',
+            AttendanceErrorMessages.forCode(
+              AttendanceErrorCodes.outOfRange,
+            ),
+          ),
+        ),
+      );
+    }));
+
+    test('400 ATTENDANCE_LOCATION_REQUIRED mapea mensaje UX', async_(() async {
+      adapter.stub('POST', '/asistencias/registrar', statusCode: 400, data: {
+        'error': 'ATTENDANCE_LOCATION_REQUIRED',
+      });
+      await expectLater(
+        () => ds.registrarAsistencia(
+          membresiaId: 1,
+          clubId: 2,
+          latitud: 0,
+          longitud: 0,
+        ),
+        throwsA(
+          isA<ValidationException>().having(
+            (e) => e.message,
+            'message',
+            contains('ubicación'),
+          ),
+        ),
+      );
+    }));
+
+    test('400 ATTENDANCE_LOCATION_INVALID mapea mensaje UX', async_(() async {
+      adapter.stub('POST', '/asistencias/registrar', statusCode: 400, data: {
+        'error': 'ATTENDANCE_LOCATION_INVALID',
+      });
+      await expectLater(
+        () => ds.registrarAsistencia(
+          membresiaId: 1,
+          clubId: 2,
+          latitud: 0,
+          longitud: 0,
+        ),
+        throwsA(
+          isA<ValidationException>().having(
+            (e) => e.code,
+            'code',
+            AttendanceErrorCodes.locationInvalid,
+          ),
+        ),
+      );
+    }));
+
+    test('400 ATTENDANCE_CLUB_LOCATION_UNAVAILABLE mapea mensaje UX',
+        async_(() async {
+      adapter.stub('POST', '/asistencias/registrar', statusCode: 400, data: {
+        'error': 'ATTENDANCE_CLUB_LOCATION_UNAVAILABLE',
+      });
+      await expectLater(
+        () => ds.registrarAsistencia(
+          membresiaId: 1,
+          clubId: 2,
+          latitud: 0,
+          longitud: 0,
+        ),
+        throwsA(
+          isA<ValidationException>().having(
+            (e) => e.message,
+            'message',
+            contains('ubicación configurada'),
           ),
         ),
       );

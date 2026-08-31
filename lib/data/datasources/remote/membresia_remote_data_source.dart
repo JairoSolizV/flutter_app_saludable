@@ -26,6 +26,7 @@ abstract class MembresiaRemoteDataSource {
     required int clubId,
     required double latitud,
     required double longitud,
+    double? precisionMetros,
   });
   Future<Attendance> registrarAsistenciaManual(
       {required int membresiaId, String? fecha, String? nota});
@@ -190,22 +191,30 @@ class MembresiaRemoteDataSourceImpl implements MembresiaRemoteDataSource {
     required int clubId,
     required double latitud,
     required double longitud,
+    double? precisionMetros,
   }) async {
     try {
-      // Endpoint correcto según el backend: POST /api/asistencias/registrar
-      // Con query params: membresiaId, clubId, qrClub (opcional)
+      final queryParameters = <String, dynamic>{
+        'membresiaId': membresiaId,
+        'clubId': clubId,
+        'latitud': latitud,
+        'longitud': longitud,
+      };
+      if (precisionMetros != null &&
+          precisionMetros.isFinite &&
+          !precisionMetros.isNaN) {
+        queryParameters['precisionMetros'] = precisionMetros;
+      }
+
       debugPrint(
-          '[DEBUG MEMBRESIA] Registrando asistencia - membresiaId: $membresiaId, clubId: $clubId');
-      debugPrint(
-          '[DEBUG MEMBRESIA] Endpoint: POST /api/asistencias/registrar?membresiaId=$membresiaId&clubId=$clubId');
+        '[DEBUG MEMBRESIA] Registrando asistencia - membresiaId: $membresiaId, '
+        'clubId: $clubId, lat: $latitud, lng: $longitud, '
+        'precision: ${queryParameters['precisionMetros']}',
+      );
 
       final response = await _client.post(
         '/asistencias/registrar',
-        queryParameters: {
-          'membresiaId': membresiaId,
-          'clubId': clubId,
-          // qrClub es opcional, no lo enviamos si no es necesario
-        },
+        queryParameters: queryParameters,
       );
 
       debugPrint(
