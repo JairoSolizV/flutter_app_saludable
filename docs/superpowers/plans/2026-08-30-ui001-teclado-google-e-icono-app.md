@@ -1075,3 +1075,39 @@ Detectados al revisar el código. No se tocan aquí; cada uno merece su propia t
    La alternativa global sería un `NavigatorObserver` en `appRouter` que llame a `dismissKeyboard()` en `didPush`/`didReplace`; cubriría las ~50 rutas de una vez, pero necesita su propia tanda de tests.
 
 4. **La fuente gráfica limita la nitidez del icono en iOS.** El isotipo original solo existe a ~245 px de ancho (`icono_512.png`) o ~275 px (`LogoQuillo.jpg`). Para los mipmaps de Android sobra, pero el icono 1024×1024 de iOS sale de una ampliación de ~2.5×. Si algún día se publica en App Store, conviene exportar el isotipo desde el vectorial original.
+
+---
+
+## Nota de ejecución (2026-08-30)
+
+El plan se ejecutó completo en la rama `fix/ui-001-teclado-e-icono-app`. Tres cosas salieron distintas de lo previsto y el texto de arriba se dejó tal cual se escribió; esto es lo que pasó de verdad:
+
+1. **`flutter analyze` nunca estuvo limpio.** El repo arrastra **154 issues preexistentes**, incluidos 2 *errors* en `test/data/datasources/remote/combo_qr_presocio_remote_test.dart` (parámetro `precio` ahora obligatorio, del commit `4f819c6`). Ese archivo no compila, así que `flutter test` termina en **875 pasan / 1 falla**. Comprobado con `git stash`: el conteo es idéntico con y sin los cambios de este plan, así que no se añadió ningún issue nuevo. Queda como tarea aparte.
+
+2. **`flutter_launcher_icons` v0.14.4 pone el foreground en `drawable-*/`, no en `mipmap-*/`.** El XML generado es:
+
+   ```xml
+   <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+     <background android:drawable="@color/ic_launcher_background"/>
+     <foreground>
+         <inset android:drawable="@drawable/ic_launcher_foreground" android:inset="0%" />
+     </foreground>
+   </adaptive-icon>
+   ```
+
+   `test/app_icon_assets_test.dart` se escribió contra esta realidad (`@drawable/…` y `drawable-xxxhdpi/`), y se le añadió un séptimo test que verifica que el `android:inset` es `0%` — el `adaptive_icon_foreground_inset: 0` **sí** se respetó.
+
+3. **La herramienta modificó `ios/Runner.xcodeproj/project.pbxproj` sin motivo**, cambiando `ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS` de `YES` a `AppIcon` en las dos configuraciones. Ese ajuste de Xcode espera un booleano, así que el cambio es incorrecto: se revirtió con `git checkout --` antes de commitear.
+
+Mediciones reales obtenidas (todas dentro de la tolerancia prevista):
+
+| Archivo | Lienzo | Caja del isotipo | Centro |
+|---|---|---|---|
+| `assets/icon/app_icon.png` | 1024×1024 | 614×556 | 512,512 |
+| `assets/icon/app_icon_foreground.png` | 1024×1024 | 461×417 | 511,512 |
+| `res/drawable-xxxhdpi/ic_launcher_foreground.png` | 432×432 | 195×177 | 216,216 |
+| `res/mipmap-xxxhdpi/ic_launcher.png` | 192×192 | 116×105 | 96,96 |
+
+`flutter build apk --debug` compila y el APK contiene los cinco `mipmap-*/ic_launcher.png`, los cinco `drawable-*/ic_launcher_foreground.png` y `mipmap-anydpi-v26/ic_launcher.xml`.
+
+**Pendiente:** los pasos 4 y 5 de la Tarea 7 (verificación visual del icono y del teclado en el teléfono). No había ningún dispositivo Android conectado al ejecutar el plan.
