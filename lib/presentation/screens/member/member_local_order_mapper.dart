@@ -1,3 +1,4 @@
+import '../../../core/orders/order_sync_status.dart';
 import '../../../domain/entities/order_entity.dart';
 
 /// Convierte pedidos locales pendientes al formato de UI de [MemberOrdersListScreen].
@@ -63,13 +64,19 @@ class MemberLocalOrderMapper {
       };
     }).toList();
 
+    final isFailed = order.syncStatus == OrderSyncStatus.failedPermanent;
+    final estado = isFailed ? 'LOCAL_FAILED' : 'LOCAL_PENDING';
+
     return {
       'id': order.id,
       'pedidoId': order.id,
       'localId': order.id,
-      'isLocalPending': true,
+      'isLocalPending': !isFailed,
+      'isLocalFailed': isFailed,
+      'syncErrorCode': order.syncErrorCode,
+      'syncErrorMessage': order.syncErrorMessage,
       'fecha': order.createdAt,
-      'estado': 'LOCAL_PENDING',
+      'estado': estado,
       'clubNombre': clubNombreFallback ?? 'Club',
       'tipoConsumo': order.tipoConsumo ?? 'EN_LUGAR',
       'observaciones': order.observaciones ?? '',

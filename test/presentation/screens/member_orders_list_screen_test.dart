@@ -99,6 +99,10 @@ class _FakeOrderRepository implements OrderRepository {
   Future<List<OrderEntity>> getUnsyncedOrdersForUser(String userId) async => [];
 
   @override
+  Future<List<OrderEntity>> getLocalUnsentOrdersForUser(String userId) async =>
+      [];
+
+  @override
   Future<int> countOrphanUnsyncedOrders() async => 0;
 
   @override
@@ -106,6 +110,13 @@ class _FakeOrderRepository implements OrderRepository {
 
   @override
   Future<void> markOrdersAsSynced(List<String> orderIds) async {}
+
+  @override
+  Future<void> markSyncFailed(
+    String orderId, {
+    String? errorCode,
+    String? errorMessage,
+  }) async {}
 
   @override
   Future<void> updateOrderStatus(String orderId, String status) async {}

@@ -1,6 +1,7 @@
 import 'package:flutter_app_saludable/core/auth/secure_token_store.dart';
 import 'package:flutter_app_saludable/core/auth/session_expiration_handler.dart';
 import 'package:flutter_app_saludable/core/auth/session_owner.dart';
+import 'package:flutter_app_saludable/core/orders/order_sync_status.dart';
 import 'package:flutter_app_saludable/core/pagination/paged_result.dart';
 import 'package:flutter_app_saludable/core/services/connectivity_service.dart';
 import 'package:flutter_app_saludable/core/services/sync_service.dart';
@@ -53,8 +54,27 @@ class _SqlOrderRepo implements OrderRepository {
     final res = await _db.query(
       'orders',
       where:
-          'is_synced = ? AND user_id = ? AND user_id IS NOT NULL AND TRIM(user_id) != ?',
-      whereArgs: [0, owner, ''],
+          "is_synced = ? AND user_id = ? AND user_id IS NOT NULL AND TRIM(user_id) != ? AND (sync_status = ? OR sync_status IS NULL)",
+      whereArgs: [0, owner, '', OrderSyncStatus.pending.storageValue],
+    );
+    return res.map((r) => OrderEntity.fromMap(r)).toList();
+  }
+
+  @override
+  Future<List<OrderEntity>> getLocalUnsentOrdersForUser(String userId) async {
+    final owner = userId.trim();
+    if (owner.isEmpty) return [];
+    final res = await _db.query(
+      'orders',
+      where:
+          "is_synced = ? AND user_id = ? AND user_id IS NOT NULL AND TRIM(user_id) != ? AND (sync_status IN (?, ?) OR sync_status IS NULL)",
+      whereArgs: [
+        0,
+        owner,
+        '',
+        OrderSyncStatus.pending.storageValue,
+        OrderSyncStatus.failedPermanent.storageValue,
+      ],
     );
     return res.map((r) => OrderEntity.fromMap(r)).toList();
   }
@@ -82,11 +102,35 @@ class _SqlOrderRepo implements OrderRepository {
     for (final id in orderIds) {
       await _db.update(
         'orders',
-        {'is_synced': 1},
+        {
+          'is_synced': 1,
+          'sync_status': OrderSyncStatus.synced.storageValue,
+          'sync_error_code': null,
+          'sync_error_message': null,
+        },
         where: 'id = ?',
         whereArgs: [id],
       );
     }
+  }
+
+  @override
+  Future<void> markSyncFailed(
+    String orderId, {
+    String? errorCode,
+    String? errorMessage,
+  }) async {
+    await _db.update(
+      'orders',
+      {
+        'is_synced': 0,
+        'sync_status': OrderSyncStatus.failedPermanent.storageValue,
+        'sync_error_code': errorCode,
+        'sync_error_message': errorMessage,
+      },
+      where: 'id = ?',
+      whereArgs: [orderId],
+    );
   }
 
   @override
@@ -275,6 +319,9 @@ void main() {
               status TEXT,
               created_at TEXT,
               is_synced INTEGER DEFAULT 0,
+              sync_status TEXT NOT NULL DEFAULT 'PENDING',
+              sync_error_code TEXT,
+              sync_error_message TEXT,
               tiempoEstimadoMinutos INTEGER
             )
           ''');

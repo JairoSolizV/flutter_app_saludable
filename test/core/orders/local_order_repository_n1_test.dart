@@ -10,7 +10,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 Future<Database> _openOrderTestDb({
   String? path,
-  int version = 14,
+  int version = 15,
 }) async {
   return databaseFactoryFfi.openDatabase(
     path ?? inMemoryDatabasePath,
@@ -34,6 +34,9 @@ Future<Database> _openOrderTestDb({
             status TEXT,
             created_at TEXT,
             is_synced INTEGER DEFAULT 0,
+            sync_status TEXT NOT NULL DEFAULT 'PENDING',
+            sync_error_code TEXT,
+            sync_error_message TEXT,
             tiempoEstimadoMinutos INTEGER
           )
         ''');
@@ -145,6 +148,27 @@ Future<Database> _openOrderTestDb({
             'CREATE INDEX IF NOT EXISTS idx_order_item_options_item_id '
             'ON order_item_options(order_item_id)',
           );
+        }
+        if (oldVersion < 15 && newVersion >= 15) {
+          try {
+            await db.execute(
+              "ALTER TABLE orders ADD COLUMN sync_status TEXT NOT NULL DEFAULT 'PENDING'",
+            );
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE orders ADD COLUMN sync_error_code TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE orders ADD COLUMN sync_error_message TEXT');
+          } catch (_) {}
+          try {
+            await db.execute(
+              "UPDATE orders SET sync_status = 'SYNCED' WHERE is_synced = 1",
+            );
+            await db.execute(
+              "UPDATE orders SET sync_status = 'PENDING' WHERE is_synced = 0",
+            );
+          } catch (_) {}
         }
       },
     ),

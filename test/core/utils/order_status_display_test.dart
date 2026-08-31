@@ -15,6 +15,8 @@ void main() {
       expect(OrderStatusDisplay.memberLabel('CANCELADO'), 'Cancelado');
       expect(OrderStatusDisplay.memberLabel('LOCAL_PENDING'),
           'Pendiente de envío');
+      expect(OrderStatusDisplay.memberLabel('LOCAL_FAILED'),
+          'No se pudo enviar');
     });
 
     test('alias legacy en inglés', () {

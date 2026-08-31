@@ -9,6 +9,8 @@ class OrderStatusDisplay {
     switch (status.toUpperCase()) {
       case 'LOCAL_PENDING':
         return 'Pendiente de envío';
+      case 'LOCAL_FAILED':
+        return 'No se pudo enviar';
       case 'RECIBIDO':
       case 'PENDING':
         return 'Pendiente';
@@ -33,6 +35,8 @@ class OrderStatusDisplay {
     switch (status.toUpperCase()) {
       case 'LOCAL_PENDING':
         return Colors.amber;
+      case 'LOCAL_FAILED':
+        return Colors.red;
       case 'RECIBIDO':
       case 'PENDING':
         return Colors.orange;

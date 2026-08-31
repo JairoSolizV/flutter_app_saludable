@@ -5,6 +5,7 @@ import 'package:flutter_app_saludable/core/auth/session_expiration_handler.dart'
 import 'package:flutter_app_saludable/core/auth/session_owner.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
+import 'package:flutter_app_saludable/core/orders/order_sync_failure_classifier.dart';
 import 'package:flutter_app_saludable/core/utils/app_logger.dart';
 import '../../domain/entities/order_entity.dart';
 import '../../domain/repositories/order_repository.dart';
@@ -107,31 +108,31 @@ class SyncService {
         return;
       }
 
-      final publicMsg = ErrorMapper.publicMessage(e);
-      if (kDebugMode) {
-        logDebug('[DEBUG SYNC] Failed to sync order ${order.id}: $publicMsg');
+      final classification = OrderSyncFailureClassifier.classify(e);
+
+      if (classification.isAuthPause) {
+        logDebug('[DEBUG SYNC] Auth/pausa; pedido ${order.id} sin cambios');
+        return;
       }
 
-      // 400 (p. ej. opciones inválidas tras cambio de catálogo): mantener pending.
-      if (e is ValidationException) {
+      if (classification.isPermanent) {
         logDebug(
-          '[DEBUG SYNC] Validación rechazada; pedido ${order.id} sigue pendiente',
+          '[DEBUG SYNC] Rechazo permanente pedido ${order.id}: '
+          '${classification.errorCode ?? 'sin código'}',
+        );
+        await _orderRepository.markSyncFailed(
+          order.id,
+          errorCode: classification.errorCode,
+          errorMessage: classification.errorMessage,
         );
         return;
       }
 
-      final errorMessage = publicMsg.toLowerCase();
-      if (errorMessage.contains('membres') &&
-          (errorMessage.contains('no está activa') ||
-              errorMessage.contains('no activa'))) {
+      if (kDebugMode) {
+        final publicMsg = ErrorMapper.publicMessage(e);
         logDebug(
-          '[DEBUG SYNC] Pedido con membresía inválida, eliminando: ${order.id}',
+          '[DEBUG SYNC] Fallo retryable pedido ${order.id}: $publicMsg',
         );
-        try {
-          await _orderRepository.deleteOrder(order.id);
-        } catch (_) {
-          logDebug('[DEBUG SYNC] Error al eliminar pedido local');
-        }
       }
     }
   }

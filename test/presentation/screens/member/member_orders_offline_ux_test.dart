@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/core/orders/order_offline_messages.dart';
+import 'package:flutter_app_saludable/core/orders/order_sync_status.dart';
 import 'package:flutter_app_saludable/core/pagination/paged_result.dart';
 import 'package:flutter_app_saludable/data/datasources/remote/membresia_remote_data_source.dart';
 import 'package:flutter_app_saludable/data/datasources/remote/order_remote_data_source.dart';
@@ -167,6 +168,10 @@ class _FakeOrderRepo implements OrderRepository {
       pending.where((o) => o.userId == userId).toList();
 
   @override
+  Future<List<OrderEntity>> getLocalUnsentOrdersForUser(String userId) async =>
+      pending.where((o) => o.userId == userId).toList();
+
+  @override
   Future<int> countOrphanUnsyncedOrders() async => 0;
 
   @override
@@ -174,6 +179,13 @@ class _FakeOrderRepo implements OrderRepository {
 
   @override
   Future<void> markOrdersAsSynced(List<String> orderIds) async {}
+
+  @override
+  Future<void> markSyncFailed(
+    String orderId, {
+    String? errorCode,
+    String? errorMessage,
+  }) async {}
 
   @override
   Future<void> updateOrderStatus(String orderId, String status) async {}
@@ -281,5 +293,50 @@ void main() {
     expect(find.text(OrderOfflineMessages.offlineEmptyBody), findsOneWidget);
     expect(find.text('Reintentar'), findsOneWidget);
     expect(find.textContaining('NetworkError'), findsNothing);
+  });
+
+  testWidgets('FAILED no muestra banner auto-envío pero sí mensaje seguro',
+      (tester) async {
+    final orderRepo = _FakeOrderRepo()
+      ..pending = [
+        OrderEntity(
+          id: 'local-failed-1',
+          userId: '1',
+          clubId: 3,
+          membresiaId: 10,
+          status: 'pending',
+          createdAt: DateTime(2026, 8, 30, 12),
+          isSynced: false,
+          syncStatus: OrderSyncStatus.failedPermanent,
+          syncErrorCode: 'MEMBERSHIP_INACTIVE',
+          items: [
+            OrderItem(
+              orderId: 'local-failed-1',
+              productId: '7',
+              quantity: 1,
+              productName: 'Batido',
+            ),
+          ],
+        ),
+      ];
+
+    await tester.pumpWidget(_buildApp(
+      membresiaDs: _FakeMembresiaDs(),
+      orderDs: _FakeOrderRemote(),
+      orderRepo: orderRepo,
+      user: User(id: '1', name: 'Ana', email: 'a@a.com', role: 'member'),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No se pudo enviar'), findsOneWidget);
+    expect(
+      find.text(OrderOfflineMessages.failedOrderMessage('MEMBERSHIP_INACTIVE')),
+      findsOneWidget,
+    );
+    expect(
+      find.text(OrderOfflineMessages.localPendingBanner),
+      findsNothing,
+    );
+    expect(find.text('Eliminar'), findsOneWidget);
   });
 }

@@ -43,6 +43,10 @@ class _MemRepo implements OrderRepository {
       pending.where((o) => !syncedIds.contains(o.id)).toList();
 
   @override
+  Future<List<OrderEntity>> getLocalUnsentOrdersForUser(String userId) async =>
+      pending.where((o) => !syncedIds.contains(o.id)).toList();
+
+  @override
   Future<int> countOrphanUnsyncedOrders() async => 0;
 
   @override
@@ -56,6 +60,13 @@ class _MemRepo implements OrderRepository {
     markSyncedCalls++;
     syncedIds.addAll(orderIds);
   }
+
+  @override
+  Future<void> markSyncFailed(
+    String orderId, {
+    String? errorCode,
+    String? errorMessage,
+  }) async {}
 
   @override
   Future<void> updateOrderStatus(String orderId, String status) async {}

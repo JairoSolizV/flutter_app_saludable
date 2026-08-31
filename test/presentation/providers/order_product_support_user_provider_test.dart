@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_app_saludable/core/auth/session_owner.dart';
 import 'package:flutter_app_saludable/core/database/database_helper.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
+import 'package:flutter_app_saludable/core/orders/order_sync_status.dart';
 import 'package:flutter_app_saludable/core/pagination/paged_result.dart';
 import 'package:flutter_app_saludable/core/services/connectivity_service.dart';
 import 'package:flutter_app_saludable/core/services/sync_service.dart';
@@ -43,7 +44,20 @@ class _FakeOrderRepository implements OrderRepository {
 
   @override
   Future<List<OrderEntity>> getUnsyncedOrdersForUser(String userId) async =>
-      stored.where((o) => o.userId == userId && !o.isSynced).toList();
+      stored
+          .where((o) => o.userId == userId && !o.isSynced && o.syncStatus.isPending)
+          .toList();
+
+  @override
+  Future<List<OrderEntity>> getLocalUnsentOrdersForUser(String userId) async =>
+      stored
+          .where(
+            (o) =>
+                o.userId == userId &&
+                !o.isSynced &&
+                (o.syncStatus.isPending || o.syncStatus.isFailedPermanent),
+          )
+          .toList();
 
   @override
   Future<int> countOrphanUnsyncedOrders() async => 0;
@@ -63,6 +77,7 @@ class _FakeOrderRepository implements OrderRepository {
       status: old.status,
       createdAt: old.createdAt,
       isSynced: true,
+      syncStatus: OrderSyncStatus.synced,
       tiempoEstimadoMinutos: old.tiempoEstimadoMinutos,
       items: old.items,
     );
@@ -73,6 +88,33 @@ class _FakeOrderRepository implements OrderRepository {
     for (final id in orderIds) {
       await markAsSynced(id);
     }
+  }
+
+  @override
+  Future<void> markSyncFailed(
+    String orderId, {
+    String? errorCode,
+    String? errorMessage,
+  }) async {
+    final idx = stored.indexWhere((o) => o.id == orderId);
+    if (idx == -1) return;
+    final old = stored[idx];
+    stored[idx] = OrderEntity(
+      id: old.id,
+      userId: old.userId,
+      clubId: old.clubId,
+      membresiaId: old.membresiaId,
+      tipoConsumo: old.tipoConsumo,
+      observaciones: old.observaciones,
+      status: old.status,
+      createdAt: old.createdAt,
+      isSynced: false,
+      syncStatus: OrderSyncStatus.failedPermanent,
+      syncErrorCode: errorCode,
+      syncErrorMessage: errorMessage,
+      tiempoEstimadoMinutos: old.tiempoEstimadoMinutos,
+      items: old.items,
+    );
   }
 
   @override

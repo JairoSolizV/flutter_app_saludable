@@ -36,7 +36,7 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
   bool _isLoadingMembresia = true;
   String? _membresiaError;
   ClubMembership? _activeMembership;
-  List<OrderEntity> _localPendingOrders = const [];
+  List<OrderEntity> _localUnsentOrders = const [];
 
   @override
   void initState() {
@@ -91,7 +91,7 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
     final user =
         Provider.of<UserProvider>(context, listen: false).currentUser;
     if (user != null) {
-      await _loadLocalPendingOrders(user.id);
+      await _loadLocalUnsentOrders(user.id);
     }
     if (_ordersController == null) {
       await _initMembresia();
@@ -100,16 +100,46 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
     }
   }
 
-  Future<void> _loadLocalPendingOrders(String userId) async {
+  Future<void> _loadLocalUnsentOrders(String userId) async {
     final repo = Provider.of<OrderRepository>(context, listen: false);
-    final pending = await repo.getUnsyncedOrdersForUser(userId);
+    final unsent = await repo.getLocalUnsentOrdersForUser(userId);
     if (!mounted) return;
-    setState(() => _localPendingOrders = pending);
+    setState(() => _localUnsentOrders = unsent);
   }
 
-  List<Map<String, dynamic>> _mapLocalPendingOrders() {
+  Future<void> _deleteFailedOrder(String localId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar pedido'),
+        content: const Text(
+          '¿Eliminar este pedido que no se pudo enviar? Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final repo = Provider.of<OrderRepository>(context, listen: false);
+    await repo.deleteOrder(localId);
+    final user = Provider.of<UserProvider>(context, listen: false).currentUser;
+    if (user != null) {
+      await _loadLocalUnsentOrders(user.id);
+    }
+  }
+
+  List<Map<String, dynamic>> _mapLocalUnsentOrders() {
     final clubName = _activeMembership?.clubNombre;
-    return _localPendingOrders
+    return _localUnsentOrders
         .map(
           (o) => MemberLocalOrderMapper.toUiMap(
             o,
@@ -119,7 +149,11 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
         .toList();
   }
 
-  bool get _hasLocalPending => _localPendingOrders.isNotEmpty;
+  bool get _hasLocalUnsent => _localUnsentOrders.isNotEmpty;
+
+  bool get _hasLocalPendingOnly => _localUnsentOrders.any(
+        (o) => o.syncStatus.isPending,
+      );
 
   Future<void> _initMembresia() async {
     if (!mounted) return;
@@ -136,7 +170,7 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
         throw Exception('Usuario no autenticado');
       }
 
-      await _loadLocalPendingOrders(user.id);
+      await _loadLocalUnsentOrders(user.id);
 
       final membresiaDataSource =
           Provider.of<MembresiaRemoteDataSource>(context, listen: false);
@@ -273,7 +307,7 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
     final rawOrders =
         _ordersController?.items ?? const <Map<String, dynamic>>[];
     final mappedOrders = rawOrders.map(_mapOrder).toList();
-    final localActive = _mapLocalPendingOrders();
+    final localActive = _mapLocalUnsentOrders();
 
     // Filtrado local de pedidos según estado (partición del mismo feed
     // paginado; el backend no distingue Activos/Historial).
@@ -291,23 +325,23 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
     }).toList();
 
     final bool isInitialLoading = _isLoadingMembresia ||
-        ((_ordersController?.isInitialLoading ?? false) && !_hasLocalPending);
+        ((_ordersController?.isInitialLoading ?? false) && !_hasLocalUnsent);
 
     final remoteError = _ordersController?.initialError;
     final bool showOfflineEmpty = _membresiaError == null &&
         remoteError != null &&
-        !_hasLocalPending &&
+        !_hasLocalUnsent &&
         OrderOfflineMessages.isLikelyNetworkError(remoteError);
 
     final String? otherError = _membresiaError ??
         (remoteError != null &&
-                !_hasLocalPending &&
+                !_hasLocalUnsent &&
                 !OrderOfflineMessages.isLikelyNetworkError(remoteError)
             ? OrderOfflineMessages.friendlyLoadError(remoteError)
             : null);
 
     final bool showOfflineRemoteHint =
-        remoteError != null && _hasLocalPending;
+        remoteError != null && _hasLocalPendingOnly;
 
     return Scaffold(
       appBar: AppBar(
@@ -354,6 +388,7 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
                         offlineBanner: showOfflineRemoteHint
                             ? OrderOfflineMessages.localPendingBanner
                             : null,
+                        onDeleteFailed: _deleteFailedOrder,
                       ),
                       _OrdersList(
                         orders: historyOrders,
@@ -430,12 +465,14 @@ class _OrdersList extends StatelessWidget {
   final ScrollController? scrollController;
   final Widget? footer;
   final String? offlineBanner;
+  final Future<void> Function(String localId)? onDeleteFailed;
 
   const _OrdersList({
     required this.orders,
     this.scrollController,
     this.footer,
     this.offlineBanner,
+    this.onDeleteFailed,
   });
 
   @override
@@ -478,6 +515,8 @@ class _OrdersList extends StatelessWidget {
         if (orderIndex == orders.length) return footer!;
         final order = orders[orderIndex];
         final bool isLocalPending = order['isLocalPending'] == true;
+        final bool isLocalFailed = order['isLocalFailed'] == true;
+        final String? syncErrorCode = order['syncErrorCode']?.toString();
         final dynamic pedidoIdRaw =
             order['pedidoId'] ?? order['id'] ?? order['localId'];
         final DateTime fecha = order['fecha'] as DateTime? ?? DateTime.now();
@@ -510,7 +549,9 @@ class _OrdersList extends StatelessWidget {
                     Text(
                       isLocalPending
                           ? 'Pedido pendiente de envío'
-                          : 'Pedido #$pedidoIdRaw',
+                          : isLocalFailed
+                              ? 'Pedido no enviado'
+                              : 'Pedido #$pedidoIdRaw',
                       style: const TextStyle(
                           fontWeight: FontWeight.bold, fontSize: 16),
                     ),
@@ -522,6 +563,12 @@ class _OrdersList extends StatelessWidget {
                   _OfflineBanner(
                     message: OrderOfflineMessages.localPendingBanner,
                     compact: true,
+                  ),
+                ],
+                if (isLocalFailed) ...[
+                  const SizedBox(height: 8),
+                  _FailedOrderBanner(
+                    message: OrderOfflineMessages.failedOrderMessage(syncErrorCode),
                   ),
                 ],
                 const SizedBox(height: 8),
@@ -631,6 +678,18 @@ class _OrdersList extends StatelessWidget {
                       ],
                     ),
                   ),
+                if (isLocalFailed && onDeleteFailed != null) ...[
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () => onDeleteFailed!(order['localId'].toString()),
+                      icon: const Icon(LucideIcons.trash2, size: 16),
+                      label: const Text('Eliminar'),
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -671,6 +730,41 @@ class _OfflineBanner extends StatelessWidget {
               style: TextStyle(
                 fontSize: compact ? 12 : 13,
                 color: Colors.amber.shade900,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FailedOrderBanner extends StatelessWidget {
+  final String message;
+
+  const _FailedOrderBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(LucideIcons.alertCircle, size: 16, color: Colors.red.shade700),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.red.shade800,
                 fontWeight: FontWeight.w500,
               ),
             ),

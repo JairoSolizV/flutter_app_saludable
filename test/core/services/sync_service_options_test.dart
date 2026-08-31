@@ -25,6 +25,7 @@ class _MemRepo implements OrderRepository {
   List<OrderItem>? lastItems;
   int markSyncedCalls = 0;
   int deleteCalls = 0;
+  int markFailedCalls = 0;
   final List<OrderEntity> pending;
 
   _MemRepo(this.pending);
@@ -40,6 +41,10 @@ class _MemRepo implements OrderRepository {
       pending;
 
   @override
+  Future<List<OrderEntity>> getLocalUnsentOrdersForUser(String userId) async =>
+      pending;
+
+  @override
   Future<int> countOrphanUnsyncedOrders() async => 0;
 
   @override
@@ -50,6 +55,15 @@ class _MemRepo implements OrderRepository {
   @override
   Future<void> markOrdersAsSynced(List<String> orderIds) async {
     markSyncedCalls++;
+  }
+
+  @override
+  Future<void> markSyncFailed(
+    String orderId, {
+    String? errorCode,
+    String? errorMessage,
+  }) async {
+    markFailedCalls++;
   }
 
   @override
@@ -184,7 +198,7 @@ void main() {
     sync.dispose();
   });
 
-  test('400 validación no marca synced ni borra pedido', () async {
+  test('400 validación marca failed y no borra pedido', () async {
     final order = OrderEntity(
       id: 'o2',
       userId: 'u1',
@@ -216,6 +230,7 @@ void main() {
     await sync.syncNow();
 
     expect(repo.markSyncedCalls, 0);
+    expect(repo.markFailedCalls, 1);
     expect(repo.deleteCalls, 0);
     sync.dispose();
   });

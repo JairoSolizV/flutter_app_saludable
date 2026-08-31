@@ -19,6 +19,7 @@ import '../../../domain/entities/product_option_selection.dart';
 import 'member_product_detail_screen.dart';
 import 'member_combo_detail_screen.dart';
 import 'widgets/member_cart_checkout.dart';
+import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/orders/order_offline_messages.dart';
 import 'package:flutter_app_saludable/core/orders/order_submit_outcome.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
@@ -501,23 +502,29 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
       if (mounted) {
         setState(_clearCart);
         context.go('/member-orders');
-        final snackText = outcome == OrderSubmitOutcome.remoteSynced
-            ? OrderOfflineMessages.sentSynced
-            : OrderOfflineMessages.savedPending;
+        late final String snackText;
+        late final Color snackColor;
+        switch (outcome) {
+          case OrderSubmitOutcome.remoteSynced:
+            snackText = OrderOfflineMessages.sentSynced;
+            snackColor = Colors.green;
+          case OrderSubmitOutcome.localPending:
+            snackText = OrderOfflineMessages.savedPending;
+            snackColor = Colors.green;
+          case OrderSubmitOutcome.localFailed:
+            snackText = OrderOfflineMessages.sendFailed;
+            snackColor = Colors.red;
+        }
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(snackText),
-          backgroundColor: Colors.green,
+          backgroundColor: snackColor,
           duration: const Duration(seconds: 3),
         ));
       }
       return true;
     } catch (e) {
       if (mounted) {
-        final err = e.toString();
-        String msg = err.replaceAll('Exception: ', '');
-        if (err.contains('inactiva') || err.contains('no activa')) {
-          msg = 'Tu membresia no esta activa. Contacta al anfitrion.';
-        }
+        final msg = ErrorMapper.publicMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(msg),
             backgroundColor: Colors.red,

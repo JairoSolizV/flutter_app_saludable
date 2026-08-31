@@ -1,4 +1,5 @@
 import 'package:flutter_app_saludable/core/auth/session_owner.dart';
+import 'package:flutter_app_saludable/core/orders/order_sync_status.dart';
 import 'package:flutter_app_saludable/core/orders/order_submit_outcome.dart';
 import 'package:flutter_app_saludable/core/pagination/paged_result.dart';
 import 'package:flutter_app_saludable/core/services/connectivity_service.dart';
@@ -23,7 +24,20 @@ class _MemOrderRepo implements OrderRepository {
 
   @override
   Future<List<OrderEntity>> getUnsyncedOrdersForUser(String userId) async =>
-      stored.where((o) => o.userId == userId && !o.isSynced).toList();
+      stored
+          .where((o) => o.userId == userId && !o.isSynced && o.syncStatus.isPending)
+          .toList();
+
+  @override
+  Future<List<OrderEntity>> getLocalUnsentOrdersForUser(String userId) async =>
+      stored
+          .where(
+            (o) =>
+                o.userId == userId &&
+                !o.isSynced &&
+                (o.syncStatus.isPending || o.syncStatus.isFailedPermanent),
+          )
+          .toList();
 
   @override
   Future<int> countOrphanUnsyncedOrders() async => 0;
@@ -43,7 +57,9 @@ class _MemOrderRepo implements OrderRepository {
       status: o.status,
       createdAt: o.createdAt,
       isSynced: true,
+      syncStatus: OrderSyncStatus.synced,
       items: o.items,
+      combos: o.combos,
     );
   }
 
@@ -52,6 +68,33 @@ class _MemOrderRepo implements OrderRepository {
     for (final id in orderIds) {
       await markAsSynced(id);
     }
+  }
+
+  @override
+  Future<void> markSyncFailed(
+    String orderId, {
+    String? errorCode,
+    String? errorMessage,
+  }) async {
+    final i = stored.indexWhere((o) => o.id == orderId);
+    if (i < 0) return;
+    final o = stored[i];
+    stored[i] = OrderEntity(
+      id: o.id,
+      userId: o.userId,
+      clubId: o.clubId,
+      membresiaId: o.membresiaId,
+      tipoConsumo: o.tipoConsumo,
+      observaciones: o.observaciones,
+      status: o.status,
+      createdAt: o.createdAt,
+      isSynced: false,
+      syncStatus: OrderSyncStatus.failedPermanent,
+      syncErrorCode: errorCode,
+      syncErrorMessage: errorMessage,
+      items: o.items,
+      combos: o.combos,
+    );
   }
 
   @override

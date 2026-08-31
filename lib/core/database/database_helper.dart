@@ -36,7 +36,7 @@ class DatabaseHelper {
         join(await getDatabasesPath(), 'nutrilife_club.db');
     return await openDatabase(
       path,
-      version: 14,
+      version: 15,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -90,6 +90,9 @@ class DatabaseHelper {
         status TEXT, -- pending, preparing, ready, completed
         created_at TEXT,
         is_synced INTEGER DEFAULT 0, -- 0: No enviado al server, 1: Sincronizado
+        sync_status TEXT NOT NULL DEFAULT 'PENDING',
+        sync_error_code TEXT,
+        sync_error_message TEXT,
         tiempoEstimadoMinutos INTEGER,
         FOREIGN KEY(user_id) REFERENCES users(id)
       )
@@ -369,6 +372,35 @@ class DatabaseHelper {
         );
       } catch (e) {
         logDebug('Error migrando tablas order_combos v14: $e');
+      }
+    }
+    if (oldVersion < 15) {
+      try {
+        await db.execute(
+          "ALTER TABLE orders ADD COLUMN sync_status TEXT NOT NULL DEFAULT 'PENDING'",
+        );
+      } catch (e) {
+        logDebug('Error migrando sync_status v15: $e');
+      }
+      try {
+        await db.execute('ALTER TABLE orders ADD COLUMN sync_error_code TEXT');
+      } catch (e) {
+        logDebug('Error migrando sync_error_code v15: $e');
+      }
+      try {
+        await db.execute('ALTER TABLE orders ADD COLUMN sync_error_message TEXT');
+      } catch (e) {
+        logDebug('Error migrando sync_error_message v15: $e');
+      }
+      try {
+        await db.execute(
+          "UPDATE orders SET sync_status = 'SYNCED' WHERE is_synced = 1",
+        );
+        await db.execute(
+          "UPDATE orders SET sync_status = 'PENDING' WHERE is_synced = 0",
+        );
+      } catch (e) {
+        logDebug('Error en backfill sync_status v15: $e');
       }
     }
   }

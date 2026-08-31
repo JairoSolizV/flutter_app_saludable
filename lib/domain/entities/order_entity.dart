@@ -1,8 +1,10 @@
 import 'order_item_option.dart';
 import 'order_combo.dart';
+import '../../core/orders/order_sync_status.dart';
 
 export 'order_item_option.dart';
 export 'order_combo.dart';
+export '../../core/orders/order_sync_status.dart';
 
 class OrderEntity {
   final String id;
@@ -14,6 +16,9 @@ class OrderEntity {
   final String status; // 'pending', 'preparing', 'ready', 'completed'
   final DateTime createdAt;
   final bool isSynced;
+  final OrderSyncStatus syncStatus;
+  final String? syncErrorCode;
+  final String? syncErrorMessage;
   final int? tiempoEstimadoMinutos; // min
   final List<OrderItem> items;
   final List<OrderCombo> combos;
@@ -28,10 +33,14 @@ class OrderEntity {
     required this.status,
     required this.createdAt,
     this.isSynced = false,
+    OrderSyncStatus? syncStatus,
+    this.syncErrorCode,
+    this.syncErrorMessage,
     this.tiempoEstimadoMinutos,
     this.items = const [],
     this.combos = const [],
-  });
+  }) : syncStatus = syncStatus ??
+            (isSynced ? OrderSyncStatus.synced : OrderSyncStatus.pending);
 
   Map<String, dynamic> toMap() {
     return {
@@ -44,6 +53,9 @@ class OrderEntity {
       'status': status,
       'created_at': createdAt.toIso8601String(),
       'is_synced': isSynced ? 1 : 0,
+      'sync_status': syncStatus.storageValue,
+      'sync_error_code': syncErrorCode,
+      'sync_error_message': syncErrorMessage,
       'tiempoEstimadoMinutos': tiempoEstimadoMinutos,
     };
   }
@@ -53,6 +65,7 @@ class OrderEntity {
     List<OrderItem> items = const [],
     List<OrderCombo> combos = const [],
   }) {
+    final isSynced = map['is_synced'] == 1;
     return OrderEntity(
       id: map['id'],
       userId: map['user_id'],
@@ -62,7 +75,10 @@ class OrderEntity {
       observaciones: map['observaciones'],
       status: map['status'],
       createdAt: DateTime.parse(map['created_at']),
-      isSynced: map['is_synced'] == 1,
+      isSynced: isSynced,
+      syncStatus: OrderSyncStatus.fromStorage(map['sync_status'], isSynced: isSynced),
+      syncErrorCode: map['sync_error_code']?.toString(),
+      syncErrorMessage: map['sync_error_message']?.toString(),
       tiempoEstimadoMinutos: map['tiempoEstimadoMinutos'],
       items: items,
       combos: combos,

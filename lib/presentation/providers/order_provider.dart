@@ -3,6 +3,7 @@ import 'package:flutter_app_saludable/core/auth/session_state_resetter.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/utils/app_logger.dart';
+import 'package:flutter_app_saludable/core/orders/order_sync_status.dart';
 import 'package:flutter_app_saludable/core/orders/order_submit_outcome.dart';
 import '../../domain/entities/order_entity.dart';
 import '../../domain/repositories/order_repository.dart';
@@ -78,14 +79,21 @@ class OrderProvider extends ChangeNotifier implements SessionScopedState {
 
       await loadOrders(order.userId);
 
-      final stillPending = await _repository.getUnsyncedOrdersForUser(
-        order.userId,
-      );
-      final isPending =
-          stillPending.any((pending) => pending.id == order.id);
-      return isPending
-          ? OrderSubmitOutcome.localPending
-          : OrderSubmitOutcome.remoteSynced;
+      final userOrders = await _repository.getOrdersByUser(order.userId);
+      final matches = userOrders.where((o) => o.id == order.id);
+      if (matches.isEmpty) {
+        return OrderSubmitOutcome.remoteSynced;
+      }
+      final created = matches.first;
+
+      switch (created.syncStatus) {
+        case OrderSyncStatus.pending:
+          return OrderSubmitOutcome.localPending;
+        case OrderSyncStatus.failedPermanent:
+          return OrderSubmitOutcome.localFailed;
+        case OrderSyncStatus.synced:
+          return OrderSubmitOutcome.remoteSynced;
+      }
     } catch (e) {
       debugPrint('[DEBUG ORDER] Error creando pedido: $e');
       if (kDebugMode) logDebug('Error creating order: $e');

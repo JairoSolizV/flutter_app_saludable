@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import '../../core/database/database_helper.dart';
 import '../../core/utils/app_logger.dart';
+import '../../core/orders/order_sync_status.dart';
 import '../../domain/entities/order_entity.dart';
 import '../../domain/entities/order_item_option.dart';
 import '../../domain/entities/order_combo.dart';
@@ -120,8 +121,8 @@ class LocalOrderRepository implements OrderRepository {
     final res = await db.query(
       'orders',
       where:
-          'is_synced = ? AND user_id = ? AND user_id IS NOT NULL AND TRIM(user_id) != ?',
-      whereArgs: [0, owner, ''],
+          "is_synced = ? AND user_id = ? AND user_id IS NOT NULL AND TRIM(user_id) != ? AND (sync_status = ? OR sync_status IS NULL)",
+      whereArgs: [0, owner, '', OrderSyncStatus.pending.storageValue],
       orderBy: 'created_at ASC',
     );
 
@@ -132,7 +133,30 @@ class LocalOrderRepository implements OrderRepository {
       );
     }
 
-    // Sync no requiere nombre de producto; conservar items aunque falte catálogo.
+    return _attachItems(db, res, joinProducts: false);
+  }
+
+  @override
+  Future<List<OrderEntity>> getLocalUnsentOrdersForUser(String userId) async {
+    final owner = userId.trim();
+    if (owner.isEmpty) return [];
+
+    final db = await _db;
+    _trackSql();
+    final res = await db.query(
+      'orders',
+      where:
+          "is_synced = ? AND user_id = ? AND user_id IS NOT NULL AND TRIM(user_id) != ? AND (sync_status IN (?, ?) OR sync_status IS NULL)",
+      whereArgs: [
+        0,
+        owner,
+        '',
+        OrderSyncStatus.pending.storageValue,
+        OrderSyncStatus.failedPermanent.storageValue,
+      ],
+      orderBy: 'created_at DESC',
+    );
+
     return _attachItems(db, res, joinProducts: false);
   }
 
@@ -167,11 +191,39 @@ class LocalOrderRepository implements OrderRepository {
       for (final chunk in _chunks(ids, sqliteInChunkSize)) {
         final placeholders = List.filled(chunk.length, '?').join(',');
         await txn.rawUpdate(
-          'UPDATE orders SET is_synced = 1 WHERE id IN ($placeholders)',
-          chunk,
+          '''UPDATE orders SET is_synced = 1,
+             sync_status = ?,
+             sync_error_code = NULL,
+             sync_error_message = NULL
+             WHERE id IN ($placeholders)''',
+          [OrderSyncStatus.synced.storageValue, ...chunk],
         );
       }
     });
+  }
+
+  @override
+  Future<void> markSyncFailed(
+    String orderId, {
+    String? errorCode,
+    String? errorMessage,
+  }) async {
+    final id = orderId.trim();
+    if (id.isEmpty) return;
+
+    final db = await _db;
+    _trackSql();
+    await db.update(
+      'orders',
+      {
+        'is_synced': 0,
+        'sync_status': OrderSyncStatus.failedPermanent.storageValue,
+        'sync_error_code': errorCode,
+        'sync_error_message': errorMessage,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   @override
