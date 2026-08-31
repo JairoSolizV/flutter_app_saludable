@@ -1,3 +1,5 @@
+import 'name_pattern.dart';
+
 class Validators {
   /// Regla de auth: trim de espacios exteriores + lowercase.
   static String normalizeEmail(String email) => email.trim().toLowerCase();
@@ -9,10 +11,9 @@ class Validators {
     if (value.trim().length < 2) {
       return 'Debe tener al menos 2 caracteres';
     }
-    // Permite letras, espacios y acentos, pero NO números.
-    final nameExp = RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$');
-    if (!nameExp.hasMatch(value)) {
-      return 'No se permiten números ni caracteres especiales';
+    // Coherente con AppFormatters.letras(): letras, acentos, ñ, ü, espacio, ', -
+    if (!NamePattern.fullValue.hasMatch(value)) {
+      return 'Solo se permiten letras, espacios, apóstrofe y guion';
     }
     return null;
   }

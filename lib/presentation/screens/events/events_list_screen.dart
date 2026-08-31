@@ -58,14 +58,7 @@ class _EventsListScreenState extends State<EventsListScreen> {
       final eventoDataSource = Provider.of<EventoRemoteDataSource>(context, listen: false);
       final eventos = await eventoDataSource.getEventos();
       
-      final ahora = DateTime.now();
-      
-      final eventosFuturos = eventos.where((evento) {
-        return evento.fechaEvento.isAfter(ahora);
-      }).toList();
-      
-      // Ordenar por fecha (más cercanos primero)
-      eventosFuturos.sort((a, b) => a.fechaEvento.compareTo(b.fechaEvento));
+      final eventosFuturos = Evento.filterUpcoming(eventos, DateTime.now());
       
       if (mounted) {
         setState(() {

@@ -164,8 +164,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       
                       TextFormField(
                         controller: _firstNameCtrl,
-                        maxLength: 60,
-                        inputFormatters: AppFormatters.letras(60),
+                        maxLength: 255,
+                        inputFormatters: AppFormatters.letras(255),
                         decoration: const InputDecoration(labelText: 'Nombre', prefixIcon: Icon(Icons.person), border: OutlineInputBorder(), counterText: ''),
                         validator: Validators.validateName,
                         onChanged: (_) => _clearAuthError(),
@@ -174,8 +174,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       TextFormField(
                         controller: _lastNameCtrl,
-                        maxLength: 60,
-                        inputFormatters: AppFormatters.letras(60),
+                        maxLength: 255,
+                        inputFormatters: AppFormatters.letras(255),
                         decoration: const InputDecoration(labelText: 'Apellido', prefixIcon: Icon(Icons.person_outline), border: OutlineInputBorder(), counterText: ''),
                         validator: Validators.validateName,
                         onChanged: (_) => _clearAuthError(),
@@ -185,9 +185,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       TextFormField(
                         controller: _emailCtrl,
                         focusNode: _emailFocusNode,
-                        maxLength: 100,
+                        maxLength: 255,
                         keyboardType: TextInputType.emailAddress,
-                        inputFormatters: AppFormatters.sinEspacios(100),
+                        inputFormatters: AppFormatters.sinEspacios(255),
                         decoration: InputDecoration(
                           labelText: 'Correo Electrónico',
                           prefixIcon: const Icon(Icons.email),

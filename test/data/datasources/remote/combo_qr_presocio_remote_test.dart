@@ -121,12 +121,15 @@ void main() {
         descripcion: 'desc',
         imagenUrl: 'url',
         puntosValor: 3,
+        precio: 35.0,
         items: [
           {'productoId': 1, 'cantidad': 2},
         ],
       );
       expect(combo.id, 10);
       expect(adapter.requests, hasLength(1));
+      final body = adapter.requests.single.data as Map<String, dynamic>;
+      expect(body['precio'], 35.0);
     }));
 
     test('updateCombo hace PUT', async_(() async {
@@ -139,9 +142,12 @@ void main() {
         1,
         5,
         nombre: 'Actualizado',
+        precio: 40.0,
         items: const [],
       );
       expect(combo.nombre, 'Actualizado');
+      final body = adapter.requests.single.data as Map<String, dynamic>;
+      expect(body['precio'], 40.0);
     }));
 
     test('toggleCombo hace PATCH', async_(() async {

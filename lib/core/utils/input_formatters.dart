@@ -1,5 +1,7 @@
 import 'package:flutter/services.dart';
 
+import 'name_pattern.dart';
+
 /// Formatters de UI reutilizables para limitar qué se puede escribir en un
 /// campo. Regla: bloquear lo IMPOSIBLE al escribir; nunca transformar un
 /// valor que ya es válido (eso queda para el validator, si hace falta).
@@ -31,9 +33,7 @@ class AppFormatters {
 
   /// Solo letras. Incluye acentos, ñ, ü, y permite ' y - (María-José, D'Angelo).
   static List<TextInputFormatter> letras(int max) => [
-        FilteringTextInputFormatter.allow(
-          RegExp(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ '\-]"),
-        ),
+        FilteringTextInputFormatter.allow(NamePattern.inputCharacters),
         LengthLimitingTextInputFormatter(max),
       ];
 

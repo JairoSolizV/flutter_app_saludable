@@ -20,8 +20,9 @@ void main() {
       expect(Validators.validateName('Juan123'), isNotNull);
     });
 
-    test('con caracteres especiales es inválido', () {
+    test('con caracteres no permitidos es inválido', () {
       expect(Validators.validateName('Juan_Perez!'), isNotNull);
+      expect(Validators.validateName('Eva@Toro'), isNotNull);
     });
 
     test('nombre simple válido', () {
@@ -30,6 +31,17 @@ void main() {
 
     test('nombre con espacios y acentos válido', () {
       expect(Validators.validateName('José María Ñañez'), isNull);
+      expect(Validators.validateName('Ana María'), isNull);
+    });
+
+    test('guion, apóstrofe y ü válidos', () {
+      expect(Validators.validateName('María-José'), isNull);
+      expect(Validators.validateName("D'Angelo"), isNull);
+      expect(Validators.validateName('Müller'), isNull);
+    });
+
+    test('Eva123 es inválido', () {
+      expect(Validators.validateName('Eva123'), isNotNull);
     });
   });
 

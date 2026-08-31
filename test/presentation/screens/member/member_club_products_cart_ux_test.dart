@@ -208,6 +208,7 @@ class _FakeRemoteOrders implements OrderRemoteDataSource {
     String? tipoConsumo,
     String? observaciones,
     required List<Map<String, dynamic>> items,
+    List<Map<String, dynamic>> combos = const [],
   }) async {}
 
   @override

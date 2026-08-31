@@ -102,8 +102,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         controller: _emailCtrl,
                         keyboardType: TextInputType.emailAddress,
                         autofillHints: const [AutofillHints.email],
-                        maxLength: 100,
-                        inputFormatters: AppFormatters.sinEspacios(100),
+                        maxLength: 255,
+                        inputFormatters: AppFormatters.sinEspacios(255),
                         decoration: const InputDecoration(
                           labelText: 'Correo electrónico',
                           prefixIcon: Icon(Icons.email),

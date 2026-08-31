@@ -491,10 +491,11 @@ void main() {
       expect(e.fechaEvento.month, 7);
     });
 
-    test('fromJson sin fecha usa DateTime.now() sin lanzar', () {
-      final before = DateTime.now();
-      final e = Evento.fromJson({'id': 4, 'nombre': 'SinFecha', 'descripcion': ''});
-      expect(e.fechaEvento.isAfter(before.subtract(const Duration(minutes: 1))), isTrue);
+    test('fromJson sin fecha lanza FormatException', () {
+      expect(
+        () => Evento.fromJson({'id': 4, 'nombre': 'SinFecha', 'descripcion': ''}),
+        throwsFormatException,
+      );
     });
 
     test('fromJson con timestamp numérico', () {

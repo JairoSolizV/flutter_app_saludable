@@ -22,6 +22,13 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
 
   @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _passCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -74,16 +81,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 32),
                       TextFormField(
                         controller: _emailCtrl,
-                        maxLength: 100,
+                        maxLength: 255,
                         keyboardType: TextInputType.emailAddress,
-                        inputFormatters: AppFormatters.sinEspacios(100),
+                        inputFormatters: AppFormatters.sinEspacios(255),
                         decoration: const InputDecoration(
                           labelText: 'Correo Electrónico',
                           prefixIcon: Icon(Icons.email),
                           border: OutlineInputBorder(),
                           counterText: '',
                         ),
-                        validator: (v) => v!.isEmpty ? 'Campo requerido' : null,
+                        validator: Validators.validateEmail,
                         onChanged: (value) {
                           // Limpiar error cuando el usuario empiece a escribir
                           final auth = Provider.of<AuthProvider>(context, listen: false);

@@ -21,72 +21,85 @@ class Evento {
     required this.descripcion,
   });
 
-  factory Evento.fromJson(Map<String, dynamic> json) {
-    // Parsear fechaEvento (puede venir como String en formato ISO, LocalDate YYYY-MM-DD, o como número timestamp)
-    DateTime parseFechaEvento() {
-      // El backend puede enviar 'fechaEvento' o 'fecha'
-      final fechaValue = json['fechaEvento'] ?? json['fecha'];
-      
-      if (fechaValue == null) {
-        debugPrint('[EVENTO] WARNING: fechaEvento es null, usando fecha actual');
-        return DateTime.now();
+  /// Parsea `fechaEvento` del backend (`LocalDate` → `YYYY-MM-DD`).
+  ///
+  /// Retorna `null` si el valor es inválido; no fabrica fechas silenciosas.
+  static DateTime? parseFechaEventoValue(dynamic fechaValue) {
+    if (fechaValue == null) {
+      debugPrint('[EVENTO] fechaEvento null — registro inválido');
+      return null;
+    }
+
+    if (fechaValue is String) {
+      final fechaStr = fechaValue.trim();
+      if (fechaStr.isEmpty) {
+        debugPrint('[EVENTO] fechaEvento vacío — registro inválido');
+        return null;
       }
-      
-      if (fechaValue is String) {
-        final fechaStr = fechaValue.trim();
-        
-        // Si está vacío, retornar fecha actual
-        if (fechaStr.isEmpty) {
-          debugPrint('[EVENTO] WARNING: fechaEvento está vacío, usando fecha actual');
-          return DateTime.now();
-        }
-        
-        // Intentar parsear como ISO 8601 completo (con T y hora)
-        if (fechaStr.contains('T')) {
-          final parsed = DateTime.tryParse(fechaStr);
-          if (parsed != null) {
-            debugPrint('[EVENTO] Fecha parseada (ISO): $fechaStr -> $parsed');
-            return parsed;
-          }
-        }
-        
-        // Si es solo fecha (YYYY-MM-DD), agregar hora medianoche UTC y convertir a local
-        if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(fechaStr)) {
-          // Parsear como UTC y luego convertir a local
-          final parsed = DateTime.tryParse('${fechaStr}T00:00:00Z');
-          if (parsed != null) {
-            // Convertir de UTC a hora local
-            final localDate = DateTime(
-              parsed.year,
-              parsed.month,
-              parsed.day,
-            );
-            debugPrint('[EVENTO] Fecha parseada (YYYY-MM-DD): $fechaStr -> $localDate');
-            return localDate;
-          }
-        }
-        
-        // Intentar parsear directamente
+
+      final localDate = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(fechaStr);
+      if (localDate != null) {
+        final year = int.parse(localDate.group(1)!);
+        final month = int.parse(localDate.group(2)!);
+        final day = int.parse(localDate.group(3)!);
+        return DateTime(year, month, day);
+      }
+
+      if (fechaStr.contains('T')) {
         final parsed = DateTime.tryParse(fechaStr);
         if (parsed != null) {
-          debugPrint('[EVENTO] Fecha parseada (directa): $fechaStr -> $parsed');
-          return parsed;
+          return DateTime(parsed.year, parsed.month, parsed.day);
         }
-        
-        debugPrint('[EVENTO] ERROR: No se pudo parsear fecha: $fechaStr');
-        return DateTime.now();
       }
-      
-      // Si es un número (timestamp)
-      if (fechaValue is num) {
-        final timestamp = fechaValue.toInt();
-        final parsed = DateTime.fromMillisecondsSinceEpoch(timestamp);
-        debugPrint('[EVENTO] Fecha parseada (timestamp): $timestamp -> $parsed');
-        return parsed;
+
+      final parsed = DateTime.tryParse(fechaStr);
+      if (parsed != null) {
+        return DateTime(parsed.year, parsed.month, parsed.day);
       }
-      
-      debugPrint('[EVENTO] ERROR: Tipo de fecha no reconocido: ${fechaValue.runtimeType}');
-      return DateTime.now();
+
+      debugPrint('[EVENTO] No se pudo parsear fecha: $fechaStr');
+      return null;
+    }
+
+    if (fechaValue is num) {
+      final parsed = DateTime.fromMillisecondsSinceEpoch(fechaValue.toInt());
+      return DateTime(parsed.year, parsed.month, parsed.day);
+    }
+
+    debugPrint(
+      '[EVENTO] Tipo de fecha no reconocido: ${fechaValue.runtimeType}',
+    );
+    return null;
+  }
+
+  /// Día de calendario local (sin hora).
+  static DateTime calendarDay(DateTime value) =>
+      DateTime(value.year, value.month, value.day);
+
+  /// Incluye hoy y fechas futuras; excluye días anteriores a [reference].
+  static bool isOnOrAfterToday(DateTime eventDate, DateTime reference) {
+    final today = calendarDay(reference);
+    final eventDay = calendarDay(eventDate);
+    return !eventDay.isBefore(today);
+  }
+
+  /// Filtra y ordena eventos de hoy en adelante (ascendente por fecha).
+  static List<Evento> filterUpcoming(
+    List<Evento> eventos,
+    DateTime reference,
+  ) {
+    final upcoming = eventos
+        .where((evento) => isOnOrAfterToday(evento.fechaEvento, reference))
+        .toList();
+    upcoming.sort((a, b) => a.fechaEvento.compareTo(b.fechaEvento));
+    return upcoming;
+  }
+
+  factory Evento.fromJson(Map<String, dynamic> json) {
+    final fechaValue = json['fechaEvento'] ?? json['fecha'];
+    final fecha = parseFechaEventoValue(fechaValue);
+    if (fecha == null) {
+      throw FormatException('fechaEvento inválida: $fechaValue');
     }
 
     return Evento(
@@ -96,9 +109,8 @@ class Evento {
       clubId: json['clubId'] as int?,
       clubNombre: json['clubNombre'] as String?,
       nombre: json['nombre'] as String? ?? '',
-      fechaEvento: parseFechaEvento(),
+      fechaEvento: fecha,
       descripcion: json['descripcion'] as String? ?? '',
     );
   }
 }
-

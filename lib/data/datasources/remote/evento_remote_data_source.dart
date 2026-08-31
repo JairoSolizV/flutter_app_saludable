@@ -23,9 +23,7 @@ class EventoRemoteDataSourceImpl implements EventoRemoteDataSource {
       
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
-        final eventos = data
-            .map((json) => Evento.fromJson(Map<String, dynamic>.from(json)))
-            .toList();
+        final eventos = _parseEventos(data);
         
         debugPrint('[EVENTO DS] Eventos obtenidos: ${eventos.length}');
         return eventos;
@@ -50,9 +48,7 @@ class EventoRemoteDataSourceImpl implements EventoRemoteDataSource {
       
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
-        return data
-            .map((json) => Evento.fromJson(Map<String, dynamic>.from(json)))
-            .toList();
+        return _parseEventos(data);
       } else {
         throw Exception('Error cargando eventos del hub: ${response.statusCode}');
       }
@@ -73,9 +69,7 @@ class EventoRemoteDataSourceImpl implements EventoRemoteDataSource {
       
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
-        return data
-            .map((json) => Evento.fromJson(Map<String, dynamic>.from(json)))
-            .toList();
+        return _parseEventos(data);
       } else {
         throw Exception('Error cargando eventos del club: ${response.statusCode}');
       }
@@ -83,5 +77,18 @@ class EventoRemoteDataSourceImpl implements EventoRemoteDataSource {
       throw Exception('Error al obtener eventos del club: $e');
     }
   }
+}
+
+List<Evento> _parseEventos(List<dynamic> data) {
+  final eventos = <Evento>[];
+  for (final raw in data) {
+    if (raw is! Map) continue;
+    try {
+      eventos.add(Evento.fromJson(Map<String, dynamic>.from(raw)));
+    } catch (e) {
+      debugPrint('[EVENTO DS] Registro ignorado: $e');
+    }
+  }
+  return eventos;
 }
 
