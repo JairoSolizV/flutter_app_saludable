@@ -75,41 +75,46 @@ class _SplashScreenState extends State<SplashScreen> {
     context.go('/login');
   }
 
+  static const Color _brandBlue = Color(0xFF00346D);
+
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final logoWidth = (screenWidth * 0.38).clamp(96.0, 160.0);
+    final barWidth = (screenWidth * 0.42).clamp(120.0, 180.0);
+
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // El logo es apaisado (709x444) y trae el fondo blanco horneado en el
-            // JPEG: se fija solo el ancho para respetar su proporción, y encaja
-            // con el fondo blanco del Scaffold.
-            Image.asset(
-              'assets/images/expande_logo.jpg',
-              width: 240,
-              fit: BoxFit.contain,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Logo apaisado con fondo blanco horneado; solo se fija el ancho
+                // para respetar proporción y evitar overflow en pantallas chicas.
+                Image.asset(
+                  'assets/images/expande_logo.jpg',
+                  width: logoWidth,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: barWidth,
+                  child: const ClipRRect(
+                    borderRadius: BorderRadius.all(Radius.circular(999)),
+                    child: LinearProgressIndicator(
+                      minHeight: 3,
+                      backgroundColor: Color(0x2200346D),
+                      color: _brandBlue,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'Expande',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF14284B),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 48),
-              child: Text(
-                'Asistencia por QR, pedidos y puntos de socio',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 14),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

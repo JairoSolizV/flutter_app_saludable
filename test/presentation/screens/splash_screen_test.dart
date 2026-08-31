@@ -76,12 +76,13 @@ void main() {
       ),
     );
 
-    expect(find.text('Expande'), findsOneWidget);
+    expect(find.text('Expande'), findsNothing);
     expect(
       find.text('Asistencia por QR, pedidos y puntos de socio'),
-      findsOneWidget,
+      findsNothing,
     );
     expect(find.byType(Image), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
 
     await tester.pump(const Duration(seconds: 3));
