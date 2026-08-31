@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../widgets/schedule_selector.dart';
 import '../../../widgets/location_picker_dialog.dart';
+import 'package:flutter_app_saludable/core/clubs/club_location.dart';
+import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 
@@ -37,9 +39,11 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.club.nombreClub);
     _addressCtrl = TextEditingController(text: widget.club.direccion);
-    _schedule = widget.club.horario; // Inicializar con el horario del club
-    _lat = widget.club.lat; // Inicializar con las coordenadas del club
-    _lng = widget.club.lng;
+    _schedule = widget.club.horario;
+    if (widget.club.hasValidLocation) {
+      _lat = widget.club.lat;
+      _lng = widget.club.lng;
+    }
     _imageCtrl = TextEditingController(); // Initially empty, will fetch
     _loadCurrentPhoto();
   }
@@ -70,6 +74,9 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
     super.dispose();
   }
 
+  bool get _hasValidLocation =>
+      ClubLocationValidation.isValidCoordinates(_lat, _lng);
+
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -86,11 +93,12 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
         return;
       }
 
-      if (_lat == null || _lng == null) {
+      if (!_hasValidLocation) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Selecciona la ubicación del club'),
-              backgroundColor: Colors.orange),
+            content: Text(ClubLocationFormMessages.editNeedsLocation),
+            backgroundColor: Colors.orange,
+          ),
         );
         setState(() => _isLoading = false);
         return;
@@ -100,8 +108,8 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
         'nombreClub': _nameCtrl.text.trim(),
         'direccion': _addressCtrl.text.trim(),
         'horario': _schedule,
-        'lat': _lat!,
-        'lng': _lng!,
+        'lat': _lat,
+        'lng': _lng,
         // 'fotoUrl': _imageCtrl.text.trim(), // REMOVED: Managed separately
       };
 
@@ -123,7 +131,10 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(ErrorMapper.publicMessage(e)),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -189,14 +200,18 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => LocationPickerDialog(
-                        initialLocation: _lat != null && _lng != null
+                        initialLocation: _hasValidLocation
                             ? LatLng(_lat!, _lng!)
                             : null,
                       ),
                     ),
                   );
 
-                  if (result != null) {
+                  if (result != null &&
+                      ClubLocationValidation.isValidCoordinates(
+                        result.latitude,
+                        result.longitude,
+                      )) {
                     setState(() {
                       _lat = result.latitude;
                       _lng = result.longitude;
@@ -204,22 +219,22 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                   }
                 },
                 icon: const Icon(LucideIcons.mapPin),
-                label: Text(_lat == null
-                    ? 'Seleccionar Ubicación'
-                    : 'Ubicación seleccionada'),
+                label: Text(_hasValidLocation
+                    ? ClubLocationFormMessages.locationSelected
+                    : 'Seleccionar Ubicación'),
                 style: OutlinedButton.styleFrom(
                   padding:
                       const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
                   side: BorderSide(
-                    color: _lat == null
-                        ? Colors.grey.shade400
-                        : AppTheme.primaryColor,
+                    color: _hasValidLocation
+                        ? AppTheme.primaryColor
+                        : Colors.grey.shade400,
                     width: 2,
                   ),
                 ),
               ),
 
-              if (_lat != null && _lng != null) ...[
+              if (_hasValidLocation) ...[
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -227,15 +242,15 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                     color: const Color(0xFFF0F9E8),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Row(
+                  child: const Row(
                     children: [
-                      const Icon(Icons.check_circle,
+                      Icon(Icons.check_circle,
                           color: AppTheme.primaryColor, size: 20),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Lat: ${_lat!.toStringAsFixed(6)}, Lng: ${_lng!.toStringAsFixed(6)}',
-                          style: const TextStyle(
+                          ClubLocationFormMessages.locationSelected,
+                          style: TextStyle(
                               fontSize: 12, color: Color(0xFF2C5E1A)),
                         ),
                       ),
@@ -308,7 +323,7 @@ class _HostClubEditScreenState extends State<HostClubEditScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _saveChanges,
+                  onPressed: (_isLoading || !_hasValidLocation) ? null : _saveChanges,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
                     shape: RoundedRectangleBorder(

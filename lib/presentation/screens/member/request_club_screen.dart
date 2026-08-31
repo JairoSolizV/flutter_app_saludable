@@ -8,6 +8,8 @@ import '../../providers/user_provider.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../widgets/schedule_selector.dart';
 import '../../widgets/location_picker_dialog.dart';
+import 'package:flutter_app_saludable/core/clubs/club_location.dart';
+import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 
@@ -28,6 +30,9 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
   
   bool _isLoading = false;
 
+  bool get _hasValidLocation =>
+      ClubLocationValidation.isValidCoordinates(_lat, _lng);
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -45,9 +50,12 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
       return;
     }
 
-    if (_lat == null || _lng == null) {
+    if (!_hasValidLocation) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona la ubicación del club'), backgroundColor: Colors.orange),
+        const SnackBar(
+          content: Text(ClubLocationFormMessages.selectLocation),
+          backgroundColor: Colors.orange,
+        ),
       );
       return;
     }
@@ -74,8 +82,8 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
       debugPrint('[REQUEST CLUB]   hubId: 1');
       debugPrint('[REQUEST CLUB]   anfitrionId: ${user.id}');
       
-      if (_lat == null || _lng == null) {
-        throw Exception('La ubicación no está seleccionada. Por favor, selecciona la ubicación del club.');
+      if (!_hasValidLocation) {
+        throw Exception(ClubLocationFormMessages.selectLocation);
       }
       
       await clubDataSource.solicitarCreacionClub(
@@ -113,7 +121,7 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString().replaceAll("Exception:", "")}'),
+            content: Text(ErrorMapper.publicMessage(e)),
             backgroundColor: Colors.red,
           ),
         );
@@ -208,7 +216,7 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => LocationPickerDialog(
-                        initialLocation: _lat != null && _lng != null
+                        initialLocation: _hasValidLocation
                             ? LatLng(_lat!, _lng!)
                             : null,
                       ),
@@ -216,11 +224,29 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
                   );
                   
                   if (result != null) {
-                    debugPrint('[REQUEST CLUB] Ubicación seleccionada: Lat=${result.latitude}, Lng=${result.longitude}');
-                    setState(() {
-                      _lat = result.latitude;
-                      _lng = result.longitude;
-                    });
+                    if (ClubLocationValidation.isValidCoordinates(
+                      result.latitude,
+                      result.longitude,
+                    )) {
+                      debugPrint(
+                        '[REQUEST CLUB] Ubicación seleccionada: Lat=${result.latitude}, Lng=${result.longitude}',
+                      );
+                      setState(() {
+                        _lat = result.latitude;
+                        _lng = result.longitude;
+                      });
+                    } else if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            ClubLocationErrorMessages.forCode(
+                              ClubLocationErrorCodes.invalid,
+                            ),
+                          ),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                    }
                   } else {
                     debugPrint('[REQUEST CLUB] Usuario canceló la selección de ubicación');
                     if (mounted) {
@@ -235,17 +261,21 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
                   }
                 },
                 icon: const Icon(LucideIcons.mapPin),
-                label: Text(_lat == null ? 'Seleccionar Ubicación' : 'Ubicación seleccionada'),
+                label: Text(_hasValidLocation
+                    ? ClubLocationFormMessages.locationSelected
+                    : 'Seleccionar Ubicación'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
                   side: BorderSide(
-                    color: _lat == null ? Colors.grey.shade400 : AppTheme.primaryColor,
+                    color: _hasValidLocation
+                        ? AppTheme.primaryColor
+                        : Colors.grey.shade400,
                     width: 2,
                   ),
                 ),
               ),
               
-              if (_lat != null && _lng != null) ...[
+              if (_hasValidLocation) ...[
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -253,14 +283,14 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
                     color: const Color(0xFFF0F9E8),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Row(
+                  child: const Row(
                     children: [
-                      const Icon(Icons.check_circle, color: AppTheme.primaryColor, size: 20),
-                      const SizedBox(width: 8),
+                      Icon(Icons.check_circle, color: AppTheme.primaryColor, size: 20),
+                      SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Lat: ${_lat!.toStringAsFixed(6)}, Lng: ${_lng!.toStringAsFixed(6)}',
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF2C5E1A)),
+                          ClubLocationFormMessages.locationSelected,
+                          style: TextStyle(fontSize: 12, color: Color(0xFF2C5E1A)),
                         ),
                       ),
                     ],
@@ -274,7 +304,7 @@ class _RequestClubScreenState extends State<RequestClubScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submitRequest,
+                  onPressed: (_isLoading || !_hasValidLocation) ? null : _submitRequest,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
                     foregroundColor: Colors.white,

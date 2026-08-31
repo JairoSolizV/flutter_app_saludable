@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_app_saludable/core/clubs/club_location.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/core/errors/throw_app_error.dart';
 import 'package:flutter_app_saludable/core/utils/app_logger.dart';
@@ -37,8 +38,8 @@ class Club {
   final String nombreClub;
   final String direccion;
   final String horario;
-  final double lat;
-  final double lng;
+  final double? lat;
+  final double? lng;
   final String estado;
 
   Club({
@@ -50,27 +51,20 @@ class Club {
     required this.nombreClub,
     required this.direccion,
     required this.horario,
-    required this.lat,
-    required this.lng,
+    this.lat,
+    this.lng,
     required this.estado,
   });
 
-  factory Club.fromJson(Map<String, dynamic> json) {
-    // Manejar lat y lng de forma segura (pueden ser null)
-    double parseLat() {
-      final latValue = json['lat'];
-      if (latValue == null) return 0.0;
-      if (latValue is num) return latValue.toDouble();
-      if (latValue is String) return double.tryParse(latValue) ?? 0.0;
-      return 0.0;
-    }
+  bool get hasValidLocation =>
+      ClubLocationValidation.isValidCoordinates(lat, lng);
 
-    double parseLng() {
-      final lngValue = json['lng'];
-      if (lngValue == null) return 0.0;
-      if (lngValue is num) return lngValue.toDouble();
-      if (lngValue is String) return double.tryParse(lngValue) ?? 0.0;
-      return 0.0;
+  factory Club.fromJson(Map<String, dynamic> json) {
+    double? parseCoordinate(dynamic value) {
+      if (value == null) return null;
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value);
+      return null;
     }
 
     return Club(
@@ -82,8 +76,8 @@ class Club {
       nombreClub: json['nombreClub']?.toString() ?? '',
       direccion: json['direccion']?.toString() ?? '',
       horario: json['horario']?.toString() ?? '',
-      lat: parseLat(),
-      lng: parseLng(),
+      lat: parseCoordinate(json['lat']),
+      lng: parseCoordinate(json['lng']),
       estado: json['estado']?.toString() ?? 'ACTIVO',
     );
   }
@@ -412,8 +406,7 @@ class ClubRemoteDataSource {
     int hubId = 1,
   }) async {
     try {
-      // Validar que lat y lng sean valores válidos
-      if (lat.isNaN || lng.isNaN || lat.isInfinite || lng.isInfinite) {
+      if (!ClubLocationValidation.isValidCoordinates(lat, lng)) {
         throw Exception('Las coordenadas de ubicación no son válidas');
       }
 

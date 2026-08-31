@@ -51,6 +51,8 @@ class _GuestMapScreenState extends State<GuestMapScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final locatedClubs = _clubs.where((c) => c.hasValidLocation).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Clubes Cercanos'),
@@ -60,8 +62,8 @@ class _GuestMapScreenState extends State<GuestMapScreen> {
       body: FlutterMap(
         mapController: _mapController,
         options: MapOptions(
-          initialCenter: _clubs.isNotEmpty
-              ? LatLng(_clubs.first.lat, _clubs.first.lng)
+          initialCenter: locatedClubs.isNotEmpty
+              ? LatLng(locatedClubs.first.lat!, locatedClubs.first.lng!)
               : _initialCenter,
           initialZoom: 13.0,
         ),
@@ -71,9 +73,9 @@ class _GuestMapScreenState extends State<GuestMapScreen> {
             userAgentPackageName: 'com.nutritionclubs.app',
           ),
           MarkerLayer(
-            markers: _clubs.map((club) {
+            markers: locatedClubs.map((club) {
               return Marker(
-                point: LatLng(club.lat, club.lng),
+                point: LatLng(club.lat!, club.lng!),
                 width: 50,
                 height: 50,
                 child: GestureDetector(

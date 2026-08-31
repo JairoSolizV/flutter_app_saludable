@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_app_saludable/core/api/public_api_paths.dart';
 import 'package:flutter_app_saludable/core/attendance/attendance_error_messages.dart';
+import 'package:flutter_app_saludable/core/clubs/club_location.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 
 /// Mapea [DioException] y respuestas del backend a [AppException] seguras.
@@ -78,6 +79,14 @@ class ErrorMapper {
             cause: e.type,
           );
         }
+        if (ClubLocationErrorCodes.isClubLocationCode(parsed.code)) {
+          return ValidationException(
+            ClubLocationErrorMessages.forCode(parsed.code!),
+            statusCode: status,
+            code: parsed.code,
+            cause: e.type,
+          );
+        }
         return ValidationException(
           message ?? _validation,
           statusCode: status,
@@ -114,6 +123,14 @@ class ErrorMapper {
           cause: e.type,
         );
       case 409:
+        if (ClubLocationErrorCodes.isClubLocationCode(parsed.code)) {
+          return ValidationException(
+            ClubLocationErrorMessages.forCode(parsed.code!),
+            statusCode: status,
+            code: parsed.code,
+            cause: e.type,
+          );
+        }
         return ConflictException(
           message ?? _conflict,
           code: parsed.code,

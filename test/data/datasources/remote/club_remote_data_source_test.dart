@@ -134,6 +134,22 @@ void main() {
       expect(clubes.first.lng, -63.2);
     }));
 
+    test('lat/lng null se conservan sin fallback a 0.0', async_(() async {
+      adapter.stub('GET', '/public/clubes', data: [
+        {
+          'id': 10,
+          'hubId': 1,
+          'anfitrionId': 5,
+          'lat': null,
+          'lng': null,
+        },
+      ]);
+      final clubes = await ds.getClubes();
+      expect(clubes.first.lat, isNull);
+      expect(clubes.first.lng, isNull);
+      expect(clubes.first.hasValidLocation, isFalse);
+    }));
+
     test('status != 200 lanza ServerException', async_(() async {
       adapter.stub('GET', '/public/clubes', statusCode: 500, data: {});
       await expectLater(() => ds.getClubes(), throwsA(isA<AppException>()));
@@ -339,7 +355,22 @@ void main() {
       expect(adapter.requests, isEmpty);
     }));
 
-    test('éxito hace POST', async_(() async {
+    test('lat fuera de rango lanza sin llamar a la red', async_(() async {
+      await expectLater(
+        () => ds.solicitarCreacionClub(
+          anfitrionId: 1,
+          nombreClub: 'X',
+          direccion: 'Y',
+          horario: '8-18',
+          lat: 95,
+          lng: -63.0,
+        ),
+        throwsException,
+      );
+      expect(adapter.requests, isEmpty);
+    }));
+
+    test('éxito envía lat/lng en body', async_(() async {
       adapter.stub('POST', '/clubes', statusCode: 201, data: {});
       await ds.solicitarCreacionClub(
         anfitrionId: 1,
@@ -350,6 +381,9 @@ void main() {
         lng: -63.0,
       );
       expect(adapter.requests, hasLength(1));
+      final body = adapter.requests.single.data as Map<String, dynamic>;
+      expect(body['lat'], -17.0);
+      expect(body['lng'], -63.0);
     }));
 
     test('error del servidor lanza excepción', async_(() async {
@@ -371,8 +405,17 @@ void main() {
   group('updateClub', () {
     test('éxito no lanza y remueve fotoUrl del body', async_(() async {
       adapter.stub('PUT', '/clubes/5', statusCode: 200, data: {});
-      await ds.updateClub(5, {'nombreClub': 'Nuevo', 'fotoUrl': 'x'});
+      await ds.updateClub(5, {
+        'nombreClub': 'Nuevo',
+        'lat': -17.5,
+        'lng': -63.2,
+        'fotoUrl': 'x',
+      });
       expect(adapter.requests, hasLength(1));
+      final body = adapter.requests.single.data as Map<String, dynamic>;
+      expect(body['lat'], -17.5);
+      expect(body['lng'], -63.2);
+      expect(body.containsKey('fotoUrl'), isFalse);
     }));
 
     test('error lanza AppException', async_(() async {

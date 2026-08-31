@@ -203,25 +203,26 @@ class _GuestClubDetailScreenState extends State<GuestClubDetailScreen> {
                       style: TextStyle(color: Colors.grey),
                     ),
                     const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton.icon(
-                        onPressed: () =>
-                            _openMap(widget.club.lat, widget.club.lng),
-                        icon: const Icon(LucideIcons.map),
-                        label: const Text('ABRIR EN GOOGLE MAPS',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              const Color(0xFF4285F4), // Google Blue
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                    if (widget.club.hasValidLocation)
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton.icon(
+                          onPressed: () =>
+                              _openMap(widget.club.lat!, widget.club.lng!),
+                          icon: const Icon(LucideIcons.map),
+                          label: const Text('ABRIR EN GOOGLE MAPS',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                const Color(0xFF4285F4), // Google Blue
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                    if (widget.club.hasValidLocation) const SizedBox(height: 16),
 
                     // Boton secundario login (solo si no está logueado)
                     Consumer<UserProvider>(

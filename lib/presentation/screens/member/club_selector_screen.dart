@@ -170,12 +170,13 @@ class _ClubSelectorScreenState extends State<ClubSelectorScreen> with SingleTick
   }
 
   Widget _buildMapView() {
+    final locatedClubs = _clubs.where((c) => c.hasValidLocation).toList();
     // Calculate center of all clubs or use user location
     LatLng center;
     if (_userPosition != null) {
       center = LatLng(_userPosition!.latitude, _userPosition!.longitude);
-    } else if (_clubs.isNotEmpty) {
-      center = LatLng(_clubs.first.lat, _clubs.first.lng);
+    } else if (locatedClubs.isNotEmpty) {
+      center = LatLng(locatedClubs.first.lat!, locatedClubs.first.lng!);
     } else {
       center = const LatLng(-17.783327, -63.182140); // Santa Cruz default
     }
@@ -202,9 +203,9 @@ class _ClubSelectorScreenState extends State<ClubSelectorScreen> with SingleTick
                 child: const Icon(Icons.my_location, size: 40, color: Colors.blue),
               ),
             // Club markers
-            ..._clubs.map((club) {
+            ...locatedClubs.map((club) {
               return Marker(
-                point: LatLng(club.lat, club.lng),
+                point: LatLng(club.lat!, club.lng!),
                 width: 80,
                 height: 80,
                 child: GestureDetector(
@@ -242,8 +243,21 @@ class _ClubSelectorScreenState extends State<ClubSelectorScreen> with SingleTick
     List<Club> sortedClubs = List.from(_clubs);
     if (_userPosition != null) {
       sortedClubs.sort((a, b) {
-        final distA = _calculateDistance(_userPosition!.latitude, _userPosition!.longitude, a.lat, a.lng);
-        final distB = _calculateDistance(_userPosition!.latitude, _userPosition!.longitude, b.lat, b.lng);
+        if (!a.hasValidLocation && !b.hasValidLocation) return 0;
+        if (!a.hasValidLocation) return 1;
+        if (!b.hasValidLocation) return -1;
+        final distA = _calculateDistance(
+          _userPosition!.latitude,
+          _userPosition!.longitude,
+          a.lat!,
+          a.lng!,
+        );
+        final distB = _calculateDistance(
+          _userPosition!.latitude,
+          _userPosition!.longitude,
+          b.lat!,
+          b.lng!,
+        );
         return distA.compareTo(distB);
       });
     }
@@ -258,12 +272,12 @@ class _ClubSelectorScreenState extends State<ClubSelectorScreen> with SingleTick
       itemBuilder: (context, index) {
         final club = sortedClubs[index];
         double? distance;
-        if (_userPosition != null) {
+        if (_userPosition != null && club.hasValidLocation) {
           distance = _calculateDistance(
             _userPosition!.latitude,
             _userPosition!.longitude,
-            club.lat,
-            club.lng,
+            club.lat!,
+            club.lng!,
           );
         }
 
