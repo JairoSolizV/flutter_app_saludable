@@ -6,6 +6,7 @@ import '../../providers/user_provider.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/validators.dart';
 import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
+import 'package:flutter_app_saludable/core/utils/keyboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -236,7 +237,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             height: 50,
                             child: OutlinedButton.icon(
                               onPressed: auth.isLoading ? null : () async {
+                                // UI-001: soltar el foco ANTES de abrir el
+                                // selector nativo de cuentas; si un TextField
+                                // sigue enfocado, Android reabre el teclado al
+                                // volver a primer plano.
+                                dismissKeyboard();
                                 final success = await auth.loginWithGoogle();
+                                // Al reanudar la app el sistema puede haber
+                                // restaurado el foco: lo soltamos otra vez
+                                // antes de cambiar de ruta.
+                                dismissKeyboard();
                                 if (success && context.mounted) {
                                   await auth.syncProfile();
                                   final user = auth.currentUser;
