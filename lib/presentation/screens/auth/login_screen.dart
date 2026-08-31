@@ -129,17 +129,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           }
                         },
                       ),
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () => context.push('/forgot-password'),
-                          child: const Text(
-                            '¿Olvidaste tu contraseña?',
-                            style: TextStyle(color: AppTheme.primaryColor),
-                          ),
-                        ),
-                      ),
                       const SizedBox(height: 16),
                       Consumer<AuthProvider>(
                         builder: (context, auth, _) {
@@ -225,7 +214,17 @@ class _LoginScreenState extends State<LoginScreen> {
                           );
                         }
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
+                      Center(
+                        child: TextButton(
+                          onPressed: () => context.push('/forgot-password'),
+                          child: const Text(
+                            '¿Olvidaste tu contraseña?',
+                            style: TextStyle(color: AppTheme.primaryColor),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
                       const Row(
                         children: [
                           Expanded(child: Divider()),

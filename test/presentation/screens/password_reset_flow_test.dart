@@ -142,6 +142,17 @@ void main() {
   testWidgets('Login muestra link ¿Olvidaste tu contraseña?', (tester) async {
     await _pumpWithRouter(tester);
     expect(find.text('¿Olvidaste tu contraseña?'), findsOneWidget);
+    expect(find.text('INGRESAR'), findsOneWidget);
+
+    // El link queda debajo de INGRESAR en el árbol (después en orden de pintura).
+    final ingresarY = tester.getTopLeft(find.text('INGRESAR')).dy;
+    final linkY = tester.getTopLeft(find.text('¿Olvidaste tu contraseña?')).dy;
+    expect(linkY, greaterThan(ingresarY));
+
+    // Centrado horizontalmente (sin Align right).
+    final screenWidth = tester.getSize(find.byType(MaterialApp)).width;
+    final linkCenterX = tester.getCenter(find.text('¿Olvidaste tu contraseña?')).dx;
+    expect((linkCenterX - screenWidth / 2).abs(), lessThan(24));
   });
 
   testWidgets('Link navega a forgot-password', (tester) async {
@@ -149,6 +160,17 @@ void main() {
     await tester.tap(find.text('¿Olvidaste tu contraseña?'));
     await tester.pumpAndSettle();
     expect(find.text('Recuperar contraseña'), findsOneWidget);
+  });
+
+  testWidgets('link forgot no desborda en ancho angosto', (tester) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpWithRouter(tester);
+    expect(find.text('¿Olvidaste tu contraseña?'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Email inválido no llama request', (tester) async {
