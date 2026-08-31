@@ -76,43 +76,52 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   static const Color _brandBlue = Color(0xFF00346D);
+  /// Desplaza el bloque logo+barra ligeramente hacia arriba del centro óptico.
+  static const double _blockLift = 18;
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final logoWidth = (screenWidth * 0.38).clamp(96.0, 160.0);
+    final media = MediaQuery.of(context);
+    final screenWidth = media.size.width;
+    // ~70–95 px en iPhone normal; responsive en pantallas más chicas/grandes.
+    final logoWidth = (screenWidth * 0.22).clamp(70.0, 95.0);
     final barWidth = (screenWidth * 0.42).clamp(120.0, 180.0);
+    final decodeWidth = (logoWidth * media.devicePixelRatio).round();
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Logo apaisado con fondo blanco horneado; solo se fija el ancho
-                // para respetar proporción y evitar overflow en pantallas chicas.
-                Image.asset(
-                  'assets/images/expande_logo.jpg',
-                  width: logoWidth,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 28),
-                SizedBox(
-                  width: barWidth,
-                  child: const ClipRRect(
-                    borderRadius: BorderRadius.all(Radius.circular(999)),
-                    child: LinearProgressIndicator(
-                      minHeight: 3,
-                      backgroundColor: Color(0x2200346D),
-                      color: _brandBlue,
+          child: Transform.translate(
+            offset: const Offset(0, -_blockLift),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Logo Expande (asset histórico del splash); ancho responsive.
+                  Image.asset(
+                    'assets/images/expande_logo.jpg',
+                    width: logoWidth,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
+                    cacheWidth: decodeWidth,
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: barWidth,
+                    child: const ClipRRect(
+                      borderRadius: BorderRadius.all(Radius.circular(999)),
+                      child: LinearProgressIndicator(
+                        minHeight: 3,
+                        backgroundColor: Color(0x2200346D),
+                        color: _brandBlue,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
