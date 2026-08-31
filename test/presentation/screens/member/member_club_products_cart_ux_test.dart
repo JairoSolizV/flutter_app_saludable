@@ -355,7 +355,8 @@ void main() {
     expect(find.byKey(const Key('member-cart-bar')), findsNothing);
   });
 
-  testWidgets('con producto en carrito muestra barra y abre sheet', (tester) async {
+  testWidgets('con producto en carrito muestra barra, badge y abre sheet',
+      (tester) async {
     await _pumpProductsScreen(
       tester,
       orderRepo: _CapturingOrderRepo(),
@@ -365,6 +366,14 @@ void main() {
 
     expect(find.byKey(const Key('member-cart-bar')), findsOneWidget);
     expect(find.text('Ver carrito'), findsOneWidget);
+    expect(find.byKey(const Key('member-cart-badge')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('member-cart-badge')),
+        matching: find.text('1'),
+      ),
+      findsOneWidget,
+    );
     final bar = find.byKey(const Key('member-cart-bar'));
     expect(find.descendant(of: bar, matching: find.textContaining('1 producto')), findsOneWidget);
     expect(find.descendant(of: bar, matching: find.textContaining('Bs 20,00')), findsOneWidget);

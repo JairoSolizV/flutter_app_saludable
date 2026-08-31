@@ -93,29 +93,79 @@ class MemberCartBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = MemberCartTotals.productCountLabel(totalUnits);
+    final badgeText = totalUnits > 99 ? '99+' : '$totalUnits';
+
     return Material(
       key: const Key('member-cart-bar'),
-      elevation: 8,
-      shadowColor: Colors.black26,
-      color: Colors.white,
+      elevation: 10,
+      shadowColor: AppTheme.primaryColor.withValues(alpha: 0.35),
+      color: AppTheme.primaryColor,
       child: SafeArea(
         top: false,
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    LucideIcons.shoppingCart,
-                    size: 20,
-                    color: AppTheme.primaryColor,
+                SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          LucideIcons.shoppingCart,
+                          size: 22,
+                          color: Colors.white,
+                        ),
+                      ),
+                      if (totalUnits > 0)
+                        Positioned(
+                          top: -4,
+                          right: -4,
+                          child: Container(
+                            key: const Key('member-cart-badge'),
+                            constraints: const BoxConstraints(
+                              minWidth: 20,
+                              minHeight: 20,
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 5),
+                            decoration: BoxDecoration(
+                              color: AppTheme.accent,
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: AppTheme.primaryColor,
+                                width: 1.5,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              badgeText,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                height: 1.1,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -125,15 +175,21 @@ class MemberCartBar extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
+                      color: Colors.white,
                     ),
                   ),
                 ),
-                Text(
-                  '$label · ${BolivianPrice.formatBs(totalAmount)}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.primaryColor,
+                Flexible(
+                  child: Text(
+                    '$label · ${BolivianPrice.formatBs(totalAmount)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withValues(alpha: 0.92),
+                    ),
                   ),
                 ),
               ],

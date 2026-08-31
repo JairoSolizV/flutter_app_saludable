@@ -67,9 +67,19 @@ void main() {
       expect(find.text('Ver carrito'), findsOneWidget);
       expect(find.textContaining('2 productos'), findsOneWidget);
       expect(find.textContaining('Bs 40,00'), findsOneWidget);
+      expect(find.byKey(const Key('member-cart-badge')), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('member-cart-badge')),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byIcon(LucideIcons.shoppingCart), findsOneWidget);
     });
 
-    testWidgets('tap dispara callback', (tester) async {
+    testWidgets('badge muestra cantidad real y tap dispara callback',
+        (tester) async {
       var tapped = false;
       await tester.pumpWidget(
         MaterialApp(
@@ -82,8 +92,32 @@ void main() {
           ),
         ),
       );
+      expect(find.byKey(const Key('member-cart-badge')), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('member-cart-badge')),
+          matching: find.text('1'),
+        ),
+        findsOneWidget,
+      );
       await tester.tap(find.byKey(const Key('member-cart-bar')));
       expect(tapped, isTrue);
+    });
+
+    testWidgets('cantidad alta en badge se clamp a 99+', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MemberCartBar(
+              totalUnits: 120,
+              totalAmount: 10,
+              onTap: () {},
+            ),
+          ),
+        ),
+      );
+      expect(find.text('99+'), findsOneWidget);
+      expect(find.textContaining('120 productos'), findsOneWidget);
     });
   });
 

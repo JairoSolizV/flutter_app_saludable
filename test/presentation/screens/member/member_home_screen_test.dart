@@ -8,6 +8,7 @@ import 'package:flutter_app_saludable/domain/entities/user.dart';
 import 'package:flutter_app_saludable/presentation/providers/user_provider.dart';
 import 'package:flutter_app_saludable/presentation/screens/member/member_home_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/auth/fake_user_repository.dart';
@@ -198,6 +199,69 @@ void main() {
 
     expect(find.text('Registrar Asistencia'), findsOneWidget);
     expect(find.text('Hacer Pedido'), findsOneWidget);
+  });
+
+  testWidgets('saludo, QR, avatar y header redondeado sin overflow',
+      (tester) async {
+    final ds = _FakeMembresiaDs()
+      ..membresias = [_membership()]
+      ..asistencias = [];
+
+    await tester.pumpWidget(_homeApp(ds));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Hola, Ana'), findsOneWidget);
+    expect(find.byType(SliverAppBar), findsOneWidget);
+    expect(find.byIcon(LucideIcons.qrCode), findsWidgets);
+    expect(find.byType(CircleAvatar), findsWidgets);
+
+    final appBar = tester.widget<SliverAppBar>(find.byType(SliverAppBar));
+    expect(appBar.pinned, isTrue);
+    expect(appBar.shape, isA<RoundedRectangleBorder>());
+    final shape = appBar.shape! as RoundedRectangleBorder;
+    expect(shape.borderRadius, const BorderRadius.only(
+      bottomLeft: Radius.circular(28),
+      bottomRight: Radius.circular(28),
+    ));
+    expect(appBar.actions, isNotNull);
+    expect(appBar.actions!.length, greaterThanOrEqualTo(2));
+    expect(tester.takeException(), isNull);
+
+    // Colapsar header con scroll no debe romper layout.
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -200));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(SliverAppBar), findsOneWidget);
+  });
+
+  testWidgets('saludo con nombre largo no produce overflow', (tester) async {
+    final ds = _FakeMembresiaDs()
+      ..membresias = [_membership()]
+      ..asistencias = [];
+
+    final userProvider = UserProvider(FakeUserRepository())
+      ..setUser(User(
+        id: '10',
+        name: 'María Fernanda Extremadamente Larga',
+        email: 'ana@test.com',
+        role: 'SOCIO',
+      ));
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<UserProvider>.value(value: userProvider),
+          Provider<MembresiaRemoteDataSource>.value(value: ds),
+        ],
+        child: const MaterialApp(home: MemberHomeScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.textContaining('Hola, María'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('membresía visible aunque asistencias fallen', (tester) async {

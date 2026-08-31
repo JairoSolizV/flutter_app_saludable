@@ -100,6 +100,13 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
                   expandedHeight: 120.0,
                   floating: false,
                   pinned: true,
+                  clipBehavior: Clip.antiAlias,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(28),
+                      bottomRight: Radius.circular(28),
+                    ),
+                  ),
                   flexibleSpace: FlexibleSpaceBar(
                     titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
                     title: Text(
@@ -116,6 +123,10 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: AppTheme.primaryGradient,
+                        ),
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(28),
+                          bottomRight: Radius.circular(28),
                         ),
                       ),
                     ),
