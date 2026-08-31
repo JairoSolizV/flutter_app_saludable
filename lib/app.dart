@@ -42,8 +42,8 @@ import 'package:flutter_app_saludable/presentation/providers/user_provider.dart'
 import 'package:go_router/go_router.dart';
 
 /// Widget raíz de la app: recibe dependencias por constructor (sin globals).
-class NutriLifeApp extends StatefulWidget {
-  const NutriLifeApp({
+class ExpandeApp extends StatefulWidget {
+  const ExpandeApp({
     super.key,
     required this.dependencies,
     this.router,
@@ -55,10 +55,10 @@ class NutriLifeApp extends StatefulWidget {
   final GoRouter? router;
 
   @override
-  State<NutriLifeApp> createState() => _NutriLifeAppState();
+  State<ExpandeApp> createState() => _ExpandeAppState();
 }
 
-class _NutriLifeAppState extends State<NutriLifeApp> {
+class _ExpandeAppState extends State<ExpandeApp> {
   @override
   void dispose() {
     widget.dependencies.dispose();

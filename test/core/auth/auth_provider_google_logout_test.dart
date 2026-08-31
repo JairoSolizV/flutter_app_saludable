@@ -115,7 +115,7 @@ void main() {
       await auth.logout();
 
       expect(tokenStore.getToken(), isNull);
-      expect(storage.containsKey(kNutrilifeJwtStorageKey), isFalse);
+      expect(storage.containsKey(kExpandeJwtStorageKey), isFalse);
       expect(users.current, isNull);
       expect(auth.currentUser, isNull);
     });

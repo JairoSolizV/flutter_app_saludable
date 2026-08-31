@@ -65,7 +65,7 @@ void main() {
     });
   });
 
-  group('NutriLifeApp Provider tree', () {
+  group('ExpandeApp Provider tree', () {
     testWidgets('resuelve servicios principales con la misma identidad',
         (tester) async {
       final router = GoRouter(
@@ -78,7 +78,7 @@ void main() {
       );
 
       await tester.pumpWidget(
-        NutriLifeApp(dependencies: deps, router: router),
+        ExpandeApp(dependencies: deps, router: router),
       );
       await tester.pump();
 
@@ -141,13 +141,13 @@ void main() {
       );
 
       await tester.pumpWidget(
-        NutriLifeApp(dependencies: deps, router: router),
+        ExpandeApp(dependencies: deps, router: router),
       );
       await tester.pump();
       final first = tester.element(find.text('ok')).read<TokenStore>();
 
       await tester.pumpWidget(
-        NutriLifeApp(dependencies: deps, router: router),
+        ExpandeApp(dependencies: deps, router: router),
       );
       await tester.pump();
       final second = tester.element(find.text('ok')).read<TokenStore>();
@@ -168,7 +168,7 @@ void main() {
       );
 
       await tester.pumpWidget(
-        NutriLifeApp(dependencies: deps, router: router),
+        ExpandeApp(dependencies: deps, router: router),
       );
       await tester.pump();
 

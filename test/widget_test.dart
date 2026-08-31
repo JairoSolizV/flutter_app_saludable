@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'helpers/test_app_dependencies.dart';
 
 void main() {
-  testWidgets('NutriLifeApp smoke con dependencias fake', (tester) async {
+  testWidgets('ExpandeApp smoke con dependencias fake', (tester) async {
     late AppDependencies deps;
     await tester.runAsync(() async {
       deps = await buildTestDependencies();
@@ -26,7 +26,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      NutriLifeApp(dependencies: deps, router: router),
+      ExpandeApp(dependencies: deps, router: router),
     );
     await tester.pump();
 
