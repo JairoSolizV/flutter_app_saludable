@@ -1,9 +1,6 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../../../data/datasources/remote/product_remote_data_source.dart';
 import '../../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../../../domain/entities/product.dart';
@@ -32,8 +29,6 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
   final _precioCtrl = TextEditingController();
 
   bool _isSubmitting = false;
-  File? _pickedImage;
-  String? _imagenUrl;
   final List<ProductOptionGroupDraft> _optionGroups = [];
 
   bool get _isEditing => widget.product != null;
@@ -57,25 +52,12 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
       _precioCtrl.text = existing.price > 0
           ? existing.price.toStringAsFixed(2)
           : '';
-      _imagenUrl = existing.imageUrl.isEmpty ? null : existing.imageUrl;
       final groups = existing.optionGroups;
       if (groups != null) {
         for (final group in groups) {
           _optionGroups.add(ProductOptionGroupDraft.fromGroup(group));
         }
       }
-    }
-  }
-
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final picked =
-        await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked != null && mounted) {
-      setState(() {
-        _pickedImage = File(picked.path);
-        _imagenUrl = null;
-      });
     }
   }
 
@@ -160,11 +142,6 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
           ? null
           : Provider.of<ClubRemoteDataSource>(context, listen: false);
 
-      String? imagenUrlToSend = _imagenUrl;
-      if (_pickedImage != null) {
-        imagenUrlToSend = await dataSource.uploadProductImage(_pickedImage!);
-      }
-
       if (_isEditing) {
         final original = widget.product!;
         final updated = original.copyWith(
@@ -176,9 +153,6 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
           effectivePrice: _isStructuralEditApproved
               ? original.effectivePrice
               : (original.clubSalePrice ?? precio),
-          imageUrl: (imagenUrlToSend != null && imagenUrlToSend.isNotEmpty)
-              ? imagenUrlToSend
-              : original.imageUrl,
           optionGroups: builtGroups,
         );
         final saved = await dataSource.updateProduct(updated);
@@ -207,7 +181,6 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
         ingredientes: _ingredientesCtrl.text.trim(),
         puntosValor: puntos,
         precio: precio,
-        imagenUrl: imagenUrlToSend,
         optionGroups: builtGroups.isEmpty ? null : builtGroups,
       );
 
@@ -258,6 +231,52 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
     return double.tryParse(text);
   }
 
+  Widget _buildImageSection() {
+    final existingUrl = widget.product?.imageUrl;
+    final hasImage = existingUrl != null && existingUrl.trim().isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Imagen del producto',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        if (hasImage)
+          ProductImage(
+            imageUrl: existingUrl,
+            width: 100,
+            height: 100,
+          )
+        else
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.inventory_2_outlined,
+                    size: 32, color: Colors.grey[600]),
+                const SizedBox(height: 4),
+                Text(
+                  'Sin imagen',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -280,67 +299,7 @@ class _HostProductProposalScreenState extends State<HostProductProposalScreen> {
                 style: TextStyle(fontSize: 14, color: Colors.grey),
               ),
               const SizedBox(height: 16),
-              const Text('Foto del producto',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  GestureDetector(
-                    onTap: _isSubmitting ? null : _pickImage,
-                    child: Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey),
-                      ),
-                      child: _pickedImage != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child:
-                                  Image.file(_pickedImage!, fit: BoxFit.cover),
-                            )
-                          : _imagenUrl != null && _imagenUrl!.isNotEmpty
-                              ? ProductImage(
-                                  imageUrl: _imagenUrl, width: 100, height: 100)
-                              : Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(LucideIcons.imagePlus,
-                                        size: 32, color: Colors.grey[600]),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Elegir de galería',
-                                      style: TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.grey[600]),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextFormField(
-                      maxLength: 1024,
-                      inputFormatters: AppFormatters.sinEspacios(1024),
-                      decoration: const InputDecoration(
-                        labelText: 'O pega la URL de la imagen',
-                        hintText: 'https://...',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                        counterText: '',
-                      ),
-                      onChanged: (v) => setState(() =>
-                          _imagenUrl = v.trim().isEmpty ? null : v.trim()),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
+              _buildImageSection(),
               TextFormField(
                 controller: _nombreCtrl,
                 maxLength: 255,

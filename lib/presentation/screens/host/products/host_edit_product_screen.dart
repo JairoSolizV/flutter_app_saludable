@@ -52,7 +52,7 @@ class _HostEditProductScreenState extends State<HostEditProductScreen> {
         description: _descCtrl.text,
         price: 0,
         category: 'General',
-        imageUrl: '',
+        imageUrl: widget.product?.imageUrl ?? '',
         active: widget.product?.active ?? true,
       );
 
