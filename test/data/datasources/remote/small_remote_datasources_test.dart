@@ -482,6 +482,21 @@ void main() {
       expect(adapter.requests, hasLength(1));
     }));
 
+    test('createTicket solo envía tipoSolicitud, asunto y mensaje', async_(() async {
+      adapter.stub('POST', '/soporte-tickets', statusCode: 201, data: {});
+      await ds.createTicket(
+        tipoSolicitud: 'BUG',
+        asunto: 'Falla',
+        mensaje: 'Detalle',
+      );
+      expect(adapter.requests, hasLength(1));
+      expect(adapter.requests.first.data, {
+        'tipoSolicitud': 'BUG',
+        'asunto': 'Falla',
+        'mensaje': 'Detalle',
+      });
+    }));
+
     test('createTicket con error mapea a AppException', async_(() async {
       adapter.stub('POST', '/soporte-tickets', statusCode: 500, data: {});
       await expectLater(
@@ -494,8 +509,9 @@ void main() {
       );
     }));
 
-    test('getTicketsByUser 200 con lista directa', async_(() async {
-      adapter.stub('GET', '/soporte-tickets/usuario/1', data: [
+    test('getMyTickets usa GET /soporte-tickets/mios sin usuarioId en URL',
+        async_(() async {
+      adapter.stub('GET', '/soporte-tickets/mios', data: [
         {
           'id': 1,
           'usuarioId': 1,
@@ -506,13 +522,16 @@ void main() {
           'fechaCreacion': '2024-01-01T00:00:00',
         },
       ]);
-      final tickets = await ds.getTicketsByUser(1);
+      final tickets = await ds.getMyTickets();
+      expect(adapter.requests, hasLength(1));
+      expect(adapter.requests.first.uri.path, contains('/soporte-tickets/mios'));
+      expect(adapter.requests.first.uri.path, isNot(contains('usuario')));
       expect(tickets, hasLength(1));
       expect(tickets.first.estado, 'ABIERTO');
     }));
 
-    test('getTicketsByUser con envoltorio content', async_(() async {
-      adapter.stub('GET', '/soporte-tickets/usuario/2', data: {
+    test('getMyTickets con envoltorio content', async_(() async {
+      adapter.stub('GET', '/soporte-tickets/mios', data: {
         'content': [
           {
             'id': 2,
@@ -525,14 +544,39 @@ void main() {
           },
         ],
       });
-      final tickets = await ds.getTicketsByUser(2);
+      final tickets = await ds.getMyTickets();
       expect(tickets, hasLength(1));
     }));
 
-    test('getTicketsByUser con error lanza excepción', async_(() async {
-      adapter.stub('GET', '/soporte-tickets/usuario/3', statusCode: 500, data: {});
+    test('getMyTickets lista vacía retorna []', async_(() async {
+      adapter.stub('GET', '/soporte-tickets/mios', data: []);
+      final tickets = await ds.getMyTickets();
+      expect(tickets, isEmpty);
+    }));
+
+    test('getMyTickets parsea respuestaAdmin y estado RESUELTO', async_(() async {
+      adapter.stub('GET', '/soporte-tickets/mios', data: [
+        {
+          'id': 3,
+          'usuarioId': 5,
+          'tipoSolicitud': 'Consulta',
+          'asunto': 'Ayuda',
+          'mensaje': 'Detalle',
+          'estado': 'RESUELTO',
+          'fechaCreacion': '2024-03-01T00:00:00',
+          'respuestaAdmin': 'Gracias por contactarnos',
+        },
+      ]);
+      final tickets = await ds.getMyTickets();
+      expect(tickets, hasLength(1));
+      expect(tickets.first.estado, 'RESUELTO');
+      expect(tickets.first.respuestaAdmin, 'Gracias por contactarnos');
+    }));
+
+    test('getMyTickets con error lanza excepción', async_(() async {
+      adapter.stub('GET', '/soporte-tickets/mios', statusCode: 500, data: {});
       await expectLater(
-        () => ds.getTicketsByUser(3),
+        () => ds.getMyTickets(),
         throwsException,
       );
     }));

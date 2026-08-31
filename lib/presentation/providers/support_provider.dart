@@ -4,11 +4,9 @@ import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import '../../../domain/entities/support_ticket.dart';
 import '../../data/datasources/remote/support_remote_data_source.dart';
-import '../../data/repositories/local_user_repository.dart';
 
 class SupportProvider extends ChangeNotifier implements SessionScopedState {
   final SupportRemoteDataSource _remoteDataSource;
-  final LocalUserRepository _localUserRepository;
 
   List<SupportTicket> _tickets = [];
   bool _isLoading = false;
@@ -18,7 +16,7 @@ class SupportProvider extends ChangeNotifier implements SessionScopedState {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  SupportProvider(this._remoteDataSource, this._localUserRepository);
+  SupportProvider(this._remoteDataSource);
 
   @override
   Future<void> clearSessionState() async {
@@ -34,14 +32,8 @@ class SupportProvider extends ChangeNotifier implements SessionScopedState {
     notifyListeners();
 
     try {
-      final user = await _localUserRepository.getCurrentUser();
-
-      if (user != null) {
-        _tickets = await _remoteDataSource.getTicketsByUser(int.parse(user.id));
-        _tickets.sort((a, b) => b.fechaCreacion.compareTo(a.fechaCreacion));
-      } else {
-        _error = 'No hay usuario autenticado logueado actualmente.';
-      }
+      _tickets = await _remoteDataSource.getMyTickets();
+      _tickets.sort((a, b) => b.fechaCreacion.compareTo(a.fechaCreacion));
     } catch (e) {
       if (shouldPresentErrorToUser(e)) {
         _error = ErrorMapper.publicMessage(e);

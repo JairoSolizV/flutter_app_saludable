@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter_app_saludable/core/auth/session_owner.dart';
-import 'package:flutter_app_saludable/core/database/database_helper.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/core/orders/order_sync_status.dart';
 import 'package:flutter_app_saludable/core/pagination/paged_result.dart';
@@ -9,7 +8,6 @@ import 'package:flutter_app_saludable/core/services/connectivity_service.dart';
 import 'package:flutter_app_saludable/core/services/sync_service.dart';
 import 'package:flutter_app_saludable/data/datasources/remote/order_remote_data_source.dart';
 import 'package:flutter_app_saludable/data/datasources/remote/support_remote_data_source.dart';
-import 'package:flutter_app_saludable/data/repositories/local_user_repository.dart';
 import 'package:flutter_app_saludable/domain/entities/order_entity.dart';
 import 'package:flutter_app_saludable/domain/entities/product.dart';
 import 'package:flutter_app_saludable/domain/entities/support_ticket.dart';
@@ -23,7 +21,6 @@ import 'package:flutter_app_saludable/presentation/providers/user_provider.dart'
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../core/auth/fake_user_repository.dart';
-import '../../helpers/isolated_test_database.dart';
 
 /// -------------------- Fakes: OrderRepository / OrderRemoteDataSource --------------------
 
@@ -264,8 +261,9 @@ class _FakeProductRepository implements ProductRepository {
 /// -------------------- Fake: SupportRemoteDataSource --------------------
 
 class _FakeSupportRemoteDataSource implements SupportRemoteDataSource {
-  List<SupportTicket> ticketsByUser = [];
+  List<SupportTicket> myTickets = [];
   int createTicketCalls = 0;
+  int getMyTicketsCalls = 0;
   Object? createError;
   Object? getTicketsError;
   String? lastAsunto;
@@ -282,9 +280,10 @@ class _FakeSupportRemoteDataSource implements SupportRemoteDataSource {
   }
 
   @override
-  Future<List<SupportTicket>> getTicketsByUser(int userId) async {
+  Future<List<SupportTicket>> getMyTickets() async {
+    getMyTicketsCalls++;
     if (getTicketsError != null) throw getTicketsError!;
-    return ticketsByUser;
+    return myTickets;
   }
 }
 
@@ -292,6 +291,8 @@ SupportTicket _ticket({
   required int id,
   required int userId,
   DateTime? fecha,
+  String estado = 'ABIERTO',
+  String? respuestaAdmin,
 }) {
   return SupportTicket(
     id: id,
@@ -299,8 +300,9 @@ SupportTicket _ticket({
     tipoSolicitud: 'Consulta',
     asunto: 'Asunto $id',
     mensaje: 'Mensaje $id',
-    estado: 'ABIERTO',
+    estado: estado,
     fechaCreacion: fecha ?? DateTime(2024, 1, id),
+    respuestaAdmin: respuestaAdmin,
   );
 }
 
@@ -557,66 +559,65 @@ void main() {
 
   group('SupportProvider', () {
     late _FakeSupportRemoteDataSource remote;
-    late LocalUserRepository localUsers;
     late SupportProvider provider;
-    late DatabaseHelper dbHelper;
 
-    setUpAll(() async {
-      dbHelper = await openIsolatedTestDatabase();
-    });
-
-    tearDownAll(() async {
-      await closeIsolatedTestDatabase();
-    });
-
-    setUp(() async {
+    setUp(() {
       remote = _FakeSupportRemoteDataSource();
-      localUsers = LocalUserRepository(dbHelper);
-      // Asegura aislamiento entre tests: limpia perfiles previos.
-      final db = await dbHelper.database;
-      await db.delete('users');
-      provider = SupportProvider(remote, localUsers);
+      provider = SupportProvider(remote);
     });
 
-    tearDown(() async {
-      final db = await dbHelper.database;
-      await db.delete('users');
-    });
-
-    test('fetchMyTickets sin usuario local setea error y no llama al remoto',
+    test('fetchMyTickets llama getMyTickets sin depender de ID local',
         async_(() async {
-      await provider.fetchMyTickets();
-
-      expect(provider.error, isNotNull);
-      expect(provider.tickets, isEmpty);
-    }));
-
-    test('fetchMyTickets con usuario local carga y ordena tickets',
-        async_(() async {
-      await localUsers.saveUser(
-        User(id: '9', name: 'Ana', email: 'ana@test.com', role: 'member'),
-      );
-      remote.ticketsByUser = [
+      remote.myTickets = [
         _ticket(id: 1, userId: 9, fecha: DateTime(2024, 1, 1)),
         _ticket(id: 2, userId: 9, fecha: DateTime(2024, 3, 1)),
       ];
 
       await provider.fetchMyTickets();
 
+      expect(remote.getMyTicketsCalls, 1);
       expect(provider.error, isNull);
       expect(provider.tickets.map((t) => t.id), [2, 1]); // más reciente primero
     }));
 
-    test('createTicket exitoso refresca la lista de tickets', async_(() async {
-      await localUsers.saveUser(
-        User(id: '9', name: 'Ana', email: 'ana@test.com', role: 'member'),
-      );
-      remote.ticketsByUser = [_ticket(id: 5, userId: 9)];
+    test('fetchMyTickets con lista vacía retorna []', async_(() async {
+      await provider.fetchMyTickets();
+
+      expect(remote.getMyTicketsCalls, 1);
+      expect(provider.tickets, isEmpty);
+      expect(provider.error, isNull);
+    }));
+
+    test('fetchMyTickets SOCIO puede visualizar historial simulado',
+        async_(() async {
+      remote.myTickets = [
+        _ticket(
+          id: 10,
+          userId: 42,
+          fecha: DateTime(2024, 6, 1),
+          estado: 'RESUELTO',
+          respuestaAdmin: 'Problema solucionado',
+        ),
+        _ticket(id: 11, userId: 42, fecha: DateTime(2024, 5, 1)),
+      ];
+
+      await provider.fetchMyTickets();
+
+      expect(provider.tickets, hasLength(2));
+      expect(provider.tickets.first.estado, 'RESUELTO');
+      expect(provider.tickets.first.respuestaAdmin, 'Problema solucionado');
+      expect(provider.tickets.last.estado, 'ABIERTO');
+    }));
+
+    test('createTicket exitoso refresca la lista con getMyTickets',
+        async_(() async {
+      remote.myTickets = [_ticket(id: 5, userId: 9)];
 
       final ok = await provider.createTicket('Queja', 'Asunto', 'Mensaje');
 
       expect(ok, isTrue);
       expect(remote.createTicketCalls, 1);
+      expect(remote.getMyTicketsCalls, 1);
       expect(remote.lastAsunto, 'Asunto');
       expect(provider.tickets, hasLength(1));
       expect(provider.isLoading, isFalse);

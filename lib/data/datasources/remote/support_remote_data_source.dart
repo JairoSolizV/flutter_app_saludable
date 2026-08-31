@@ -9,7 +9,7 @@ abstract class SupportRemoteDataSource {
     required String asunto,
     required String mensaje,
   });
-  Future<List<SupportTicket>> getTicketsByUser(int userId);
+  Future<List<SupportTicket>> getMyTickets();
 }
 
 class SupportRemoteDataSourceImpl implements SupportRemoteDataSource {
@@ -49,11 +49,11 @@ class SupportRemoteDataSourceImpl implements SupportRemoteDataSource {
   }
 
   @override
-  Future<List<SupportTicket>> getTicketsByUser(int userId) async {
+  Future<List<SupportTicket>> getMyTickets() async {
     try {
-      debugPrint('[DEBUG SOPORTE] Obteniendo tickets para usuario $userId');
+      debugPrint('[DEBUG SOPORTE] Obteniendo mis tickets');
 
-      final response = await _client.get('/soporte-tickets/usuario/$userId');
+      final response = await _client.get('/soporte-tickets/mios');
 
       if (response.statusCode == 200) {
         List<dynamic> data = [];

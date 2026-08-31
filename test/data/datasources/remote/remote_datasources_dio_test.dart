@@ -680,8 +680,8 @@ void main() {
       ds = SupportRemoteDataSourceImpl(_buildDio(adapter));
     });
 
-    test('getTicketsByUser parsea lista de tickets', async_(() async {
-      adapter.stub('GET', '/soporte-tickets/usuario/7', data: [
+    test('getMyTickets parsea lista de tickets', async_(() async {
+      adapter.stub('GET', '/soporte-tickets/mios', data: [
         {
           'id': 1,
           'usuarioId': 7,
@@ -691,7 +691,7 @@ void main() {
         },
       ]);
 
-      final tickets = await ds.getTicketsByUser(7);
+      final tickets = await ds.getMyTickets();
 
       expect(tickets, hasLength(1));
       expect(tickets.first.estado, 'ABIERTO');

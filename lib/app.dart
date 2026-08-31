@@ -183,10 +183,7 @@ class _NutriLifeAppState extends State<NutriLifeApp> {
         ),
         ChangeNotifierProvider(
           create: (_) {
-            final p = SupportProvider(
-              deps.supportRemoteDataSource,
-              deps.userRepository,
-            );
+            final p = SupportProvider(deps.supportRemoteDataSource);
             resetter.register(p);
             return p;
           },
