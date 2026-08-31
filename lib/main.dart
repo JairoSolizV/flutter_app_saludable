@@ -6,5 +6,5 @@ import 'package:flutter_app_saludable/core/di/app_dependencies.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final dependencies = await AppDependencies.bootstrap();
-  runApp(NutriLifeApp(dependencies: dependencies));
+  runApp(ExpandeApp(dependencies: dependencies));
 }

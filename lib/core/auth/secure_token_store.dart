@@ -6,13 +6,17 @@ import 'secure_storage_gateway.dart';
 import 'token_store.dart';
 
 /// Clave estable y específica de la app para el JWT de sesión.
-const String kNutrilifeJwtStorageKey = 'nutrilife_club.auth.jwt';
+///
+/// El valor se mantiene igual al de la marca anterior a propósito: ya existe
+/// en el almacenamiento seguro de los dispositivos instalados, y cambiarlo
+/// cerraría la sesión de todos los usuarios en su próxima apertura.
+const String kExpandeJwtStorageKey = 'nutrilife_club.auth.jwt';
 
 /// Implementación de [TokenStore] con flutter_secure_storage + caché en memoria.
 class SecureTokenStore implements TokenStore {
   SecureTokenStore({
     SecureStorageGateway? storage,
-    this.storageKey = kNutrilifeJwtStorageKey,
+    this.storageKey = kExpandeJwtStorageKey,
   }) : _storage = storage ?? FlutterSecureStorageGateway();
 
   final SecureStorageGateway _storage;

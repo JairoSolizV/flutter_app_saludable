@@ -24,7 +24,7 @@ void main() {
 
     test('inicialización con token seguro', () async {
       final storage = InMemorySecureStorageGateway()
-        ..seed(kNutrilifeJwtStorageKey, fakeJwt);
+        ..seed(kExpandeJwtStorageKey, fakeJwt);
       final store = SecureTokenStore(storage: storage);
 
       await store.initialize();
@@ -40,20 +40,20 @@ void main() {
       await store.saveToken(fakeJwt);
 
       expect(store.getToken(), fakeJwt);
-      expect(storage.containsKey(kNutrilifeJwtStorageKey), isTrue);
+      expect(storage.containsKey(kExpandeJwtStorageKey), isTrue);
       expect(storage.writeCount, 1);
     });
 
     test('clearToken elimina persistencia y memoria', () async {
       final storage = InMemorySecureStorageGateway()
-        ..seed(kNutrilifeJwtStorageKey, fakeJwt);
+        ..seed(kExpandeJwtStorageKey, fakeJwt);
       final store = SecureTokenStore(storage: storage);
       await store.initialize();
 
       await store.clearToken();
 
       expect(store.getToken(), isNull);
-      expect(storage.containsKey(kNutrilifeJwtStorageKey), isFalse);
+      expect(storage.containsKey(kExpandeJwtStorageKey), isFalse);
     });
 
     test('initialize duplicado no relee almacenamiento', () async {
@@ -99,7 +99,7 @@ void main() {
 
     test('no sobrescribe un token seguro existente', () async {
       final storage = InMemorySecureStorageGateway()
-        ..seed(kNutrilifeJwtStorageKey, otherJwt);
+        ..seed(kExpandeJwtStorageKey, otherJwt);
       final store = SecureTokenStore(storage: storage);
       await store.initialize();
       final users = FakeUserRepository()..legacyToken = fakeJwt;
