@@ -34,7 +34,7 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
   PagedListController<Map<String, dynamic>, int>? _ordersController;
 
   bool _isLoadingMembresia = true;
-  String? _membresiaError;
+  Object? _membresiaError;
   ClubMembership? _activeMembership;
   List<OrderEntity> _localUnsentOrders = const [];
 
@@ -151,10 +151,6 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
 
   bool get _hasLocalUnsent => _localUnsentOrders.isNotEmpty;
 
-  bool get _hasLocalPendingOnly => _localUnsentOrders.any(
-        (o) => o.syncStatus.isPending,
-      );
-
   Future<void> _initMembresia() async {
     if (!mounted) return;
     setState(() {
@@ -194,7 +190,7 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _membresiaError = e.toString().replaceAll('Exception: ', '');
+        _membresiaError = e;
         _isLoadingMembresia = false;
       });
     }
@@ -328,20 +324,24 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
         ((_ordersController?.isInitialLoading ?? false) && !_hasLocalUnsent);
 
     final remoteError = _ordersController?.initialError;
-    final bool showOfflineEmpty = _membresiaError == null &&
-        remoteError != null &&
-        !_hasLocalUnsent &&
+    final membresiaNetworkError =
+        OrderOfflineMessages.isLikelyNetworkError(_membresiaError);
+    final remoteNetworkError = remoteError != null &&
         OrderOfflineMessages.isLikelyNetworkError(remoteError);
 
-    final String? otherError = _membresiaError ??
-        (remoteError != null &&
-                !_hasLocalUnsent &&
-                !OrderOfflineMessages.isLikelyNetworkError(remoteError)
-            ? OrderOfflineMessages.friendlyLoadError(remoteError)
-            : null);
+    final bool showOfflineEmpty = !_hasLocalUnsent &&
+        (membresiaNetworkError || remoteNetworkError);
 
-    final bool showOfflineRemoteHint =
-        remoteError != null && _hasLocalPendingOnly;
+    final String? otherError = !_hasLocalUnsent
+        ? (_membresiaError != null && !membresiaNetworkError
+            ? OrderOfflineMessages.friendlyLoadError(_membresiaError!)
+            : (remoteError != null && !remoteNetworkError
+                ? OrderOfflineMessages.friendlyLoadError(remoteError)
+                : null))
+        : null;
+
+    final bool showRemoteUnavailableHint =
+        _hasLocalUnsent && (membresiaNetworkError || remoteNetworkError);
 
     return Scaffold(
       appBar: AppBar(
@@ -385,8 +385,8 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
                         orders: activeOrders,
                         scrollController: _activeScrollController,
                         footer: _buildFooter(),
-                        offlineBanner: showOfflineRemoteHint
-                            ? OrderOfflineMessages.localPendingBanner
+                        offlineBanner: showRemoteUnavailableHint
+                            ? OrderOfflineMessages.offlineEmptyBody
                             : null,
                         onDeleteFailed: _deleteFailedOrder,
                       ),

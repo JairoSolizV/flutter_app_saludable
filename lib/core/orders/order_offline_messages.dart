@@ -17,6 +17,12 @@ class OrderOfflineMessages {
 
   static const offlineEmptyBody = 'No pudimos actualizar tus pedidos.';
 
+  static const orderRequiresConnection =
+      'Sin conexión. Conéctate a internet para realizar tu pedido.';
+
+  static const clubDataRequiresConnection =
+      'Sin conexión. Conéctate a internet para cargar los datos de tu club.';
+
   static const localPendingBanner =
       'Se enviará automáticamente cuando recuperes internet.';
 

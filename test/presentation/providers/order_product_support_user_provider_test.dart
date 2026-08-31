@@ -380,14 +380,17 @@ void main() {
       expect(provider.orders.any((o) => o.id == 'o1'), isTrue);
     }));
 
-    test('createOrder offline no intenta sincronizar', async_(() async {
+    test('createOrder offline lanza NetworkException y no persiste', async_(() async {
       online = false;
       sessionOwner.setUserId('u1');
       final order = _order(id: 'o2', userId: 'u1');
 
-      await provider.createOrder(order);
+      await expectLater(
+        () => provider.createOrder(order),
+        throwsA(isA<NetworkException>()),
+      );
 
-      expect(repo.stored.any((o) => o.id == 'o2'), isTrue);
+      expect(repo.stored.any((o) => o.id == 'o2'), isFalse);
       expect(remote.sentOrderIds, isEmpty);
     }));
 

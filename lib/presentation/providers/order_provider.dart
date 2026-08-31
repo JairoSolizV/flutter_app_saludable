@@ -3,6 +3,7 @@ import 'package:flutter_app_saludable/core/auth/session_state_resetter.dart';
 import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 import 'package:flutter_app_saludable/core/utils/app_logger.dart';
+import 'package:flutter_app_saludable/core/orders/order_offline_messages.dart';
 import 'package:flutter_app_saludable/core/orders/order_sync_status.dart';
 import 'package:flutter_app_saludable/core/orders/order_submit_outcome.dart';
 import '../../domain/entities/order_entity.dart';
@@ -57,24 +58,21 @@ class OrderProvider extends ChangeNotifier implements SessionScopedState {
         '[DEBUG ORDER] Creando pedido - ID: ${order.id}, clubId: ${order.clubId}, membresiaId: ${order.membresiaId}, items: ${order.items.length}',
       );
 
+      if (!await _connectivityService.checkConnection()) {
+        throw NetworkException(OrderOfflineMessages.orderRequiresConnection);
+      }
+
       await _repository.createOrder(order);
       debugPrint('[DEBUG ORDER] Pedido guardado localmente');
 
-      if (await _connectivityService.checkConnection()) {
-        debugPrint('[DEBUG ORDER] Hay conexión, sincronizando pedido...');
-        try {
-          await _syncService.syncNow();
-          debugPrint('[DEBUG ORDER] Sync finalizado');
-        } catch (syncError) {
-          debugPrint('[DEBUG ORDER] Error sincronizando pedido: $syncError');
-          if (kDebugMode) {
-            logDebug('Error sincronizando pedido: $syncError');
-          }
+      try {
+        await _syncService.syncNow();
+        debugPrint('[DEBUG ORDER] Sync finalizado');
+      } catch (syncError) {
+        debugPrint('[DEBUG ORDER] Error sincronizando pedido: $syncError');
+        if (kDebugMode) {
+          logDebug('Error sincronizando pedido: $syncError');
         }
-      } else {
-        debugPrint(
-          '[DEBUG ORDER] No hay conexión, el pedido se sincronizará cuando haya conexión',
-        );
       }
 
       await loadOrders(order.userId);

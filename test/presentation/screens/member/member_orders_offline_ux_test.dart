@@ -20,9 +20,12 @@ import 'package:provider/provider.dart';
 import '../../../core/auth/fake_user_repository.dart';
 
 class _FakeMembresiaDs implements MembresiaRemoteDataSource {
+  Object? getMembresiasError;
+
   @override
-  Future<List<ClubMembership>> getMembresiasPorUsuario(int usuarioId) async =>
-      [
+  Future<List<ClubMembership>> getMembresiasPorUsuario(int usuarioId) async {
+    if (getMembresiasError != null) throw getMembresiasError!;
+    return [
         ClubMembership(
           id: 10,
           usuarioId: usuarioId,
@@ -37,6 +40,7 @@ class _FakeMembresiaDs implements MembresiaRemoteDataSource {
           estado: 'ACTIVO',
         ),
       ];
+  }
 
   @override
   Future<void> activarSocio({
@@ -338,5 +342,24 @@ void main() {
       findsNothing,
     );
     expect(find.text('Eliminar'), findsOneWidget);
+  });
+
+  testWidgets('fallo membresía por red sin locales muestra Sin conexión',
+      (tester) async {
+    final membresiaDs = _FakeMembresiaDs()
+      ..getMembresiasError = NetworkException('NetworkError de conexión');
+
+    await tester.pumpWidget(_buildApp(
+      membresiaDs: membresiaDs,
+      orderDs: _FakeOrderRemote(),
+      orderRepo: _FakeOrderRepo(),
+      user: User(id: '1', name: 'Ana', email: 'a@a.com', role: 'member'),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text(OrderOfflineMessages.offlineEmptyTitle), findsOneWidget);
+    expect(find.text(OrderOfflineMessages.offlineEmptyBody), findsOneWidget);
+    expect(find.textContaining('NetworkError'), findsNothing);
+    expect(find.textContaining('membresía'), findsNothing);
   });
 }

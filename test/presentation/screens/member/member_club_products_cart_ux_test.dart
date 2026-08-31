@@ -19,8 +19,8 @@ import 'package:flutter_app_saludable/domain/entities/user.dart';
 import 'package:flutter_app_saludable/domain/repositories/order_repository.dart';
 import 'package:flutter_app_saludable/domain/repositories/product_repository.dart';
 import 'package:flutter_app_saludable/presentation/providers/order_provider.dart';
+import 'package:flutter_app_saludable/core/errors/app_exceptions.dart';
 import 'package:flutter_app_saludable/core/orders/order_offline_messages.dart';
-import 'package:flutter_app_saludable/core/orders/order_submit_outcome.dart';
 import 'package:flutter_app_saludable/presentation/providers/product_provider.dart';
 import 'package:flutter_app_saludable/presentation/providers/user_provider.dart';
 import 'package:flutter_app_saludable/presentation/screens/member/member_club_products_screen.dart';
@@ -32,9 +32,12 @@ import 'package:provider/provider.dart';
 import '../../../core/auth/fake_user_repository.dart';
 
 class _FakeMembresiaDs implements MembresiaRemoteDataSource {
+  Object? getMembresiasError;
+
   @override
-  Future<List<ClubMembership>> getMembresiasPorUsuario(int usuarioId) async =>
-      [
+  Future<List<ClubMembership>> getMembresiasPorUsuario(int usuarioId) async {
+    if (getMembresiasError != null) throw getMembresiasError!;
+    return [
         ClubMembership(
           id: 10,
           usuarioId: usuarioId,
@@ -49,6 +52,7 @@ class _FakeMembresiaDs implements MembresiaRemoteDataSource {
           estado: 'ACTIVO',
         ),
       ];
+  }
 
   @override
   Future<void> activarSocio({
@@ -272,6 +276,7 @@ Future<void> _pumpProductsScreen(
   WidgetTester tester, {
   required _CapturingOrderRepo orderRepo,
   List<Product> products = const [],
+  bool hasConnection = true,
 }) async {
   final userRepo = FakeUserRepository()
     ..current = User(
@@ -289,10 +294,10 @@ Future<void> _pumpProductsScreen(
 
   final orderProvider = OrderProvider(
     orderRepo,
-    ConnectivityService.forTest(checkConnection: () async => false),
+    ConnectivityService.forTest(checkConnection: () async => hasConnection),
     SyncService(
       orderRepo,
-      ConnectivityService.forTest(checkConnection: () async => false),
+      ConnectivityService.forTest(checkConnection: () async => hasConnection),
       _FakeRemoteOrders(),
       SessionOwner()..setUserId('1'),
     ),
@@ -377,6 +382,7 @@ void main() {
       tester,
       orderRepo: repo,
       products: [_simpleProduct()],
+      hasConnection: true,
     );
     await _addSimpleProductViaDetail(tester);
     await tester.tap(find.byKey(const Key('member-cart-bar')));
@@ -408,6 +414,7 @@ void main() {
       tester,
       orderRepo: repo,
       products: [_simpleProduct()],
+      hasConnection: true,
     );
     await _addSimpleProductViaDetail(tester);
     await tester.tap(find.byKey(const Key('member-cart-bar')));
@@ -419,5 +426,74 @@ void main() {
     expect(find.byKey(const Key('member-cart-sheet')), findsOneWidget);
     expect(find.byKey(const Key('member-cart-bar')), findsOneWidget);
     expect(find.text('Historial pedidos'), findsNothing);
+  });
+
+  testWidgets('sin conexión no crea pedido ni navega y conserva carrito',
+      (tester) async {
+    final repo = _CapturingOrderRepo();
+    await _pumpProductsScreen(
+      tester,
+      orderRepo: repo,
+      products: [_simpleProduct()],
+      hasConnection: false,
+    );
+    await _addSimpleProductViaDetail(tester);
+    await tester.tap(find.byKey(const Key('member-cart-bar')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('member-create-order-button')));
+    await tester.pumpAndSettle();
+
+    expect(repo.lastOrder, isNull);
+    expect(
+      find.text(OrderOfflineMessages.orderRequiresConnection),
+      findsOneWidget,
+    );
+    expect(find.text('Historial pedidos'), findsNothing);
+    expect(find.byKey(const Key('member-cart-sheet')), findsOneWidget);
+    expect(find.byKey(const Key('member-cart-bar')), findsOneWidget);
+  });
+
+  testWidgets('fallo membresía por red no muestra sin membresía activa',
+      (tester) async {
+    final membresiaDs = _FakeMembresiaDs()
+      ..getMembresiasError = NetworkException('NetworkError de conexión');
+
+    final userRepo = FakeUserRepository()
+      ..current = User(
+        id: '1',
+        name: 'Socio',
+        email: 's@test.com',
+        role: 'SOCIO',
+      );
+    final userProvider = UserProvider(userRepo);
+    userProvider.setUser(userRepo.current!);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: userProvider),
+          ChangeNotifierProvider(
+            create: (_) => ProductProvider(_FakeProductRepo([_simpleProduct()])),
+          ),
+          Provider<MembresiaRemoteDataSource>.value(value: membresiaDs),
+          Provider<ComboRemoteDataSource>.value(value: _FakeComboDs()),
+          Provider<SaborRemoteDataSource>.value(value: _FakeSaborDs()),
+        ],
+        child: const MaterialApp(
+          home: MemberClubProductsScreen(
+            clubId: 3,
+            clubNombre: 'Club Test',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(OrderOfflineMessages.clubDataRequiresConnection),
+      findsOneWidget,
+    );
+    expect(find.textContaining('membresia activa'), findsNothing);
   });
 }

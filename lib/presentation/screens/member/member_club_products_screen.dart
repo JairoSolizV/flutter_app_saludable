@@ -53,6 +53,7 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
 
   // ── Membership / loading ──
   ClubMembership? _membership;
+  Object? _membershipLoadError;
   bool _isLoadingMembership = true;
   bool _isCreatingOrder = false;
 
@@ -97,6 +98,7 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
       if (membresias.isNotEmpty) {
         setState(() {
           _membership = membresias.first;
+          _membershipLoadError = null;
           _isLoadingMembership = false;
         });
         if (mounted) {
@@ -105,11 +107,19 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
           _loadCombos();
         }
       } else {
-        setState(() => _isLoadingMembership = false);
+        setState(() {
+          _membershipLoadError = null;
+          _isLoadingMembership = false;
+        });
       }
     } catch (e) {
       debugPrint('Error loading membership: $e');
-      if (mounted) setState(() => _isLoadingMembership = false);
+      if (mounted) {
+        setState(() {
+          _membershipLoadError = e;
+          _isLoadingMembership = false;
+        });
+      }
     }
   }
 
@@ -640,6 +650,8 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
           body: const Center(child: CircularProgressIndicator()));
     }
     if (_membership == null) {
+      final isNetworkError =
+          OrderOfflineMessages.isLikelyNetworkError(_membershipLoadError);
       return Scaffold(
         appBar: _appBar(),
         body: RefreshableScrollView(
@@ -647,12 +659,18 @@ class _MemberClubProductsScreenState extends State<MemberClubProductsScreen> {
           child: Padding(
             padding: const EdgeInsets.all(32),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(LucideIcons.userX, size: 56, color: Colors.grey[400]),
+              Icon(
+                isNetworkError ? LucideIcons.wifiOff : LucideIcons.userX,
+                size: 56,
+                color: Colors.grey[400],
+              ),
               const SizedBox(height: 16),
-              const Text(
-                'No tienes una membresia activa.\nDebes ser socio de un club para hacer pedidos.',
+              Text(
+                isNetworkError
+                    ? OrderOfflineMessages.clubDataRequiresConnection
+                    : 'No tienes una membresia activa.\nDebes ser socio de un club para hacer pedidos.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 15, color: AppTheme.textSecondary),
+                style: const TextStyle(fontSize: 15, color: AppTheme.textSecondary),
               ),
             ]),
           ),
