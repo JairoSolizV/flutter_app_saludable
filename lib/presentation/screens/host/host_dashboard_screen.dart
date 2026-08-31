@@ -30,46 +30,48 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
   }
 
   Future<void> _loadOrdersSummary() async {
+    final clubDataSource =
+        Provider.of<ClubRemoteDataSource>(context, listen: false);
+    final orderDataSource =
+        Provider.of<OrderRemoteDataSource>(context, listen: false);
+
     try {
-      setState(() => _isLoadingOrders = true);
-      
-      // Obtener el club del anfitrión
-      final clubDataSource = Provider.of<ClubRemoteDataSource>(context, listen: false);
-      final club = await clubDataSource.getMyClub();
-      
-      if (club == null) {
-        if (mounted) {
-          setState(() {
-            _isLoadingOrders = false;
-            _totalPedidos = 0;
-            _club = null;
-          });
-        }
-        return;
-      }
-      
-      // Guardar el club en el estado
       if (mounted) {
-        setState(() {
-          _club = club;
-        });
+        setState(() => _isLoadingOrders = true);
       }
 
-      // Obtener pedidos del club
-      final orderDataSource = Provider.of<OrderRemoteDataSource>(context, listen: false);
+      final club = await clubDataSource.getMyClub();
+
+      if (!mounted) return;
+
+      if (club == null) {
+        setState(() {
+          _isLoadingOrders = false;
+          _totalPedidos = 0;
+          _club = null;
+        });
+        return;
+      }
+
+      setState(() {
+        _club = club;
+      });
+
       final ordersData = await orderDataSource.getOrdersByClub(club.id);
-      
+
+      if (!mounted) return;
+
       // Contar pedidos por estado
       int recibidos = 0;
       int preparando = 0;
       int listos = 0;
       int entregados = 0;
-      
+
       for (var order in ordersData) {
-        final estado = order['estado']?.toString().toUpperCase() ?? 
-                      order['status']?.toString().toUpperCase() ?? 
-                      'RECIBIDO';
-        
+        final estado = order['estado']?.toString().toUpperCase() ??
+            order['status']?.toString().toUpperCase() ??
+            'RECIBIDO';
+
         switch (estado) {
           case 'RECIBIDO':
           case 'PENDIENTE':
@@ -87,17 +89,15 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
             break;
         }
       }
-      
-      if (mounted) {
-        setState(() {
-          _totalPedidos = recibidos + preparando + listos; // Solo pendientes
-          _pedidosRecibidos = recibidos;
-          _pedidosPreparando = preparando;
-          _pedidosListos = listos;
-          _pedidosEntregados = entregados;
-          _isLoadingOrders = false;
-        });
-      }
+
+      setState(() {
+        _totalPedidos = recibidos + preparando + listos; // Solo pendientes
+        _pedidosRecibidos = recibidos;
+        _pedidosPreparando = preparando;
+        _pedidosListos = listos;
+        _pedidosEntregados = entregados;
+        _isLoadingOrders = false;
+      });
     } catch (e) {
       debugPrint('[DEBUG DASHBOARD] Error cargando resumen de pedidos: $e');
       if (mounted) {
