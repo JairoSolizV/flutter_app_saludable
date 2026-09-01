@@ -221,6 +221,24 @@ void main() {
     test('no empieza con 6 o 7 sigue siendo inválido con prefijo', () {
       expect(Validators.validateBolivianPhone('+59183429001'), isNotNull);
     });
+
+    // Los diálogos de perfil de socio y anfitrión no validan el campo antes
+    // de guardar: un teléfono vacío no debe salir como '+591' pelado.
+    test('toBoliviaE164 con vacío devuelve vacío', () {
+      expect(Validators.toBoliviaE164(''), '');
+    });
+
+    test('toBoliviaE164 con solo espacios devuelve vacío', () {
+      expect(Validators.toBoliviaE164('   '), '');
+    });
+
+    test('stripBoliviaCountryCode tolera vacío', () {
+      expect(Validators.stripBoliviaCountryCode(''), '');
+    });
+
+    test('stripBoliviaCountryCode deja intacto un local de 8 dígitos', () {
+      expect(Validators.stripBoliviaCountryCode('73429001'), '73429001');
+    });
   });
 
   group('Validators.validateTextNoNumbers', () {

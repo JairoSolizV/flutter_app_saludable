@@ -82,8 +82,12 @@ class Validators {
   }
 
   /// Formato E.164 que el backend ya espera (+591 + 8 dígitos locales).
+  ///
+  /// Vacío devuelve vacío: los diálogos de perfil de socio y anfitrión no
+  /// validan el campo, y mandar '+591' pelado guardaría basura en el backend.
   static String toBoliviaE164(String value) {
     final local = stripBoliviaCountryCode(value);
+    if (local.isEmpty) return '';
     return '+591$local';
   }
   

@@ -10,6 +10,7 @@ import 'club/host_club_edit_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
+import 'package:flutter_app_saludable/core/utils/validators.dart';
 
 class HostProfileScreen extends StatefulWidget {
   const HostProfileScreen({super.key});
@@ -50,7 +51,9 @@ class _HostProfileScreenState extends State<HostProfileScreen> {
       final user = authProvider.currentUser ?? userProvider.currentUser;
       
       final nameCtrl = TextEditingController(text: user?.name);
-      final phoneCtrl = TextEditingController(text: user?.phone);
+      final phoneCtrl = TextEditingController(
+        text: Validators.stripBoliviaCountryCode(user?.phone ?? ''),
+      );
       final birthDateCtrl = TextEditingController(text: user?.birthDate ?? '');
       
       // Extract instagram safely
@@ -159,7 +162,7 @@ class _HostProfileScreenState extends State<HostProfileScreen> {
 
                               await authProvider.updateProfile(
                                   name: nameCtrl.text.trim(),
-                                  phone: phoneCtrl.text.trim(),
+                                  phone: Validators.toBoliviaE164(phoneCtrl.text),
                                   birthDate: birthDateCtrl.text.trim().isEmpty ? null : birthDateCtrl.text.trim(),
                                   socialMedia: updatedSocialMedia,
                               );

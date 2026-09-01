@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
+import 'package:flutter_app_saludable/core/utils/validators.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -362,7 +363,9 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
       final user = authProvider.currentUser ?? userProvider.currentUser;
       
       final nameCtrl = TextEditingController(text: user?.name);
-      final phoneCtrl = TextEditingController(text: user?.phone);
+      final phoneCtrl = TextEditingController(
+        text: Validators.stripBoliviaCountryCode(user?.phone ?? ''),
+      );
       final birthDateCtrl = TextEditingController(text: user?.birthDate ?? '');
       DateTime? selectedDate;
 
@@ -458,7 +461,7 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                               // Usar AuthProvider para actualizar en Backend
                               await authProvider.updateProfile(
                                   name: nameCtrl.text.trim(),
-                                  phone: phoneCtrl.text.trim(),
+                                  phone: Validators.toBoliviaE164(phoneCtrl.text),
                                   birthDate: birthDateCtrl.text.trim().isEmpty ? null : birthDateCtrl.text.trim(),
                               );
                               
