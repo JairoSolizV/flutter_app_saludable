@@ -9,6 +9,7 @@ import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../providers/user_provider.dart';
 import 'package:flutter_app_saludable/core/datetime/api_datetime.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/utils/host_order_status_mapping.dart';
 import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import 'package:flutter_app_saludable/core/utils/order_item_options_display.dart';
 import 'package:flutter_app_saludable/domain/entities/order_item_option.dart';
@@ -78,7 +79,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
     final orderDataSource =
         Provider.of<OrderRemoteDataSource>(context, listen: false);
     final estado =
-        filterStatus == 'all' ? null : _mapUIToBackendStatus(filterStatus);
+        filterStatus == 'all' ? null : HostOrderStatusMapping.mapUIToBackendStatus(filterStatus);
     return orderDataSource.getOrdersByClubPage(
       _clubId!,
       page: page,
@@ -197,7 +198,7 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
           continue;
         }
 
-        final String estado = _mapBackendStatusToUI(
+        final String estado = HostOrderStatusMapping.mapBackendStatusToUI(
             order['estado'] ?? order['status'] ?? 'RECIBIDO');
         final dynamic fechaValue = order['fechaPedido'] ??
             order['createdAt'] ??
@@ -234,8 +235,13 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
         final Map<String, dynamic> socio =
             usuarioData is Map ? usuarioData as Map<String, dynamic> : {};
 
+        final String? socioNombreFromDto = order['socioNombre']?.toString().trim();
+        final String? socioTelefonoFromDto = order['socioTelefono']?.toString().trim();
+
         String customerName = 'Cliente $pedidoId';
-        if (socio.isNotEmpty) {
+        if (socioNombreFromDto != null && socioNombreFromDto.isNotEmpty) {
+          customerName = socioNombreFromDto;
+        } else if (socio.isNotEmpty) {
           final String? nombre = socio['nombre']?.toString();
           final String? apellido = socio['apellido']?.toString();
           final String? usuarioNombre = socio['usuarioNombre']?.toString();
@@ -368,6 +374,8 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
               'nota': '',
               'opciones': const <OrderItemOption>[],
               'customerName': customerName,
+              'socioNombre': socioNombreFromDto,
+              'socioTelefono': socioTelefonoFromDto,
               'numeroSocio': numeroSocio,
               'isVip': isVip,
               'time': time,
@@ -387,6 +395,8 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                   'pedidoComboId': item['pedidoComboId'],
                 if (item['comboId'] != null) 'comboId': item['comboId'],
                 'customerName': customerName,
+                'socioNombre': socioNombreFromDto,
+                'socioTelefono': socioTelefonoFromDto,
                 'numeroSocio': numeroSocio,
                 'isVip': isVip,
                 'time': time,
@@ -418,6 +428,8 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
       final String estado = firstItem['estado'] as String;
       final String time = firstItem['time'] as String;
       final String customerName = firstItem['customerName'] as String;
+      final String? socioNombre = firstItem['socioNombre'] as String?;
+      final String? socioTelefono = firstItem['socioTelefono'] as String?;
       final String numeroSocio = firstItem['numeroSocio'] as String? ?? '';
       final bool isVip = firstItem['isVip'] as bool;
 
@@ -445,6 +457,8 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
         'id': pedidoId.toString(),
         'pedidoId': pedidoId,
         'customer': customerName,
+        'socioNombre': socioNombre,
+        'socioTelefono': socioTelefono,
         'numeroSocio': numeroSocio,
         'items': itemsList,
         if (combos != null) 'combos': combos,
@@ -461,58 +475,17 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
     return mappedOrders;
   }
 
-  String _mapBackendStatusToUI(String backendStatus) {
-    // Mapear estados del backend a estados de la UI
-    switch (backendStatus.toUpperCase()) {
-      case 'RECIBIDO':
-      case 'PENDING':
-        return 'pending';
-      case 'PREPARANDO':
-      case 'PREPARING':
-        return 'preparing';
-      case 'LISTO':
-      case 'READY':
-        return 'ready';
-      case 'ENTREGADO':
-      case 'COMPLETED':
-        return 'completed';
-      default:
-        return 'pending';
-    }
-  }
-
-  String _mapUIToBackendStatus(String uiStatus) {
-    // Mapear estados de la UI a estados del backend
-    switch (uiStatus) {
-      case 'pending':
-        return 'RECIBIDO';
-      case 'preparing':
-        return 'PREPARANDO';
-      case 'ready':
-        return 'LISTO';
-      case 'completed':
-        return 'ENTREGADO';
-      default:
-        return 'RECIBIDO';
-    }
-  }
-
   Future<void> updateStatus(String id, String newStatus,
       {int? estimatedTime}) async {
     try {
-      // El id de la UI es literalmente el pedidoId como String (ver
-      // _mapRawOrdersToUiList: 'id': pedidoId.toString()).
       final int pedidoId = int.parse(id);
 
-      // Actualizar en el backend
       final orderDataSource =
           Provider.of<OrderRemoteDataSource>(context, listen: false);
-      final backendStatus = _mapUIToBackendStatus(newStatus);
+      final backendStatus = HostOrderStatusMapping.mapUIToBackendStatus(newStatus);
       await orderDataSource.updateOrderStatus(pedidoId, backendStatus,
           estimatedTime: estimatedTime);
 
-      // Recargar desde la página 0 para reflejar el nuevo estado (y, si hay
-      // un filtro de estado activo, que el pedido salga/entre de la lista).
       await _ordersController?.refresh();
     } catch (e) {
       if (mounted) {
@@ -524,6 +497,35 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _confirmCancelOrder(String orderId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancelar pedido'),
+        content: const Text(
+          '¿Deseas cancelar este pedido? Dejará de contabilizarse como venta.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Volver'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Cancelar pedido',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await updateStatus(orderId, 'cancelled');
     }
   }
 
@@ -650,6 +652,11 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                     isSelected: filterStatus == 'ready',
                     color: Colors.green,
                     onTap: () => _onFilterChanged('ready')),
+                _FilterChip(
+                    label: 'Cancelados',
+                    isSelected: filterStatus == 'cancelled',
+                    color: Colors.grey,
+                    onTap: () => _onFilterChanged('cancelled')),
               ],
             ),
           ),
@@ -782,26 +789,75 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                                                     ],
                                                   ),
                                                   const SizedBox(height: 4),
+                                                  if ((order['socioNombre']
+                                                              ?.toString()
+                                                              .trim()
+                                                              .isNotEmpty ??
+                                                          false))
+                                                    Text(
+                                                      order['socioNombre']
+                                                          .toString(),
+                                                      style: const TextStyle(
+                                                          fontSize: 14,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color: Color(
+                                                              0xFF333333)),
+                                                    ),
                                                   if (order['numeroSocio'] !=
                                                           null &&
                                                       (order['numeroSocio']
                                                               as String)
                                                           .isNotEmpty)
                                                     Text(
-                                                      'Número de Socio: ${order['numeroSocio']}',
+                                                      order['numeroSocio']
+                                                          .toString(),
                                                       style: const TextStyle(
-                                                          fontSize: 14,
-                                                          color: Color(
-                                                              0xFF333333)),
+                                                          fontSize: 13,
+                                                          color: Colors
+                                                              .grey),
                                                     )
-                                                  else
+                                                  else if ((order['customer']
+                                                              ?.toString()
+                                                              .isNotEmpty ??
+                                                          false))
                                                     Text(
-                                                      order['customer'] ??
-                                                          'Cliente',
+                                                      order['customer']
+                                                          .toString(),
                                                       style: const TextStyle(
                                                           fontSize: 14,
                                                           color: Color(
                                                               0xFF333333)),
+                                                    ),
+                                                  if (order['socioTelefono']
+                                                          ?.toString()
+                                                          .trim()
+                                                          .isNotEmpty ??
+                                                      false)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                              top: 4),
+                                                      child: Row(
+                                                        children: [
+                                                          Icon(
+                                                              LucideIcons.phone,
+                                                              size: 14,
+                                                              color: Colors
+                                                                  .grey[700]),
+                                                          const SizedBox(
+                                                              width: 4),
+                                                          Text(
+                                                            order[
+                                                                    'socioTelefono']
+                                                                .toString(),
+                                                            style: TextStyle(
+                                                                fontSize: 13,
+                                                                color: Colors
+                                                                    .grey[700]),
+                                                          ),
+                                                        ],
+                                                      ),
                                                     ),
                                                 ],
                                               ),
@@ -893,89 +949,142 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
                                             ),
                                           ),
                                         const SizedBox(height: 12),
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            const SizedBox(), // Ya no mostramos total porque no viene del backend
+                                        if (order['status'] == 'pending')
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: ElevatedButton(
+                                                  onPressed: () =>
+                                                      _confirmCancelOrder(
+                                                          order['id']),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: Colors.red,
+                                                  ),
+                                                  child: const Text(
+                                                    'Cancelar pedido',
+                                                    style: TextStyle(
+                                                        color: Colors.white),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: ElevatedButton(
+                                                  onPressed: () =>
+                                                      _promptEstimatedTime(
+                                                          context,
+                                                          order['id']),
+                                                  style: ElevatedButton
+                                                      .styleFrom(
+                                                          backgroundColor:
+                                                              Colors.orange),
+                                                  child: const Text(
+                                                      'Preparar',
+                                                      style: TextStyle(
+                                                          color:
+                                                              Colors.white)),
+                                                ),
+                                              ),
+                                            ],
+                                          )
+                                        else ...[
+                                          if (HostOrderStatusMapping
+                                              .canHostCancel(
+                                                  order['status'] as String))
+                                            Align(
+                                              alignment: Alignment.centerRight,
+                                              child: TextButton(
+                                                onPressed: () =>
+                                                    _confirmCancelOrder(
+                                                        order['id']),
+                                                child: const Text(
+                                                  'Cancelar pedido',
+                                                  style: TextStyle(
+                                                      color: Colors.red),
+                                                ),
+                                              ),
+                                            ),
+                                          if (HostOrderStatusMapping
+                                              .canHostCancel(
+                                                  order['status'] as String))
+                                            const SizedBox(height: 4),
+                                          if (order['status'] == 'preparing' ||
+                                              order['status'] == 'ready')
                                             Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
                                               children: [
-                                                if (order['status'] ==
-                                                    'pending')
-                                                  ElevatedButton(
-                                                    onPressed: () =>
-                                                        _promptEstimatedTime(
-                                                            context,
-                                                            order['id']),
-                                                    style: ElevatedButton
-                                                        .styleFrom(
-                                                            backgroundColor:
-                                                                Colors.orange),
-                                                    child: const Text(
-                                                        'Preparar',
-                                                        style: TextStyle(
+                                                const SizedBox(),
+                                                Row(
+                                                  children: [
+                                                    if (order['status'] ==
+                                                        'preparing') ...[
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                            Icons.undo,
                                                             color:
-                                                                Colors.white)),
-                                                  ),
-                                                if (order['status'] ==
-                                                    'preparing') ...[
-                                                  IconButton(
-                                                    icon: const Icon(Icons.undo,
-                                                        color: Colors.grey),
-                                                    onPressed: () =>
-                                                        updateStatus(
-                                                            order['id'],
-                                                            'pending'),
-                                                    tooltip:
-                                                        'Deshacer (Volver a Pendiente)',
-                                                  ),
-                                                  ElevatedButton(
-                                                    onPressed: () =>
-                                                        updateStatus(
-                                                            order['id'],
-                                                            'ready'),
-                                                    style: ElevatedButton
-                                                        .styleFrom(
-                                                            backgroundColor:
-                                                                Colors.green),
-                                                    child: const Text('Listo',
-                                                        style: TextStyle(
-                                                            color:
-                                                                Colors.white)),
-                                                  ),
-                                                ],
-                                                if (order['status'] ==
-                                                    'ready') ...[
-                                                  IconButton(
-                                                    icon: const Icon(Icons.undo,
-                                                        color: Colors.grey),
-                                                    onPressed: () =>
-                                                        updateStatus(
-                                                            order['id'],
-                                                            'preparing'),
-                                                    tooltip:
-                                                        'Deshacer (Volver a Preparando)',
-                                                  ),
-                                                  ElevatedButton(
-                                                    onPressed: () =>
-                                                        updateStatus(
-                                                            order['id'],
-                                                            'completed'),
-                                                    style: ElevatedButton
-                                                        .styleFrom(
-                                                            backgroundColor:
                                                                 Colors.grey),
-                                                    child: const Text(
-                                                        'Entregar',
-                                                        style: TextStyle(
+                                                        onPressed: () =>
+                                                            updateStatus(
+                                                                order['id'],
+                                                                'pending'),
+                                                        tooltip:
+                                                            'Deshacer (Volver a Pendiente)',
+                                                      ),
+                                                      ElevatedButton(
+                                                        onPressed: () =>
+                                                            updateStatus(
+                                                                order['id'],
+                                                                'ready'),
+                                                        style: ElevatedButton
+                                                            .styleFrom(
+                                                                backgroundColor:
+                                                                    Colors
+                                                                        .green),
+                                                        child: const Text(
+                                                            'Listo',
+                                                            style: TextStyle(
+                                                                color: Colors
+                                                                    .white)),
+                                                      ),
+                                                    ],
+                                                    if (order['status'] ==
+                                                        'ready') ...[
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                            Icons.undo,
                                                             color:
-                                                                Colors.white)),
-                                                  ),
-                                                ],
+                                                                Colors.grey),
+                                                        onPressed: () =>
+                                                            updateStatus(
+                                                                order['id'],
+                                                                'preparing'),
+                                                        tooltip:
+                                                            'Deshacer (Volver a Preparando)',
+                                                      ),
+                                                      ElevatedButton(
+                                                        onPressed: () =>
+                                                            updateStatus(
+                                                                order['id'],
+                                                                'completed'),
+                                                        style: ElevatedButton
+                                                            .styleFrom(
+                                                                backgroundColor:
+                                                                    Colors
+                                                                        .grey),
+                                                        child: const Text(
+                                                            'Entregar',
+                                                            style: TextStyle(
+                                                                color: Colors
+                                                                    .white)),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                )
                                               ],
-                                            )
-                                          ],
-                                        )
+                                            ),
+                                        ],
                                       ],
                                     ),
                                   ),
@@ -1068,6 +1177,10 @@ class _StatusBadge extends StatelessWidget {
       case 'completed':
         color = Colors.grey;
         text = 'Entregado';
+        break;
+      case 'cancelled':
+        color = Colors.blueGrey;
+        text = 'Cancelado';
         break;
       default:
         color = Colors.grey;
