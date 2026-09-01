@@ -211,6 +211,15 @@ void main() {
       final ok = await auth.resendCode('n@a.com');
       expect(ok, isFalse);
       expect(auth.errorMessage, isNotNull);
+      expect(auth.otpResendRetryAfterSeconds, isNull);
+    });
+
+    test('resendCode cooldown expone retryAfterSeconds', () async {
+      remote.resendError = OtpResendCooldownException(retryAfterSeconds: 37);
+      final ok = await auth.resendCode('n@a.com');
+      expect(ok, isFalse);
+      expect(auth.otpResendRetryAfterSeconds, 37);
+      expect(auth.errorMessage, isNotNull);
     });
 
     test('login fallido muestra mensaje público y no persiste sesión',

@@ -36,6 +36,7 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
   bool _sessionReady = false;
   SessionStatus _sessionStatus = SessionStatus.unknown;
   String? _passwordResetToken;
+  int? _otpResendRetryAfterSeconds;
 
   /// Mensaje público anti-enumeración (alineado con backend).
   static const String passwordResetRequestMessage =
@@ -68,6 +69,7 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  int? get otpResendRetryAfterSeconds => _otpResendRetryAfterSeconds;
   bool get requiresVerification => _requiresVerification;
   bool get sessionReady => _sessionReady;
   SessionStatus get sessionStatus => _sessionStatus;
@@ -408,7 +410,7 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
   }
 
   Future<bool> resendCode(String email) async {
-    _isLoading = true;
+    _otpResendRetryAfterSeconds = null;
     _errorMessage = null;
     notifyListeners();
 
@@ -417,12 +419,17 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
       await _savePendingVerificationEmail(normalizedEmail);
       final success = await _remoteDataSource
           .resendVerificationCode(normalizedEmail);
-      _isLoading = false;
+      _otpResendRetryAfterSeconds = null;
       notifyListeners();
       return success;
+    } on OtpResendCooldownException catch (e) {
+      _otpResendRetryAfterSeconds = e.retryAfterSeconds;
+      _errorMessage = e.message;
+      notifyListeners();
+      return false;
     } catch (e) {
+      _otpResendRetryAfterSeconds = null;
       _errorMessage = _toPublicError(e);
-      _isLoading = false;
       notifyListeners();
       return false;
     }

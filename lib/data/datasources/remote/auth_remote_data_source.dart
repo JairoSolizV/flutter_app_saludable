@@ -283,6 +283,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
       return false;
     } on DioException catch (e) {
+      final status = e.response?.statusCode;
+      final data = e.response?.data;
+      if (status == 429 && data is Map) {
+        final errorCode = data['error']?.toString();
+        if (errorCode == OtpResendCooldownException.errorCode) {
+          final retryRaw = data['retryAfterSeconds'];
+          final retryAfterSeconds = retryRaw is int
+              ? retryRaw
+              : int.tryParse(retryRaw?.toString() ?? '') ?? 1;
+          final message = data['message']?.toString();
+          throw OtpResendCooldownException(
+            retryAfterSeconds: retryAfterSeconds < 1 ? 1 : retryAfterSeconds,
+            message: message,
+          );
+        }
+      }
       throw ErrorMapper.fromDio(e, fallback: 'Error al reenviar el código');
     }
   }

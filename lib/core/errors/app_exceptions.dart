@@ -151,6 +151,24 @@ class RateLimitException extends AppException {
   });
 }
 
+/// Cooldown de reenvío OTP EMAIL_VERIFICATION (backend autoritativo).
+class OtpResendCooldownException extends RateLimitException {
+  static const String errorCode = 'OTP_RESEND_COOLDOWN';
+  static const String defaultMessage =
+      'Espera unos segundos antes de solicitar otro código.';
+
+  OtpResendCooldownException({
+    required this.retryAfterSeconds,
+    String? message,
+  }) : super(
+          message ?? defaultMessage,
+          statusCode: 429,
+          code: errorCode,
+        );
+
+  final int retryAfterSeconds;
+}
+
 class ServerException extends AppException {
   ServerException(
     super.message, {

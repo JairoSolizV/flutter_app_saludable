@@ -553,6 +553,35 @@ void main() {
         throwsA(isA<AppException>()),
       );
     }));
+
+    test('429 OTP_RESEND_COOLDOWN lanza excepción dedicada', async_(() async {
+      adapter.stub('POST', '/auth/resend-code', statusCode: 429, data: {
+        'success': false,
+        'error': 'OTP_RESEND_COOLDOWN',
+        'message': 'Espera unos segundos antes de solicitar otro código.',
+        'retryAfterSeconds': 37,
+      });
+      await expectLater(
+        () => ds.resendVerificationCode('a@a.com'),
+        throwsA(
+          isA<OtpResendCooldownException>().having(
+            (e) => e.retryAfterSeconds,
+            'retryAfterSeconds',
+            37,
+          ),
+        ),
+      );
+    }));
+
+    test('429 genérico sigue usando ErrorMapper', async_(() async {
+      adapter.stub('POST', '/auth/resend-code', statusCode: 429, data: {
+        'message': 'Demasiadas solicitudes',
+      });
+      await expectLater(
+        () => ds.resendVerificationCode('a@a.com'),
+        throwsA(isA<RateLimitException>()),
+      );
+    }));
   });
 
   group('password reset endpoints', () {

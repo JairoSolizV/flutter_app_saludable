@@ -31,6 +31,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
   Timer? _resendTimer;
   int _resendCooldown = 0;
   bool _isVerifying = false;
+  bool _isResending = false;
   String? _errorMessage;
   bool _codeComplete = false;
   String? _resolvedEmail;
@@ -196,8 +197,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
     });
   }
 
-  void _startResendCooldown() {
-    setState(() => _resendCooldown = 60);
+  void _startResendCooldown([int seconds = 60]) {
+    setState(() => _resendCooldown = seconds);
     _resendTimer?.cancel();
     _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
@@ -214,40 +215,52 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
   }
 
   Future<void> _resendCode() async {
-    if (_resendCooldown > 0 || _email.isEmpty) return;
+    if (_isResending || _resendCooldown > 0 || _email.isEmpty) return;
+
+    setState(() => _isResending = true);
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final success = await auth.resendCode(_email);
+    try {
+      final success = await auth.resendCode(_email);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (success) {
-      _startResendCooldown();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.email_outlined, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Código reenviado. Revisa tu correo.'),
-            ],
+      if (success) {
+        _startResendCooldown();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.email_outlined, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Código reenviado. Revisa tu correo.'),
+              ],
+            ),
+            backgroundColor: AppTheme.info,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          backgroundColor: AppTheme.info,
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(auth.errorMessage ?? 'Error al reenviar código'),
-          backgroundColor: AppTheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
+        );
+      } else {
+        final retryAfter = auth.otpResendRetryAfterSeconds;
+        if (retryAfter != null) {
+          _startResendCooldown(retryAfter);
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(auth.errorMessage ?? 'Error al reenviar código'),
+            backgroundColor: AppTheme.error,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isResending = false);
+      }
     }
   }
 
@@ -574,20 +587,28 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen>
 
                     // Resend button
                     TextButton.icon(
-                      onPressed: _resendCooldown > 0 ? null : _resendCode,
-                      icon: Icon(
-                        Icons.refresh,
-                        size: 18,
-                        color: _resendCooldown > 0
-                            ? Colors.grey
-                            : AppTheme.primaryColor,
-                      ),
+                      onPressed: (_isResending || _resendCooldown > 0)
+                          ? null
+                          : _resendCode,
+                      icon: _isResending
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(
+                              Icons.refresh,
+                              size: 18,
+                              color: (_isResending || _resendCooldown > 0)
+                                  ? Colors.grey
+                                  : AppTheme.primaryColor,
+                            ),
                       label: Text(
                         _resendCooldown > 0
                             ? 'Reenviar en ${_resendCooldown}s'
                             : 'Reenviar Código',
                         style: TextStyle(
-                          color: _resendCooldown > 0
+                          color: (_isResending || _resendCooldown > 0)
                               ? Colors.grey
                               : AppTheme.primaryColor,
                           fontWeight: FontWeight.w600,
