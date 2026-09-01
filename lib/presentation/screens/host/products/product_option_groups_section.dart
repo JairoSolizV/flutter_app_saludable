@@ -19,7 +19,7 @@ class ProductOptionGroupDraft {
   ProductOptionGroupDraft({
     this.id,
     String name = '',
-    int minSelections = 0,
+    int minSelections = 1,
     int? maxSelections,
     this.allowRepeat = false,
     List<ProductOptionDraft>? options,

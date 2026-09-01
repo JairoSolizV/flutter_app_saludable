@@ -36,7 +36,11 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
     final user = Provider.of<UserProvider>(context, listen: false).currentUser;
     _nameController = TextEditingController(text: user?.name ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
-    _phoneController = TextEditingController(text: user?.phone ?? '');
+    _phoneController = TextEditingController(
+      text: user?.phone != null
+          ? Validators.stripBoliviaCountryCode(user!.phone!)
+          : '',
+    );
     _birthDateController = TextEditingController(text: user?.birthDate ?? '');
     
     // Load social media if exists
@@ -94,16 +98,12 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
         // Prepare social media map
         final Map<String, dynamic> socialMedia = {};
         if (_instagramController.text.isNotEmpty) socialMedia['instagram'] = _instagramController.text;
-        if (_facebookController.text.isNotEmpty) socialMedia['facebook'] = _facebookController.text;
+        if (_facebookController.text.isNotEmpty) {
+          socialMedia['facebook'] = _facebookController.text.trim();
+        }
         if (_tiktokController.text.isNotEmpty) socialMedia['tiktok'] = _tiktokController.text;
 
-        // Preprocesar el teléfono al formato E.164 requerido por el backend (+591...)
-        String phoneToSend = _phoneController.text.trim();
-        if (!phoneToSend.startsWith('+')) {
-          if (phoneToSend.length == 8) {
-            phoneToSend = '+591$phoneToSend';
-          }
-        }
+        final phoneToSend = Validators.toBoliviaE164(_phoneController.text);
 
         await provider.updateUserProfile(
           name: _nameController.text,
@@ -209,7 +209,7 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
               _buildSectionTitle("Redes Sociales (Usuarios)"),
               _buildTextField(label: "Instagram", controller: _instagramController, icon: LucideIcons.instagram, maxLength: 255, inputFormatters: AppFormatters.sinEspacios(255)),
               const SizedBox(height: 16),
-              _buildTextField(label: "Facebook", controller: _facebookController, icon: LucideIcons.facebook, maxLength: 255, inputFormatters: AppFormatters.sinEspacios(255)),
+              _buildTextField(label: "Facebook", controller: _facebookController, icon: LucideIcons.facebook, maxLength: 255, inputFormatters: AppFormatters.largo(255)),
               const SizedBox(height: 16),
               // Lucide doesn't have tiktok in this version likely, using generic or material
               _buildTextField(label: "TikTok", controller: _tiktokController, icon: Icons.music_note, maxLength: 255, inputFormatters: AppFormatters.sinEspacios(255)),

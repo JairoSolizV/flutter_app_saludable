@@ -270,4 +270,80 @@ void main() {
       expect(remote.lastPassword, 'Password123');
     });
   });
+
+  group('RegisterScreen REGISTER-EMAIL-UI-001', () {
+    testWidgets('correo existente muestra el mensaje una sola vez', (tester) async {
+      final storage = InMemorySecureStorageGateway();
+      final tokenStore = SecureTokenStore(storage: storage);
+      await tokenStore.initialize();
+      final users = FakeUserRepository();
+      final remote = _EmailExistsRemote();
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider(
+          create: (_) => AuthProvider(remote, users, tokenStore),
+          child: MaterialApp.router(
+            routerConfig: GoRouter(
+              initialLocation: '/register',
+              routes: [
+                GoRoute(
+                  path: '/register',
+                  builder: (_, __) => const RegisterScreen(),
+                ),
+                GoRoute(
+                  path: '/login',
+                  builder: (_, __) => const Scaffold(body: Text('Login Screen')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final emailField = find.byType(TextFormField).at(2);
+      await tester.enterText(emailField, 'existente@test.com');
+      await tester.tap(find.text('Nombre'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Este correo ya está registrado'), findsOneWidget);
+      expect(find.text('Inicia sesión con este correo'), findsOneWidget);
+    });
+
+    testWidgets('correo disponible no muestra error de duplicado', (tester) async {
+      await _pumpRegisterScreen(tester);
+
+      final emailField = find.byType(TextFormField).at(2);
+      await tester.enterText(emailField, 'nuevo@test.com');
+      await tester.tap(find.text('Nombre'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Este correo ya está registrado'), findsNothing);
+    });
+
+    testWidgets('formato de email inválido sigue mostrando error', (tester) async {
+      await _pumpRegisterScreen(tester);
+
+      final emailField = find.byType(TextFormField).at(2);
+      await tester.enterText(emailField, 'correo-invalido');
+      await tester.tap(find.text('Nombre'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ingresa un correo válido'), findsOneWidget);
+    });
+  });
+}
+
+class _EmailExistsRemote implements AuthRemoteDataSource {
+  @override
+  Future<bool> checkEmailExists(String email) async => email == 'existente@test.com';
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

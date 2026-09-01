@@ -193,6 +193,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           prefixIcon: const Icon(Icons.email),
                           border: const OutlineInputBorder(),
                           counterText: '',
+                          errorText: _emailValidationError,
                           suffixIcon: _checkingEmail
                               ? const SizedBox(
                                   width: 20,
@@ -204,11 +205,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 )
                               : null,
                         ),
-                        validator: (value) {
-                          final formatError = Validators.validateEmail(value);
-                          if (formatError != null) return formatError;
-                          return _emailValidationError;
-                        },
+                        validator: Validators.validateEmail,
                         onChanged: (_) {
                           _clearAuthError();
                           // El aviso anterior ya no aplica al correo que se está escribiendo.
@@ -221,42 +218,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       // El validator del campo solo se pinta tras validate(), que no
                       // llega a ejecutarse mientras el botón está deshabilitado: sin este
                       // aviso el usuario ve el botón gris y ninguna explicación.
-                      if (_emailValidationError != null)
+                      if (_emailValidationError == _emailTakenMessage)
                         Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(Icons.error_outline, size: 18, color: Colors.red.shade700),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _emailValidationError!,
-                                      style: TextStyle(color: Colors.red.shade700, fontSize: 13),
-                                    ),
-                                    if (_emailValidationError == _emailTakenMessage)
-                                      GestureDetector(
-                                        onTap: () => context.go('/login'),
-                                        child: const Padding(
-                                          padding: EdgeInsets.only(top: 2),
-                                          child: Text(
-                                            'Inicia sesión con este correo',
-                                            style: TextStyle(
-                                              color: AppTheme.primaryColor,
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                              decoration: TextDecoration.underline,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: GestureDetector(
+                              onTap: () => context.go('/login'),
+                              child: const Text(
+                                'Inicia sesión con este correo',
+                                style: TextStyle(
+                                  color: AppTheme.primaryColor,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  decoration: TextDecoration.underline,
                                 ),
                               ),
-                            ],
+                            ),
                           ),
                         ),
                       const SizedBox(height: 16),

@@ -60,12 +60,31 @@ class Validators {
     if (value == null || value.trim().isEmpty) {
       return 'El teléfono es obligatorio';
     }
+    final local = stripBoliviaCountryCode(value);
     // Valida números de Bolivia: 8 dígitos, empieza con 6 o 7
     final phoneExp = RegExp(r'^[67]\d{7}$');
-    if (!phoneExp.hasMatch(value)) {
+    if (!phoneExp.hasMatch(local)) {
       return 'Número inválido (8 dígitos, empieza con 6 o 7)';
     }
     return null;
+  }
+
+  /// Quita el prefijo +591/591 para mostrar u validar los 8 dígitos locales.
+  static String stripBoliviaCountryCode(String value) {
+    final trimmed = value.trim();
+    if (trimmed.startsWith('+591')) {
+      return trimmed.substring(4);
+    }
+    if (trimmed.startsWith('591') && trimmed.length > 8) {
+      return trimmed.substring(3);
+    }
+    return trimmed;
+  }
+
+  /// Formato E.164 que el backend ya espera (+591 + 8 dígitos locales).
+  static String toBoliviaE164(String value) {
+    final local = stripBoliviaCountryCode(value);
+    return '+591$local';
   }
   
   // Para campos genéricos que no deben tener números (ej. Ciudad)

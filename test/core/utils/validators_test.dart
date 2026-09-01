@@ -197,6 +197,30 @@ void main() {
     test('empieza con 6 y 8 dígitos es válido', () {
       expect(Validators.validateBolivianPhone('61234567'), isNull);
     });
+
+    test('+59173429001 del backend es válido', () {
+      expect(Validators.validateBolivianPhone('+59173429001'), isNull);
+    });
+
+    test('stripBoliviaCountryCode quita +591', () {
+      expect(Validators.stripBoliviaCountryCode('+59173429001'), '73429001');
+    });
+
+    test('toBoliviaE164 desde 8 dígitos locales', () {
+      expect(Validators.toBoliviaE164('73429001'), '+59173429001');
+    });
+
+    test('toBoliviaE164 desde valor ya con +591', () {
+      expect(Validators.toBoliviaE164('+59173429001'), '+59173429001');
+    });
+
+    test('7 dígitos sigue siendo inválido con prefijo', () {
+      expect(Validators.validateBolivianPhone('+5917342900'), isNotNull);
+    });
+
+    test('no empieza con 6 o 7 sigue siendo inválido con prefijo', () {
+      expect(Validators.validateBolivianPhone('+59183429001'), isNotNull);
+    });
   });
 
   group('Validators.validateTextNoNumbers', () {

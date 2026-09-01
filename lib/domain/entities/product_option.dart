@@ -192,11 +192,11 @@ class ProductOptionGroupValidator {
         }
       }
 
-      if (group.minSelections < 0) {
+      if (group.minSelections < 1) {
         errors.add(ProductOptionGroupIssue(
           groupIndex: i,
           field: 'min',
-          message: 'El mínimo no puede ser negativo',
+          message: 'El mínimo debe ser al menos 1',
         ));
       }
 

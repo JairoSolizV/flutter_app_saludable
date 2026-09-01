@@ -1,4 +1,5 @@
 import 'package:flutter_app_saludable/domain/entities/product_option.dart';
+import 'package:flutter_app_saludable/presentation/screens/host/products/product_option_groups_section.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'dart:convert';
 
@@ -76,6 +77,20 @@ void main() {
       expect(issues.any((e) => e.field == 'max'), isTrue);
     });
 
+    test('minimo cero invalida', () {
+      final issues = ProductOptionGroupValidator.validate([
+        _group(min: 0),
+      ]);
+      expect(
+        issues.any((e) => e.field == 'min' && e.message.contains('al menos 1')),
+        isTrue,
+      );
+    });
+
+    test('minimo uno es valido', () {
+      expect(ProductOptionGroupValidator.validate([_group(min: 1)]), isEmpty);
+    });
+
     test('max imposible sin repetición invalida', () {
       final issues = ProductOptionGroupValidator.validate([
         _group(min: 1, max: 3, repeat: false, options: const ['A', 'B']),
@@ -122,6 +137,13 @@ void main() {
         _group(min: 1, max: null).selectionRuleLabel,
         'Selecciona al menos 1',
       );
+    });
+  });
+
+  group('ProductOptionGroupDraft PRODUCT-GROUP-MIN-FL-001', () {
+    test('grupo nuevo inicia con mínimo 1', () {
+      final draft = ProductOptionGroupDraft();
+      expect(draft.min.text, '1');
     });
   });
 }

@@ -56,12 +56,6 @@ class _BasicUserProfileScreenState extends State<BasicUserProfileScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          IconButton(
-             icon: const Icon(Icons.more_horiz, color: Colors.grey),
-             onPressed: () {},
-          )
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
