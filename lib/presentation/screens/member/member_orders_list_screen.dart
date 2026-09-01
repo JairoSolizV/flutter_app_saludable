@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_saludable/core/datetime/api_datetime.dart';
 import 'package:flutter_app_saludable/core/utils/order_status_display.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -205,9 +206,8 @@ class _MemberOrdersListScreenState extends State<MemberOrdersListScreen>
         : (idValue != null ? int.tryParse(idValue.toString()) ?? 0 : 0);
 
     final dynamic fechaValue = order['fechaPedido'] ?? order['createdAt'];
-    final DateTime fecha = fechaValue != null
-        ? DateTime.tryParse(fechaValue.toString()) ?? DateTime.now()
-        : DateTime.now();
+    final DateTime fecha =
+        parseApiDateTimeToLocal(fechaValue) ?? DateTime.now();
 
     final String estado = order['estado']?.toString() ?? 'RECIBIDO';
     final String clubNombre = order['clubNombre']?.toString() ?? 'Club';

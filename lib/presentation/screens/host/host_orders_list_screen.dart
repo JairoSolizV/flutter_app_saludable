@@ -7,6 +7,7 @@ import '../../../core/pagination/paged_result.dart';
 import '../../../data/datasources/remote/order_remote_data_source.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
 import '../../providers/user_provider.dart';
+import 'package:flutter_app_saludable/core/datetime/api_datetime.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import 'package:flutter_app_saludable/core/utils/order_item_options_display.dart';
@@ -199,11 +200,10 @@ class _HostOrdersListScreenState extends State<HostOrdersListScreen> {
         final String estado = _mapBackendStatusToUI(
             order['estado'] ?? order['status'] ?? 'RECIBIDO');
         final dynamic fechaValue = order['fechaPedido'] ??
-            order['fechaPedido'] ??
             order['createdAt'] ??
             DateTime.now().toIso8601String();
-        final String fechaPedido = fechaValue.toString();
-        final DateTime fecha = DateTime.tryParse(fechaPedido) ?? DateTime.now();
+        final DateTime fecha =
+            parseApiDateTimeToLocal(fechaValue) ?? DateTime.now();
         final String time = DateFormat('HH:mm').format(fecha);
 
         // Información del socio/cliente - el backend puede devolver esto de diferentes formas

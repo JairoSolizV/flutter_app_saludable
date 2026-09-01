@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app_saludable/core/datetime/api_datetime.dart';
 import 'package:flutter_app_saludable/core/pagination/paged_result.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_app_saludable/data/datasources/remote/membresia_remote_data_source.dart';
 import 'package:flutter_app_saludable/data/datasources/remote/order_remote_data_source.dart';
 import 'package:flutter_app_saludable/domain/entities/attendance.dart';
@@ -286,7 +288,7 @@ void main() {
               'id': 1,
               'estado': 'RECIBIDO',
               'clubNombre': 'Club Norte',
-              'fechaPedido': '2024-01-01T10:00:00',
+              'fechaPedido': '2024-01-01T10:00:00Z',
               'items': [
                 {'productoNombre': 'Batido', 'cantidad': 1},
               ],
@@ -325,7 +327,7 @@ void main() {
               'estado': 'PREPARANDO',
               'clubNombre': 'Club Norte',
               'tiempoEstimadoMinutos': 10,
-              'fechaPedido': '2024-01-01T10:00:00',
+              'fechaPedido': '2024-01-01T10:00:00Z',
               'items': [
                 {'productoNombre': 'Batido', 'cantidad': 2},
               ],
@@ -369,6 +371,56 @@ void main() {
       await tester.pump();
 
       expect(find.text('No tienes un club asociado'), findsOneWidget);
+    });
+
+    testWidgets('historial muestra fecha y hora en hora local del dispositivo',
+        (tester) async {
+      final utcInstant = DateTime.utc(2026, 8, 31, 19, 0);
+      final localInstant = utcInstant.toLocal();
+      final membresiaDs = _FakeMembresiaRemoteDataSource()
+        ..membresias = [_membresia(9)];
+      final orderDs = _FakeOrderRemoteDataSource()
+        ..pageToReturn = PagedResult<Map<String, dynamic>>(
+          content: [
+            {
+              'id': 42,
+              'estado': 'ENTREGADO',
+              'clubNombre': 'Club Norte',
+              'fechaPedido': '2026-08-31T19:00:00Z',
+              'items': [
+                {'productoNombre': 'Batido', 'cantidad': 1},
+              ],
+            },
+          ],
+          page: 0,
+          size: 20,
+          totalElements: 1,
+          totalPages: 1,
+          first: true,
+          last: true,
+          hasNext: false,
+          hasPrevious: false,
+        );
+
+      await tester.pumpWidget(_buildApp(
+        membresiaDs: membresiaDs,
+        orderDs: orderDs,
+        user: User(id: '1', name: 'Ana', email: 'a@a.com', role: 'member'),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Historial'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(DateFormat('dd/MM/yyyy').format(localInstant)),
+        findsOneWidget,
+      );
+      expect(
+        find.text(DateFormat('HH:mm').format(localInstant)),
+        findsOneWidget,
+      );
+      expect(parseApiDateTimeToLocal('2026-08-31T19:00:00Z'), localInstant);
     });
 
     testWidgets('cambiar a la pestaña Historial filtra pedidos entregados',
