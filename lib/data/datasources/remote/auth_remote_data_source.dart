@@ -128,9 +128,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       // Si el backend devuelve el usuario actualizado
       if (response.statusCode == 200) {
-        // Parsear respuesta si es necesario o devolver el usuario local actualizado si el backend solo confirma OK
-        // Intentemos parsear por si acaso devuelve el obj
-        return _parseAuthResponse(response);
+        // Parsear respuesta; preservar codigoSorteo local si el DTO no lo trae.
+        final parsed = _parseAuthResponse(response);
+        final incoming = parsed.codigoSorteo?.trim();
+        final existing = user.codigoSorteo?.trim();
+        if ((incoming == null || incoming.isEmpty) &&
+            existing != null &&
+            existing.isNotEmpty) {
+          return parsed.copyWith(codigoSorteo: existing);
+        }
+        return parsed;
       }
       return user;
     } on DioException catch (e) {
@@ -203,6 +210,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         socialMedia: _parseSocialMedia(userData['redesSociales'] ??
             userData['socialMedia'] ??
             userData['social_media']),
+        codigoSorteo: _normalizeCodigoSorteo(
+          userData['codigoSorteo'] ?? userData['codigo_sorteo'],
+        ),
       );
 
       return user;
@@ -254,6 +264,15 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       return {'instagram': socialMediaData};
     }
     return null;
+  }
+
+  /// Normaliza `codigoSorteo` del backend: string no vacía o null.
+  /// Nunca inventa fallback ni completa con ceros.
+  static String? _normalizeCodigoSorteo(dynamic raw) {
+    if (raw == null) return null;
+    final value = raw.toString().trim();
+    if (value.isEmpty) return null;
+    return value;
   }
 
   @override

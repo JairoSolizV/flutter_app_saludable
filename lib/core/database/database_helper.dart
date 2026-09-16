@@ -36,7 +36,7 @@ class DatabaseHelper {
         join(await getDatabasesPath(), 'nutrilife_club.db');
     return await openDatabase(
       path,
-      version: 15,
+      version: 16,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -55,6 +55,7 @@ class DatabaseHelper {
         photo_url TEXT,
         birth_date TEXT,
         social_media TEXT,
+        codigo_sorteo TEXT,
         is_synced INTEGER DEFAULT 1
       )
     ''');
@@ -401,6 +402,13 @@ class DatabaseHelper {
         );
       } catch (e) {
         logDebug('Error en backfill sync_status v15: $e');
+      }
+    }
+    if (oldVersion < 16) {
+      try {
+        await db.execute('ALTER TABLE users ADD COLUMN codigo_sorteo TEXT');
+      } catch (e) {
+        logDebug('Error migrando codigo_sorteo v16: $e');
       }
     }
   }

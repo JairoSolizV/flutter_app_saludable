@@ -39,14 +39,30 @@ void main() {
           name: 'Ana',
           email: 'a@a.com',
           role: 'member',
-          phone: '123'));
+          phone: '123',
+          codigoSorteo: '4827'));
       final user = await repo.getUser('1');
       expect(user!.name, 'Ana');
       expect(user.phone, '123');
+      expect(user.codigoSorteo, '4827');
     });
   });
 
   group('saveUser', () {
+    test('persiste y recupera codigo_sorteo', () async {
+      await repo.saveUser(User(
+        id: '1',
+        name: 'Ana',
+        email: 'a@a.com',
+        role: 'basic_user',
+        codigoSorteo: '4827',
+      ));
+      final db = await dbHelper.database;
+      final rows = await db.query('users', where: 'id = ?', whereArgs: ['1']);
+      expect(rows.single['codigo_sorteo'], '4827');
+      expect((await repo.getUser('1'))!.codigoSorteo, '4827');
+    });
+
     test('nunca persiste el token JWT', () async {
       await repo.saveUser(User(
         id: '1',

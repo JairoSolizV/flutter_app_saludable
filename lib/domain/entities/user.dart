@@ -4,6 +4,10 @@ import 'dart:convert';
 ///
 /// [token] es **transitorio en memoria** (respuesta de login / hidratación desde
 /// [TokenStore]). **No** se persiste en SQLite: ver [toMap].
+///
+/// [codigoSorteo] es el código persistente de 4 dígitos del backend
+/// (campo `codigoSorteo` / columna local `codigo_sorteo`). No se genera en
+/// Flutter y no debe borrarse en actualizaciones de perfil locales.
 class User {
   final String id;
   final String name;
@@ -14,6 +18,7 @@ class User {
   final String? photoUrl;
   final String? birthDate;
   final Map<String, dynamic>? socialMedia;
+  final String? codigoSorteo;
 
   User({
     required this.id,
@@ -25,6 +30,7 @@ class User {
     this.photoUrl,
     this.birthDate,
     this.socialMedia,
+    this.codigoSorteo,
   });
 
   factory User.fromMap(Map<String, dynamic> map) {
@@ -43,6 +49,7 @@ class User {
               ? jsonDecode(map['social_media'])
               : map['social_media'])
           : null,
+      codigoSorteo: _normalizeCodigoSorteo(map['codigo_sorteo']),
     );
   }
 
@@ -58,6 +65,7 @@ class User {
       'photo_url': photoUrl,
       'birth_date': birthDate,
       'social_media': socialMedia != null ? jsonEncode(socialMedia) : null,
+      'codigo_sorteo': codigoSorteo,
     };
   }
 
@@ -70,6 +78,8 @@ class User {
     Map<String, dynamic>? socialMedia,
     String? token,
     bool clearToken = false,
+    String? codigoSorteo,
+    bool clearCodigoSorteo = false,
   }) {
     return User(
       id: id,
@@ -81,9 +91,19 @@ class User {
       photoUrl: photoUrl ?? this.photoUrl,
       birthDate: birthDate ?? this.birthDate,
       socialMedia: socialMedia ?? this.socialMedia,
+      codigoSorteo: clearCodigoSorteo
+          ? null
+          : (codigoSorteo ?? this.codigoSorteo),
     );
   }
 
   /// Perfil sin JWT (para persistir en SQLite).
   User withoutToken() => copyWith(clearToken: true);
+
+  static String? _normalizeCodigoSorteo(dynamic raw) {
+    if (raw == null) return null;
+    final value = raw.toString().trim();
+    if (value.isEmpty) return null;
+    return value;
+  }
 }

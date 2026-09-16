@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/raffle_code_card.dart';
 import '../../../data/datasources/remote/qr_remote_data_source.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
@@ -197,6 +198,13 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
+                   // Código de sorteo (antes del QR de identificación)
+                   if (user.codigoSorteo != null &&
+                       user.codigoSorteo!.trim().isNotEmpty)
+                     Padding(
+                       padding: const EdgeInsets.only(bottom: 16),
+                       child: RaffleCodeCard(codigo: user.codigoSorteo!.trim()),
+                     ),
                    // QR del Socio (encima del teléfono)
                    if (_isLoadingQR)
                      Container(

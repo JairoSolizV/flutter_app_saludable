@@ -124,4 +124,52 @@ void main() {
       1,
     );
   });
+
+  testWidgets('con codigoSorteo muestra TU CÓDIGO sin scroll', (tester) async {
+    final userProvider = UserProvider(deps.userRepository)
+      ..setUser(User(
+        id: '42',
+        name: 'Ana Pérez',
+        email: 'ana@example.com',
+        role: 'basic_user',
+        codigoSorteo: '4827',
+      ));
+
+    final router = GoRouter(
+      initialLocation: '/basic-home',
+      routes: [
+        GoRoute(
+          path: '/basic-home',
+          builder: (_, __) => const BasicUserHomeScreen(),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<UserProvider>.value(
+        value: userProvider,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('TU CÓDIGO'), findsOneWidget);
+    expect(find.text('4827'), findsOneWidget);
+    expect(
+      find.text('Muestra este QR al anfitrión para unirte'),
+      findsOneWidget,
+    );
+    expect(find.byType(SocioStepsStepper), findsOneWidget);
+  });
+
+  testWidgets('sin codigoSorteo no muestra card de sorteo', (tester) async {
+    await tester.pumpWidget(_buildApp(deps));
+    await tester.pumpAndSettle();
+
+    expect(find.text('TU CÓDIGO'), findsNothing);
+    expect(
+      find.text('Muestra este QR al anfitrión para unirte'),
+      findsOneWidget,
+    );
+  });
 }

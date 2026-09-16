@@ -482,6 +482,116 @@ void main() {
     }));
   });
 
+  group('codigoSorteo parseo auth', () {
+    Map<String, dynamic> authBody({
+      Object? codigoSorteo,
+      Object? codigoSorteoSnake,
+      String pathRole = 'SOCIO',
+    }) {
+      final body = <String, dynamic>{
+        'token': 'tok',
+        'userId': 99,
+        'nombre': 'Raffle',
+        'apellido': 'User',
+        'email': 'raffle@test.com',
+        'rolNombre': pathRole,
+      };
+      if (codigoSorteo != null) body['codigoSorteo'] = codigoSorteo;
+      if (codigoSorteoSnake != null) body['codigo_sorteo'] = codigoSorteoSnake;
+      return body;
+    }
+
+    test('login lee codigoSorteo camelCase', async_(() async {
+      adapter.stub('POST', '/auth/login', data: authBody(codigoSorteo: '4827'));
+      final user = await ds.login('raffle@test.com', 'secret');
+      expect(user.codigoSorteo, '4827');
+    }));
+
+    test('parser acepta fallback codigo_sorteo', async_(() async {
+      adapter.stub(
+        'POST',
+        '/auth/login',
+        data: authBody(codigoSorteoSnake: '1593'),
+      );
+      final user = await ds.login('raffle@test.com', 'secret');
+      expect(user.codigoSorteo, '1593');
+    }));
+
+    test('null/vacío no inventa valor', async_(() async {
+      adapter.stub('POST', '/auth/login', data: authBody());
+      expect((await ds.login('raffle@test.com', 'x')).codigoSorteo, isNull);
+
+      adapter = _FakeAdapter();
+      ds = AuthRemoteDataSourceImpl(_buildDio(adapter));
+      adapter.stub(
+        'POST',
+        '/auth/login',
+        data: authBody(codigoSorteo: '  '),
+      );
+      expect((await ds.login('raffle@test.com', 'x')).codigoSorteo, isNull);
+    }));
+
+    test('getMe /auth/me conserva codigoSorteo', async_(() async {
+      adapter.stub('GET', '/auth/me', data: {
+        'id': 11,
+        'nombre': 'Ka',
+        'apellido': 'Ren',
+        'email': 'ka@test.com',
+        'rol': {'id': 2, 'nombre': 'SOCIO'},
+        'codigoSorteo': '4827',
+      });
+      final user = await ds.getMe();
+      expect(user.codigoSorteo, '4827');
+    }));
+
+    test('verifyEmail conserva codigoSorteo', async_(() async {
+      adapter.stub('POST', '/auth/verify-email', data: {
+        'verified': true,
+        'token': 'jwt-otp',
+        'userId': 20,
+        'nombre': 'Otp',
+        'apellido': 'User',
+        'email': 'a@a.com',
+        'rolNombre': 'USUARIO_BASICO',
+        'codigoSorteo': '4827',
+      });
+      final user = await ds.verifyEmail('a@a.com', '123456');
+      expect(user!.codigoSorteo, '4827');
+    }));
+
+    test('Google login conserva codigoSorteo', async_(() async {
+      adapter.stub(
+        'POST',
+        '/auth/google',
+        data: authBody(codigoSorteo: '4827', pathRole: 'USUARIO_BASICO'),
+      );
+      final user = await ds.loginWithGoogle('google-id-token');
+      expect(user.codigoSorteo, '4827');
+      expect(user.role, 'basic_user');
+    }));
+
+    test('updateUser no borra codigoSorteo si el DTO no lo trae', async_(() async {
+      adapter.stub('PUT', '/usuarios/perfil/8', data: {
+        'id': 8,
+        'nombre': 'Hugo',
+        'apellido': 'Actualizado',
+        'email': 'hugo@test.com',
+        'rolNombre': 'SOCIO',
+        'telefono': '71111111',
+      });
+      final result = await ds.updateUser(User(
+        id: '8',
+        name: 'Hugo Viejo',
+        email: 'hugo@test.com',
+        role: 'member',
+        phone: '70000000',
+        codigoSorteo: '4827',
+      ));
+      expect(result.codigoSorteo, '4827');
+      expect(result.name, contains('Hugo'));
+    }));
+  });
+
   group('verifyEmail', () {
     test('200 con verified true parsea usuario por rolNombre', async_(() async {
       adapter.stub('POST', '/auth/verify-email', data: {

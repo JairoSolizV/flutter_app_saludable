@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../providers/user_provider.dart';
+import '../../widgets/raffle_code_card.dart';
 import '../../widgets/socio_steps_stepper.dart';
 
 class BasicUserHomeScreen extends StatelessWidget {
@@ -12,6 +13,9 @@ class BasicUserHomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = Provider.of<UserProvider>(context).currentUser;
     final userName = user?.name.split(' ').first ?? 'Usuario';
+    final codigoSorteo = user?.codigoSorteo?.trim();
+    final showRaffleCode =
+        codigoSorteo != null && codigoSorteo.isNotEmpty;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -55,6 +59,10 @@ class BasicUserHomeScreen extends StatelessWidget {
               'Empieza tu camino saludable',
               style: TextStyle(fontSize: 14, color: Colors.grey),
             ),
+            if (showRaffleCode) ...[
+              const SizedBox(height: 24),
+              RaffleCodeCard(codigo: codigoSorteo),
+            ],
             const SizedBox(height: 24),
 
             // Card QR de activación

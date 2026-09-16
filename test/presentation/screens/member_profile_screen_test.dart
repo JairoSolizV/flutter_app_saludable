@@ -164,4 +164,79 @@ void main() {
       expect(userProvider.currentUser, isNull);
     });
   });
+
+  group('MemberProfileScreen RAFFLE-CODE-001', () {
+    testWidgets('con codigoSorteo muestra TU CÓDIGO', (tester) async {
+      final users = FakeUserRepository();
+      final userProvider = UserProvider(users)
+        ..setUser(User(
+          id: '30',
+          name: 'Socio Local',
+          email: 'socio@test.com',
+          role: 'member',
+          phone: '555',
+          codigoSorteo: '4827',
+        ));
+      final authProvider = await _authWithToken(users);
+
+      final router = GoRouter(
+        initialLocation: '/member-profile',
+        routes: [
+          GoRoute(
+            path: '/member-profile',
+            builder: (_, __) => const MemberProfileScreen(),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        _buildProfileApp(
+          userProvider: userProvider,
+          authProvider: authProvider,
+          router: router,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('TU CÓDIGO'), findsOneWidget);
+      expect(find.text('4827'), findsOneWidget);
+      expect(find.text('Código QR de Identificación'), findsOneWidget);
+      expect(find.text('Socio Local'), findsOneWidget);
+    });
+
+    testWidgets('sin codigoSorteo no muestra card de sorteo', (tester) async {
+      final users = FakeUserRepository();
+      final userProvider = UserProvider(users)
+        ..setUser(User(
+          id: '30',
+          name: 'Socio Local',
+          email: 'socio@test.com',
+          role: 'member',
+          phone: '555',
+        ));
+      final authProvider = await _authWithToken(users);
+
+      final router = GoRouter(
+        initialLocation: '/member-profile',
+        routes: [
+          GoRoute(
+            path: '/member-profile',
+            builder: (_, __) => const MemberProfileScreen(),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        _buildProfileApp(
+          userProvider: userProvider,
+          authProvider: authProvider,
+          router: router,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('TU CÓDIGO'), findsNothing);
+      expect(find.text('Código QR de Identificación'), findsOneWidget);
+    });
+  });
 }
