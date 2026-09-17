@@ -10,6 +10,7 @@ import '../../providers/user_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/link_apple_account_action.dart';
 import '../../widgets/delete_account_action.dart';
+import '../../widgets/public_links_row.dart';
 import '../../widgets/raffle_code_card.dart';
 import '../../../data/datasources/remote/qr_remote_data_source.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
@@ -355,6 +356,8 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                          ),
                        ),
                    ),
+                   const SizedBox(height: 16),
+                   const PublicLinksRow(),
                    const SizedBox(height: 16),
                    SizedBox(
                        width: double.infinity,

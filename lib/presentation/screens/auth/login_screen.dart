@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../widgets/public_links_row.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/validators.dart';
 import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
@@ -314,7 +315,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextButton(
                         onPressed: () => context.push('/register'),
                         child: const Text('¿No tienes cuenta? Regístrate aquí', style: TextStyle(color: AppTheme.primaryColor)),
-                      )
+                      ),
+                      const SizedBox(height: 4),
+                      const PublicLinksRow(),
                     ],
                   ),
                 ),
