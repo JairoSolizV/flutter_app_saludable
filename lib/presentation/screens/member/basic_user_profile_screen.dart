@@ -4,6 +4,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../widgets/link_apple_account_action.dart';
+import '../../widgets/delete_account_action.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class BasicUserProfileScreen extends StatefulWidget {
@@ -107,7 +109,12 @@ class _BasicUserProfileScreenState extends State<BasicUserProfileScreen> {
                 context.go('/basic-profile/edit');
               },
             ),
-
+            if (isAppleAccountLinkAvailable())
+              _OptionTile(
+                icon: LucideIcons.apple,
+                title: 'Vincular Apple',
+                onTap: () => linkAppleAccountFromProfile(context),
+              ),
 
             const SizedBox(height: 30),
 
@@ -167,6 +174,15 @@ class _BasicUserProfileScreenState extends State<BasicUserProfileScreen> {
             ),
 
             const SizedBox(height: 40),
+
+            TextButton.icon(
+              onPressed: () => deleteAccountFromProfile(context),
+              icon: const Icon(LucideIcons.trash2, color: Colors.redAccent),
+              label: const Text(
+                'Eliminar cuenta',
+                style: TextStyle(color: Colors.redAccent),
+              ),
+            ),
 
             // Botón Cerrar Sesión (estético para desarrollo)
             TextButton.icon(

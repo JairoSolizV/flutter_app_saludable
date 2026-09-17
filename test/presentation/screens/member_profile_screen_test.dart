@@ -17,6 +17,10 @@ import '../../core/auth/fake_user_repository.dart';
 import '../../core/auth/in_memory_secure_storage_gateway.dart';
 
 class _StubAuthRemote implements AuthRemoteDataSource {
+
+  @override
+  Future<void> deleteAccount() async => throw UnimplementedError();
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -112,6 +116,7 @@ void main() {
 
       expect(find.text('Error: Usuario no encontrado'), findsNothing);
       expect(find.text('Socio Local'), findsOneWidget);
+      expect(find.text('Eliminar cuenta'), findsOneWidget);
       expect(find.text('Cerrar Sesión'), findsOneWidget);
     });
 

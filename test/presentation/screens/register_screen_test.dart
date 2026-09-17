@@ -37,6 +37,10 @@ class _RegisterTrackingRemote implements AuthRemoteDataSource {
     );
   }
 
+
+  @override
+  Future<void> deleteAccount() async => throw UnimplementedError();
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

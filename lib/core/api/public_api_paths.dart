@@ -20,6 +20,7 @@ class PublicApiPaths {
     '/auth/verify-reset-code',
     '/auth/reset-password',
     '/auth/google',
+    '/auth/apple',
   ];
 
   /// True si [path] es un endpoint público (login, registro, `/public/**`, etc.).

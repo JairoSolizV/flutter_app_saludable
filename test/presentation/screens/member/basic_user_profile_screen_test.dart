@@ -21,6 +21,10 @@ class _StubAuthRemote implements AuthRemoteDataSource {
   @override
   Future<User> getMe() async => user;
 
+
+  @override
+  Future<void> deleteAccount() async => throw UnimplementedError();
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -73,5 +77,84 @@ void main() {
 
     expect(find.byIcon(Icons.more_horiz), findsNothing);
     expect(find.text('Editar mis datos'), findsOneWidget);
+    expect(find.text('Eliminar cuenta'), findsOneWidget);
   });
+
+  testWidgets('cancelar Eliminar cuenta no llama API', (tester) async {
+    final users = FakeUserRepository();
+    final user = User(
+      id: '42',
+      name: 'Ana Pérez',
+      email: 'ana@example.com',
+      role: 'basic_user',
+      phone: '+59173429001',
+    );
+    final userProvider = UserProvider(users)..setUser(user);
+    final remote = _TrackingDeleteRemote(user);
+    final storage = InMemorySecureStorageGateway();
+    final tokenStore = SecureTokenStore(storage: storage);
+    await tokenStore.initialize();
+    await tokenStore.saveToken('jwt');
+    final authProvider = AuthProvider(
+      remote,
+      users,
+      tokenStore,
+      googleAuthService: FakeGoogleAuthService(),
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+          ChangeNotifierProvider<UserProvider>.value(value: userProvider),
+        ],
+        child: MaterialApp.router(
+          routerConfig: GoRouter(
+            routes: [
+              GoRoute(
+                path: '/',
+                builder: (_, __) => const BasicUserProfileScreen(),
+              ),
+              GoRoute(
+                path: '/login',
+                builder: (_, __) => const Scaffold(body: Text('Login')),
+              ),
+              GoRoute(
+                path: '/basic-profile/edit',
+                builder: (_, __) => const Scaffold(body: Text('Edit')),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Eliminar cuenta'));
+    await tester.pumpAndSettle();
+    expect(find.text('Esta acción eliminará tu cuenta y cerrará tu sesión. Algunos datos operativos pueden conservarse anonimizados cuando sea necesario.'), findsOneWidget);
+
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+
+    expect(remote.deleteCalls, 0);
+    expect(tokenStore.getToken(), 'jwt');
+  });
+}
+
+class _TrackingDeleteRemote implements AuthRemoteDataSource {
+  _TrackingDeleteRemote(this.user);
+  final User user;
+  int deleteCalls = 0;
+
+  @override
+  Future<User> getMe() async => user;
+
+  @override
+  Future<void> deleteAccount() async {
+    deleteCalls++;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

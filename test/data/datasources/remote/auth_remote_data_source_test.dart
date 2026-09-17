@@ -570,6 +570,121 @@ void main() {
       expect(user.role, 'basic_user');
     }));
 
+    test('loginWithApple envía identityToken, authorizationCode y nonce',
+        async_(() async {
+      adapter.stub('POST', '/auth/apple', data: {
+        'token': 'tok-apple',
+        'userId': 55,
+        'nombre': 'Ana',
+        'apellido': 'Pérez',
+        'email': 'ana@privaterelay.appleid.com',
+        'rolNombre': 'USUARIO_BASICO',
+        'codigoSorteo': '4827',
+      });
+      final user = await ds.loginWithApple(
+        identityToken: 'id.jwt',
+        authorizationCode: 'auth.code',
+        nonce: 'raw-nonce',
+        givenName: 'Ana',
+        familyName: 'Pérez',
+      );
+      expect(user.role, 'basic_user');
+      expect(user.codigoSorteo, '4827');
+      final body = adapter.requests.last.data as Map;
+      expect(body['identityToken'], 'id.jwt');
+      expect(body['authorizationCode'], 'auth.code');
+      expect(body['nonce'], 'raw-nonce');
+      expect(body['nombre'], 'Ana');
+      expect(body['apellido'], 'Pérez');
+    }));
+
+    test('loginWithApple omite nombre vacío en body', async_(() async {
+      adapter.stub('POST', '/auth/apple', data: {
+        'token': 'tok',
+        'userId': 56,
+        'nombre': 'User',
+        'apellido': '',
+        'email': 'u@privaterelay.appleid.com',
+        'rolNombre': 'SOCIO',
+      });
+      await ds.loginWithApple(
+        identityToken: 'id.jwt',
+        authorizationCode: 'code',
+        nonce: 'n',
+      );
+      final body = adapter.requests.last.data as Map;
+      expect(body.containsKey('nombre'), isFalse);
+      expect(body.containsKey('apellido'), isFalse);
+    }));
+
+    test('loginWithApple omite authorizationCode vacío', async_(() async {
+      adapter.stub('POST', '/auth/apple', data: {
+        'token': 'tok',
+        'userId': 57,
+        'nombre': 'User',
+        'apellido': '',
+        'email': 'u2@privaterelay.appleid.com',
+        'rolNombre': 'SOCIO',
+      });
+      await ds.loginWithApple(
+        identityToken: 'id.jwt',
+        nonce: 'n',
+        authorizationCode: '   ',
+      );
+      final body = adapter.requests.last.data as Map;
+      expect(body['identityToken'], 'id.jwt');
+      expect(body['nonce'], 'n');
+      expect(body.containsKey('authorizationCode'), isFalse);
+    }));
+
+    test('linkAppleAccount POST /auth/apple/link con tokens', async_(() async {
+      adapter.stub('POST', '/auth/apple/link', data: {
+        'success': true,
+        'message': 'Cuenta de Apple vinculada',
+      });
+      await ds.linkAppleAccount(
+        identityToken: 'id.jwt',
+        authorizationCode: 'auth.code',
+        nonce: 'raw-nonce',
+      );
+      final req = adapter.requests.last;
+      expect(req.method, 'POST');
+      expect(req.path, contains('/auth/apple/link'));
+      final body = req.data as Map;
+      expect(body['identityToken'], 'id.jwt');
+      expect(body['authorizationCode'], 'auth.code');
+      expect(body['nonce'], 'raw-nonce');
+    }));
+
+    test('deleteAccount DELETE /usuarios/me', async_(() async {
+      adapter.stub('DELETE', '/usuarios/me', data: {
+        'success': true,
+        'deleted': true,
+        'message': 'Tu cuenta ha sido eliminada.',
+      });
+      await ds.deleteAccount();
+      final req = adapter.requests.last;
+      expect(req.method, 'DELETE');
+      expect(req.path, contains('/usuarios/me'));
+    }));
+
+    test('deleteAccount 409 ACCOUNT_HAS_CLUB se mapea', async_(() async {
+      adapter.stub(
+        'DELETE',
+        '/usuarios/me',
+        statusCode: 409,
+        data: {
+          'success': false,
+          'error': 'ACCOUNT_HAS_CLUB',
+          'message': 'backend',
+        },
+      );
+      expect(
+        () => ds.deleteAccount(),
+        throwsA(isA<AccountHasClubException>()),
+      );
+    }));
+
     test('updateUser no borra codigoSorteo si el DTO no lo trae', async_(() async {
       adapter.stub('PUT', '/usuarios/perfil/8', data: {
         'id': 8,

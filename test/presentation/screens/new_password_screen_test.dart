@@ -26,6 +26,10 @@ class _ResetTrackingRemote implements AuthRemoteDataSource {
     lastResetPassword = password;
   }
 
+
+  @override
+  Future<void> deleteAccount() async => throw UnimplementedError();
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

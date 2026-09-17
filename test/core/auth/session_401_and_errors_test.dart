@@ -109,6 +109,13 @@ void main() {
       expect(PublicApiPaths.isPublic('/auth/verify-reset-code'), isTrue);
       expect(PublicApiPaths.isPublic('/auth/reset-password'), isTrue);
       expect(PublicApiPaths.isPublic('/auth/google'), isTrue);
+      expect(PublicApiPaths.isPublic('/auth/apple'), isTrue);
+      expect(
+        PublicApiPaths.isPublic(
+          'https://clubs-api.onrender.com/api/auth/apple',
+        ),
+        isTrue,
+      );
       expect(
         PublicApiPaths.isPublic(
           'https://clubs-api.onrender.com/api/auth/login',
