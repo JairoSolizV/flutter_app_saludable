@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../widgets/link_apple_account_action.dart';
 import '../../widgets/delete_account_action.dart';
+import '../../widgets/public_links_row.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 
 class BasicUserProfileScreen extends StatefulWidget {
@@ -183,6 +184,8 @@ class _BasicUserProfileScreenState extends State<BasicUserProfileScreen> {
                 style: TextStyle(color: Colors.redAccent),
               ),
             ),
+            const SizedBox(height: 8),
+            const PublicLinksRow(),
 
             // Botón Cerrar Sesión (estético para desarrollo)
             TextButton.icon(

@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../widgets/link_apple_account_action.dart';
 import '../../widgets/delete_account_action.dart';
+import '../../widgets/public_links_row.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
 import 'club/host_club_edit_screen.dart';
 
@@ -363,6 +364,8 @@ class _HostProfileScreenState extends State<HostProfileScreen> {
                     ),
                 ),
 
+                const SizedBox(height: 12),
+                const PublicLinksRow(),
                 const SizedBox(height: 12),
 
                 // Botón Cerrar Sesión
