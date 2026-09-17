@@ -4,10 +4,12 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import 'package:flutter_app_saludable/core/utils/validators.dart';
 import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
+import 'package:flutter_app_saludable/core/errors/error_mapper.dart';
 
 class BasicUserEditProfileScreen extends StatefulWidget {
   const BasicUserEditProfileScreen({super.key});
@@ -93,7 +95,8 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
       setState(() => _isLoading = true);
       
       try {
-        final provider = Provider.of<UserProvider>(context, listen: false);
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
         
         // Prepare social media map
         final Map<String, dynamic> socialMedia = {};
@@ -105,12 +108,19 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
 
         final phoneToSend = Validators.toBoliviaE164(_phoneController.text);
 
-        await provider.updateUserProfile(
-          name: _nameController.text,
+        // PUT /api/usuarios/perfil/{id} vía AuthProvider (no solo SQLite local).
+        await authProvider.updateProfile(
+          name: _nameController.text.trim(),
           phone: phoneToSend,
-          birthDate: _birthDateController.text.isEmpty ? null : _birthDateController.text,
+          birthDate: _birthDateController.text.isEmpty
+              ? null
+              : _birthDateController.text,
           socialMedia: socialMedia.isEmpty ? null : socialMedia,
         );
+
+        if (authProvider.currentUser != null) {
+          userProvider.setUser(authProvider.currentUser!);
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -121,7 +131,12 @@ class _BasicUserEditProfileScreenState extends State<BasicUserEditProfileScreen>
       } catch (e) {
         if (mounted) {
            ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error al actualizar: $e'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text(
+                'Error al actualizar: ${ErrorMapper.publicMessage(e)}',
+              ),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       } finally {
