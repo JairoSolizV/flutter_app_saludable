@@ -264,4 +264,57 @@ void main() {
       expect(message, isNotEmpty);
     });
   });
+
+  group('ErrorMapper - Apple ACCOUNT_LINK_REQUIRED', () {
+    test('409 ACCOUNT_LINK_REQUIRED → mensaje curado sin sesión implícita', () {
+      final mapped = ErrorMapper.fromDio(
+        httpError(status: 409, data: {
+          'success': false,
+          'error': 'ACCOUNT_LINK_REQUIRED',
+          'message': 'Mensaje backend genérico',
+        }),
+      );
+      expect(mapped, isA<AppleAccountLinkRequiredException>());
+      expect(mapped.code, AppleAccountLinkRequiredException.errorCode);
+      expect(mapped.message, AppleAccountLinkRequiredException.defaultMessage);
+    });
+
+    test('409 ACCOUNT_LINKING_REQUIRED legacy también mapea', () {
+      final mapped = ErrorMapper.fromDio(
+        httpError(status: 409, data: {
+          'success': false,
+          'error': 'ACCOUNT_LINKING_REQUIRED',
+          'message': 'old',
+        }),
+      );
+      expect(mapped, isA<AppleAccountLinkRequiredException>());
+      expect(mapped.message, AppleAccountLinkRequiredException.defaultMessage);
+    });
+  });
+
+  group('ErrorMapper - eliminación de cuenta', () {
+    test('409 ACCOUNT_HAS_CLUB → mensaje curado', () {
+      final mapped = ErrorMapper.fromDio(
+        httpError(status: 409, data: {
+          'success': false,
+          'error': 'ACCOUNT_HAS_CLUB',
+          'message': 'backend',
+        }),
+      );
+      expect(mapped, isA<AccountHasClubException>());
+      expect(mapped.message, AccountHasClubException.defaultMessage);
+    });
+
+    test('409 ACCOUNT_DELETE_FORBIDDEN → mensaje curado', () {
+      final mapped = ErrorMapper.fromDio(
+        httpError(status: 409, data: {
+          'success': false,
+          'error': 'ACCOUNT_DELETE_FORBIDDEN',
+          'message': 'backend',
+        }),
+      );
+      expect(mapped, isA<AccountDeleteForbiddenException>());
+      expect(mapped.message, AccountDeleteForbiddenException.defaultMessage);
+    });
+  });
 }

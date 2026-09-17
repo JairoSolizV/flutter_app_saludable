@@ -9,6 +9,26 @@ import '../../../domain/entities/user.dart';
 abstract class AuthRemoteDataSource {
   Future<User> login(String email, String password);
   Future<User> loginWithGoogle(String idToken);
+  /// Contrato: `POST /api/auth/apple` con identityToken, nonce obligatorios;
+  /// authorizationCode y nombre/apellido opcionales.
+  Future<User> loginWithApple({
+    required String identityToken,
+    required String nonce,
+    String? authorizationCode,
+    String? givenName,
+    String? familyName,
+  });
+
+  /// Vincula Apple a la sesión actual: `POST /api/auth/apple/link` (Bearer JWT).
+  Future<void> linkAppleAccount({
+    required String identityToken,
+    required String nonce,
+    String? authorizationCode,
+  });
+
+  /// Elimina la cuenta autenticada: `DELETE /api/usuarios/me` (Bearer JWT).
+  Future<void> deleteAccount();
+
   Future<User> register(String nombre, String apellido, String email,
       String password, String telefono,
       {int? rolId});
@@ -72,6 +92,91 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       return _parseAuthResponse(response);
     } on DioException catch (e) {
       throw ErrorMapper.fromDio(e, fallback: 'Error al iniciar sesión con Google');
+    }
+  }
+
+  @override
+  Future<User> loginWithApple({
+    required String identityToken,
+    required String nonce,
+    String? authorizationCode,
+    String? givenName,
+    String? familyName,
+  }) async {
+    try {
+      final data = <String, dynamic>{
+        'identityToken': identityToken,
+        'nonce': nonce,
+      };
+      final code = authorizationCode?.trim();
+      if (code != null && code.isNotEmpty) {
+        data['authorizationCode'] = code;
+      }
+      // Backend AppleAuthRequest: nombre / apellido (no givenName/familyName).
+      final given = givenName?.trim();
+      final family = familyName?.trim();
+      if (given != null && given.isNotEmpty) {
+        data['nombre'] = given;
+      }
+      if (family != null && family.isNotEmpty) {
+        data['apellido'] = family;
+      }
+
+      // No registrar identityToken / authorizationCode / nonce.
+      final response = await _client.post('/auth/apple', data: data);
+      return _parseAuthResponse(response);
+    } on DioException catch (e) {
+      throw ErrorMapper.fromDio(
+        e,
+        fallback: 'Error al iniciar sesión con Apple',
+      );
+    }
+  }
+
+  @override
+  Future<void> linkAppleAccount({
+    required String identityToken,
+    required String nonce,
+    String? authorizationCode,
+  }) async {
+    try {
+      // JWT lo adjunta ApiClient; no crear sesión nueva.
+      final data = <String, dynamic>{
+        'identityToken': identityToken,
+        'nonce': nonce,
+      };
+      final code = authorizationCode?.trim();
+      if (code != null && code.isNotEmpty) {
+        data['authorizationCode'] = code;
+      }
+      await _client.post('/auth/apple/link', data: data);
+    } on DioException catch (e) {
+      throw ErrorMapper.fromDio(
+        e,
+        fallback: 'No se pudo vincular la cuenta de Apple',
+      );
+    }
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    try {
+      // JWT lo adjunta ApiClient.
+      final response = await _client.delete('/usuarios/me');
+      if (response.statusCode != null &&
+          response.statusCode! >= 200 &&
+          response.statusCode! < 300) {
+        return;
+      }
+      throw ServerException(
+        'No se pudo eliminar la cuenta',
+        statusCode: response.statusCode,
+      );
+    } on DioException catch (e) {
+      throw ErrorMapper.fromDio(
+        e,
+        fallback: 'No se pudo eliminar la cuenta. Intenta de nuevo.',
+      );
     }
   }
 

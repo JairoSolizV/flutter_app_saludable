@@ -40,6 +40,29 @@ class _FlowTrackingRemote implements AuthRemoteDataSource {
       User(id: '1', name: 'G', email: 'g@t.com', role: 'member', token: 'jwt');
 
   @override
+  Future<User> loginWithApple({
+    required String identityToken,
+    required String nonce,
+    String? authorizationCode,
+    String? givenName,
+    String? familyName,
+  }) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> linkAppleAccount({
+    required String identityToken,
+    required String nonce,
+    String? authorizationCode,
+  }) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteAccount() async => throw UnimplementedError();
+
+
+
+  @override
   Future<User> register(
     String nombre,
     String apellido,
@@ -55,6 +78,7 @@ class _FlowTrackingRemote implements AuthRemoteDataSource {
     resendCalls++;
     return true;
   }
+
 
   @override
   Future<User> updateUser(User user) async => user;

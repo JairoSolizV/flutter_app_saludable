@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../widgets/link_apple_account_action.dart';
+import '../../widgets/delete_account_action.dart';
 import '../../../data/datasources/remote/club_remote_data_source.dart';
 import 'club/host_club_edit_screen.dart';
 
@@ -343,8 +345,25 @@ class _HostProfileScreenState extends State<HostProfileScreen> {
                     context.push('/support');
                   },
                 ),
+                if (isAppleAccountLinkAvailable())
+                  _OptionTile(
+                    icon: LucideIcons.apple,
+                    title: 'Vincular Apple',
+                    onTap: () => linkAppleAccountFromProfile(context),
+                  ),
                 
                 const SizedBox(height: 40),
+
+                TextButton.icon(
+                    onPressed: () => deleteAccountFromProfile(context),
+                    icon: const Icon(LucideIcons.trash2, color: Colors.redAccent),
+                    label: const Text(
+                      'Eliminar cuenta',
+                      style: TextStyle(color: Colors.redAccent, fontSize: 16),
+                    ),
+                ),
+
+                const SizedBox(height: 12),
 
                 // Botón Cerrar Sesión
                 TextButton.icon(

@@ -1,12 +1,15 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import 'package:flutter_app_saludable/core/theme/app_theme.dart';
 import 'package:flutter_app_saludable/core/utils/validators.dart';
 import 'package:flutter_app_saludable/core/utils/input_formatters.dart';
 import 'package:flutter_app_saludable/core/utils/keyboard.dart';
+import 'package:flutter_app_saludable/domain/entities/user.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -236,6 +239,42 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
+                      if (!kIsWeb &&
+                          defaultTargetPlatform == TargetPlatform.iOS)
+                        Consumer<AuthProvider>(
+                          builder: (context, auth, _) {
+                            return Column(
+                              children: [
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 50,
+                                  child: SignInWithAppleButton(
+                                    onPressed: auth.isLoading
+                                        ? () {}
+                                        : () async {
+                                            dismissKeyboard();
+                                            final success =
+                                                await auth.loginWithApple();
+                                            dismissKeyboard();
+                                            if (success && context.mounted) {
+                                              await _completeSocialLogin(
+                                                context,
+                                                auth,
+                                              );
+                                            }
+                                          },
+                                    style: SignInWithAppleButtonStyle.black,
+                                    borderRadius: const BorderRadius.all(
+                                      Radius.circular(10),
+                                    ),
+                                    text: 'Iniciar sesión con Apple',
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                            );
+                          },
+                        ),
                       Consumer<AuthProvider>(
                         builder: (context, auth, _) {
                           return SizedBox(
@@ -254,18 +293,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 // antes de cambiar de ruta.
                                 dismissKeyboard();
                                 if (success && context.mounted) {
-                                  await auth.syncProfile();
-                                  final user = auth.currentUser;
-                                  if (user != null) {
-                                    Provider.of<UserProvider>(context, listen: false).setUser(user);
-                                    if (user.role == 'host') {
-                                       context.go('/host-dashboard');
-                                    } else if (user.role == 'basic_user') {
-                                       context.go('/basic-home');
-                                    } else {
-                                       context.go('/member-home');
-                                    }
-                                  }
+                                  await _completeSocialLogin(context, auth);
                                 }
                               },
                               icon: Image.asset(
@@ -296,5 +324,27 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _completeSocialLogin(
+    BuildContext context,
+    AuthProvider auth,
+  ) async {
+    await auth.syncProfile();
+    if (!context.mounted) return;
+    final user = auth.currentUser;
+    if (user == null) return;
+    Provider.of<UserProvider>(context, listen: false).setUser(user);
+    _goHomeForRole(context, user);
+  }
+
+  void _goHomeForRole(BuildContext context, User user) {
+    if (user.role == 'host') {
+      context.go('/host-dashboard');
+    } else if (user.role == 'basic_user') {
+      context.go('/basic-home');
+    } else {
+      context.go('/member-home');
+    }
   }
 }

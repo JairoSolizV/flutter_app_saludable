@@ -8,6 +8,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/link_apple_account_action.dart';
+import '../../widgets/delete_account_action.dart';
 import '../../widgets/raffle_code_card.dart';
 import '../../../data/datasources/remote/qr_remote_data_source.dart';
 import '../../../data/datasources/remote/membresia_remote_data_source.dart';
@@ -321,6 +323,37 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                                padding: const EdgeInsets.all(16)
                            ),
                        )
+                   ),
+                   if (isAppleAccountLinkAvailable()) ...[
+                     const SizedBox(height: 16),
+                     SizedBox(
+                       width: double.infinity,
+                       child: ElevatedButton.icon(
+                         onPressed: () => linkAppleAccountFromProfile(context),
+                         icon: const Icon(LucideIcons.apple),
+                         label: const Text('Vincular Apple'),
+                         style: ElevatedButton.styleFrom(
+                           backgroundColor: Colors.white,
+                           foregroundColor: Colors.black87,
+                           side: BorderSide(color: Colors.grey.shade300),
+                           padding: const EdgeInsets.all(16),
+                         ),
+                       ),
+                     ),
+                   ],
+                   const SizedBox(height: 16),
+                   SizedBox(
+                       width: double.infinity,
+                       child: ElevatedButton.icon(
+                         onPressed: () => deleteAccountFromProfile(context),
+                         icon: const Icon(LucideIcons.trash2),
+                         label: const Text('Eliminar cuenta'),
+                         style: ElevatedButton.styleFrom(
+                           backgroundColor: Colors.red[50],
+                           foregroundColor: Colors.red,
+                           padding: const EdgeInsets.all(16),
+                         ),
+                       ),
                    ),
                    const SizedBox(height: 16),
                    SizedBox(

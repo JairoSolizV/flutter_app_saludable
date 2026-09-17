@@ -37,6 +37,10 @@ class _LoginTrackingRemote implements AuthRemoteDataSource {
         role: 'basic_user',
       );
 
+
+  @override
+  Future<void> deleteAccount() async => throw UnimplementedError();
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

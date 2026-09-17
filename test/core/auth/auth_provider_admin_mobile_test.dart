@@ -44,6 +44,30 @@ class _AdminAwareFakeAuthRemote implements AuthRemoteDataSource {
   }
 
   @override
+  Future<User> loginWithApple({
+    required String identityToken,
+    required String nonce,
+    String? authorizationCode,
+    String? givenName,
+    String? familyName,
+  }) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> linkAppleAccount({
+    required String identityToken,
+    required String nonce,
+    String? authorizationCode,
+  }) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteAccount() async => throw UnimplementedError();
+
+
+
+
+  @override
   Future<User> register(
     String nombre,
     String apellido,

@@ -148,6 +148,24 @@ class ErrorMapper {
             cause: e.type,
           );
         }
+        if (parsed.code == AppleAccountLinkRequiredException.errorCode ||
+            parsed.code == 'ACCOUNT_LINKING_REQUIRED') {
+          // Mensaje curado en app (no auto-vincular por email).
+          return AppleAccountLinkRequiredException();
+        }
+        if (parsed.code == AccountHasClubException.errorCode) {
+          return AccountHasClubException();
+        }
+        if (parsed.code == AccountDeleteForbiddenException.errorCode) {
+          return AccountDeleteForbiddenException();
+        }
+        if (parsed.code == 'APPLE_ALREADY_LINKED') {
+          return ConflictException(
+            message ?? 'Esta cuenta de Apple ya está vinculada a otro usuario.',
+            code: parsed.code,
+            cause: e.type,
+          );
+        }
         return ConflictException(
           message ?? _conflict,
           code: parsed.code,

@@ -16,7 +16,23 @@ import '../../domain/entities/user.dart';
 import '../../domain/repositories/user_repository.dart';
 import '../../data/datasources/remote/auth_remote_data_source.dart';
 import '../../core/auth/google_auth_service.dart';
+import '../../core/auth/apple_auth_service.dart';
 import '../../core/auth/sqlite_pending_verification_store.dart';
+
+/// Resultado de [AuthProvider.deleteAccount].
+enum DeleteAccountResult {
+  /// Cuenta eliminada y sesión local limpiada.
+  success,
+
+  /// 409 bloqueante (club/admin); sesión intacta.
+  blocked,
+
+  /// Error genérico; sesión intacta.
+  failed,
+
+  /// 401 / sesión inválida; sesión local limpiada.
+  sessionExpired,
+}
 
 class AuthProvider extends ChangeNotifier implements SessionScopedState {
   final AuthRemoteDataSource _remoteDataSource;
@@ -29,6 +45,7 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
   final PendingVerificationStore _pendingVerificationStore;
   
   final GoogleAuthService _googleAuthService;
+  final AppleAuthService _appleAuthService;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -52,6 +69,7 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
     SessionOwner? sessionOwner,
     SessionStateResetter? sessionStateResetter,
     GoogleAuthService? googleAuthService,
+    AppleAuthService? appleAuthService,
   })  : _pendingVerificationStore =
             pendingVerificationStore ?? InMemoryPendingVerificationStore(),
         _sessionMigrator = sessionMigrator ??
@@ -65,7 +83,8 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
         _googleAuthService = googleAuthService ??
             GoogleAuthService(
               webClientId: kGoogleWebClientId,
-            );
+            ),
+        _appleAuthService = appleAuthService ?? AppleAuthService();
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -315,8 +334,103 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
       _isLoading = false;
       notifyListeners();
       return true;
+    } on AdminMobileNotSupportedException catch (e) {
+      await _clearSessionForUnsupportedAdmin(e.message);
+      _errorMessage = e.message;
+      _isLoading = false;
+      notifyListeners();
+      return false;
     } catch (e) {
-      logDebug('[DEBUG AUTH_PROVIDER] Error en loginWithGoogle: $e');
+      logDebug('[DEBUG AUTH_PROVIDER] Error en loginWithGoogle');
+      _errorMessage = _toPublicError(e);
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Sign in with Apple (iOS). Persiste sesión solo tras validación backend.
+  /// Si el backend responde 409 ACCOUNT_LINK_REQUIRED, no crea sesión local.
+  Future<bool> loginWithApple() async {
+    if (_isLoading) return false;
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final credentials = await _appleAuthService.signIn();
+      if (credentials == null) {
+        // Usuario canceló el sheet de Apple
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      final user = await _remoteDataSource.loginWithApple(
+        identityToken: credentials.identityToken,
+        nonce: credentials.nonce,
+        authorizationCode: credentials.authorizationCode,
+        givenName: credentials.givenName,
+        familyName: credentials.familyName,
+      );
+      logDebug(
+        '[DEBUG AUTH_PROVIDER] Usuario autenticado con Apple id=${user.id}',
+      );
+      await _persistAuthenticatedSession(user);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on AdminMobileNotSupportedException catch (e) {
+      await _clearSessionForUnsupportedAdmin(e.message);
+      _errorMessage = e.message;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } on AppleAccountLinkRequiredException catch (e) {
+      // No persistir JWT ni usuario local.
+      logDebug('[DEBUG AUTH_PROVIDER] ACCOUNT_LINK_REQUIRED en loginWithApple');
+      _errorMessage = e.message;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      logDebug('[DEBUG AUTH_PROVIDER] Error en loginWithApple');
+      _errorMessage = _toPublicError(e);
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Vincula Apple a la cuenta ya autenticada (`POST /auth/apple/link` + JWT).
+  /// No crea ni reemplaza la sesión local.
+  Future<bool> linkAppleAccount() async {
+    if (_isLoading) return false;
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final credentials = await _appleAuthService.signIn();
+      if (credentials == null) {
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      await _remoteDataSource.linkAppleAccount(
+        identityToken: credentials.identityToken,
+        nonce: credentials.nonce,
+        authorizationCode: credentials.authorizationCode,
+      );
+      logDebug('[DEBUG AUTH_PROVIDER] Apple vinculado a la cuenta actual');
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      logDebug('[DEBUG AUTH_PROVIDER] Error en linkAppleAccount');
       _errorMessage = _toPublicError(e);
       _isLoading = false;
       notifyListeners();
@@ -699,6 +813,42 @@ class AuthProvider extends ChangeNotifier implements SessionScopedState {
       logDebug('[AUTH] logout() - Completado con errores parciales');
     } else {
       logDebug('[AUTH] logout() - Sesión cerrada');
+    }
+  }
+
+  /// Elimina la cuenta en el backend (`DELETE /usuarios/me`) y limpia sesión
+  /// local igual que [logout] solo si el servidor confirma el borrado (o 401).
+  Future<DeleteAccountResult> deleteAccount() async {
+    if (_isLoading) return DeleteAccountResult.failed;
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _remoteDataSource.deleteAccount();
+      await logout();
+      return DeleteAccountResult.success;
+    } on AccountHasClubException catch (e) {
+      _errorMessage = e.message;
+      _isLoading = false;
+      notifyListeners();
+      return DeleteAccountResult.blocked;
+    } on AccountDeleteForbiddenException catch (e) {
+      _errorMessage = e.message;
+      _isLoading = false;
+      notifyListeners();
+      return DeleteAccountResult.blocked;
+    } on UnauthorizedException catch (_) {
+      // ApiClient puede haber invalidado la sesión; asegurar limpieza local.
+      await logout();
+      return DeleteAccountResult.sessionExpired;
+    } catch (e) {
+      logDebug('[DEBUG AUTH_PROVIDER] Error en deleteAccount');
+      _errorMessage = _toPublicError(e);
+      _isLoading = false;
+      notifyListeners();
+      return DeleteAccountResult.failed;
     }
   }
 }

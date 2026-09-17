@@ -16,12 +16,36 @@ import '../../core/auth/in_memory_secure_storage_gateway.dart';
 class _GoogleLoginRemote implements AuthRemoteDataSource {
   @override
   Future<User> loginWithGoogle(String idToken) async => User(
+
         id: '1',
         name: 'Google User',
         email: 'google@test.com',
         role: 'basic_user',
         token: 'jwt-google',
       );
+
+  @override
+  Future<User> loginWithApple({
+    required String identityToken,
+    required String nonce,
+    String? authorizationCode,
+    String? givenName,
+    String? familyName,
+  }) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> linkAppleAccount({
+    required String identityToken,
+    required String nonce,
+    String? authorizationCode,
+  }) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteAccount() async => throw UnimplementedError();
+
+
 
   @override
   Future<User> getMe() async => User(

@@ -141,6 +141,48 @@ class ConflictException extends AppException {
   });
 }
 
+/// Apple email ya existe con otro método de login; hay que vincular desde perfil.
+class AppleAccountLinkRequiredException extends ConflictException {
+  static const String errorCode = 'ACCOUNT_LINK_REQUIRED';
+  static const String defaultMessage =
+      'Ya existe una cuenta con este correo. Inicia sesión con tu método actual y vincula Apple desde tu perfil.';
+
+  AppleAccountLinkRequiredException([
+    String? message,
+  ]) : super(
+          message ?? defaultMessage,
+          code: errorCode,
+        );
+}
+
+/// Self-delete bloqueado: el usuario administra un club.
+class AccountHasClubException extends ConflictException {
+  static const String errorCode = 'ACCOUNT_HAS_CLUB';
+  static const String defaultMessage =
+      'No podemos eliminar tu cuenta todavía porque administras un club. Contacta a soporte para transferirlo antes de eliminar tu cuenta.';
+
+  AccountHasClubException([
+    String? message,
+  ]) : super(
+          message ?? defaultMessage,
+          code: errorCode,
+        );
+}
+
+/// Self-delete bloqueado por responsabilidades administrativas.
+class AccountDeleteForbiddenException extends ConflictException {
+  static const String errorCode = 'ACCOUNT_DELETE_FORBIDDEN';
+  static const String defaultMessage =
+      'Esta cuenta tiene responsabilidades administrativas. Contacta a soporte para gestionar la eliminación.';
+
+  AccountDeleteForbiddenException([
+    String? message,
+  ]) : super(
+          message ?? defaultMessage,
+          code: errorCode,
+        );
+}
+
 class RateLimitException extends AppException {
   RateLimitException(
     super.message, {
